@@ -7,6 +7,7 @@ const { logger } = require('../utils/logger');
 const store = require('../data/store');
 const { authMiddleware, auditLog } = require('../utils/security');
 const { runSync, getStatus, getLastDiff } = require('../sync/engine');
+const { recomputeAll, getSnapshot, suggestActions, applyAutoActions } = require('../feedback/engine');
 const versionsRouter = require('./versions');
 
 const router = express.Router();
@@ -323,6 +324,75 @@ router.get('/sync/diff', authMiddleware(['admin', 'editor']), (req, res) => {
       ok: false,
       details: { error: err.message }
     });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/feedback/recompute', authMiddleware(['admin', 'editor']), async (req, res) => {
+  try {
+    const snapshot = await recomputeAll();
+    auditLog(req, { action: 'fb.recompute', ok: true });
+    res.json(snapshot);
+  } catch (err) {
+    req.log.error({ err }, 'Feedback recompute failed');
+    auditLog(req, { action: 'fb.recompute', ok: false, details: { error: err.message } });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/feedback/snapshot', authMiddleware(['admin', 'editor']), (req, res) => {
+  try {
+    const snap = getSnapshot();
+    auditLog(req, { action: 'fb.snapshot', ok: true });
+    res.json(snap);
+  } catch (err) {
+    req.log.error({ err }, 'Feedback snapshot failed');
+    auditLog(req, { action: 'fb.snapshot', ok: false, details: { error: err.message } });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/feedback/suggest', authMiddleware(['admin', 'editor']), (req, res) => {
+  try {
+    const suggestions = suggestActions();
+    auditLog(req, { action: 'fb.suggest', ok: true });
+    res.json(suggestions);
+  } catch (err) {
+    req.log.error({ err }, 'Feedback suggest failed');
+    auditLog(req, { action: 'fb.suggest', ok: false, details: { error: err.message } });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/feedback/apply-auto', authMiddleware(['admin']), async (req, res) => {
+  try {
+    const summary = await applyAutoActions(store);
+    auditLog(req, { action: 'fb.applyAuto', ok: true, details: summary });
+    res.json(summary);
+  } catch (err) {
+    req.log.error({ err }, 'Feedback apply-auto failed');
+    auditLog(req, { action: 'fb.applyAuto', ok: false, details: { error: err.message } });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/feedback/item/:id', authMiddleware(['admin', 'editor']), (req, res) => {
+  try {
+    const snap = getSnapshot();
+    const data =
+      snap.items[req.params.id] || {
+        total: 0,
+        pos: 0,
+        neg: 0,
+        neu: 0,
+        posRatio: 0,
+        wilson: 0
+      };
+    auditLog(req, { action: 'fb.item', ok: true, details: { id: req.params.id } });
+    res.json(data);
+  } catch (err) {
+    req.log.error({ err }, 'Feedback item failed');
+    auditLog(req, { action: 'fb.item', ok: false, details: { id: req.params.id, error: err.message } });
     res.status(500).json({ error: 'Internal server error' });
   }
 });

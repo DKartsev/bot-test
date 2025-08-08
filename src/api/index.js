@@ -8,10 +8,12 @@ const { getAnswer } = require('../support/support');
 const { logger, withRequest } = require('../utils/logger');
 const metrics = require('../utils/metrics');
 const adminRouter = require('./admin');
+const feedbackRouter = require('./feedback');
 const { ipAllowlistMiddleware, rateLimiter } = require('../utils/security');
 const { startScheduler } = require('../sync/engine');
 const store = require('../data/store');
 const { initVersioning } = require('../versioning/engine');
+const { startFeedbackAggregator } = require('../feedback/engine');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -43,6 +45,7 @@ app.options('/admin/*', adminCors, ipAllowlistMiddleware(), rateLimiter(), (req,
   res.sendStatus(204);
 });
 app.use('/admin', adminCors, ipAllowlistMiddleware(), rateLimiter(), adminRouter);
+app.use('/feedback', cors(), feedbackRouter);
 
 app.post('/ask', cors(), async (req, res) => {
   const { question, lang, vars } = req.body || {};
@@ -78,11 +81,13 @@ app.post('/ask', cors(), async (req, res) => {
       });
     }
     res.json({
+      responseId: result.responseId,
       answer: result.answer,
       source: result.source,
       method: result.method,
       matchedQuestion: result.matchedQuestion,
       score: result.score,
+      itemId: result.itemId,
       pendingId: result.pendingId,
       durationMs,
       lang: result.lang,
@@ -106,6 +111,7 @@ app.use((err, req, res, next) => {
 
 initVersioning(store);
 startScheduler();
+startFeedbackAggregator(store);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
