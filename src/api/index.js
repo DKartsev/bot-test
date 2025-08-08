@@ -9,6 +9,7 @@ const { logger, withRequest } = require('../utils/logger');
 const metrics = require('../utils/metrics');
 const adminRouter = require('./admin');
 const { ipAllowlistMiddleware, rateLimiter } = require('../utils/security');
+const { startScheduler } = require('../sync/engine');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -87,6 +88,8 @@ app.use((err, req, res, next) => {
   (req.log || logger).error({ err }, 'Unhandled error');
   res.status(500).json({ error: 'Internal server error' });
 });
+
+startScheduler();
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
