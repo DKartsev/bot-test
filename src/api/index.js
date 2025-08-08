@@ -10,6 +10,8 @@ const metrics = require('../utils/metrics');
 const adminRouter = require('./admin');
 const { ipAllowlistMiddleware, rateLimiter } = require('../utils/security');
 const { startScheduler } = require('../sync/engine');
+const store = require('../data/store');
+const { initVersioning } = require('../versioning/engine');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -89,6 +91,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+initVersioning(store);
 startScheduler();
 
 const PORT = process.env.PORT || 3000;

@@ -174,7 +174,7 @@ function addApproved({ Question, Answer, source }) {
   if (!entryValidator(item)) throw new Error('Invalid Q&A entry');
   qaPairs.push(item);
   save();
-  emitter.emit('updated');
+  emitter.emit('updated', { op: 'add', ids: [item.id] });
   return { ...item };
 }
 
@@ -195,7 +195,7 @@ function addPending({ Question, Answer, source = 'openai', meta = {} }) {
   if (!entryValidator(item)) throw new Error('Invalid Q&A entry');
   qaPairs.push(item);
   save();
-  emitter.emit('updated');
+  emitter.emit('updated', { op: 'add', ids: [item.id] });
   return { ...item };
 }
 
@@ -207,7 +207,7 @@ function update(id, patch) {
   if (!entryValidator(updated)) throw new Error('Invalid Q&A entry');
   Object.assign(item, updated);
   save();
-  emitter.emit('updated');
+  emitter.emit('updated', { op: 'update', ids: [id] });
   return { ...item };
 }
 
@@ -223,7 +223,7 @@ function approve(id, patch = {}) {
   if (!entryValidator(updated)) throw new Error('Invalid Q&A entry');
   Object.assign(item, updated);
   save();
-  emitter.emit('updated');
+  emitter.emit('updated', { op: 'approve', ids: [id] });
   return { ...item };
 }
 
@@ -243,7 +243,7 @@ function reject(id, reason) {
   if (!entryValidator(updated)) throw new Error('Invalid Q&A entry');
   Object.assign(item, updated);
   save();
-  emitter.emit('updated');
+  emitter.emit('updated', { op: 'reject', ids: [id] });
   return { ...item };
 }
 
@@ -252,7 +252,7 @@ function remove(id) {
   if (idx === -1) return false;
   qaPairs.splice(idx, 1);
   save();
-  emitter.emit('updated');
+  emitter.emit('updated', { op: 'remove', ids: [id] });
   return true;
 }
 
@@ -274,7 +274,7 @@ function replaceAll(array) {
     return normalized;
   });
   save();
-  emitter.emit('updated');
+  emitter.emit('updated', { op: 'replaceAll', ids: qaPairs.map((q) => q.id) });
   return getAll();
 }
 
