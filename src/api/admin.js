@@ -16,13 +16,44 @@ router.use('/versions', versionsRouter);
 const ajv = new Ajv({ allErrors: true });
 addFormats(ajv);
 
+const translationEntry = {
+  type: 'object',
+  properties: {
+    Question: { type: 'string', minLength: 1 },
+    Answer: { type: 'string', minLength: 1 }
+  },
+  additionalProperties: false
+};
+
+const translationsSchema = {
+  type: 'object',
+  propertyNames: { type: 'string', pattern: '^[a-zA-Z-]{2,5}$' },
+  additionalProperties: translationEntry
+};
+
+const variablesSchema = {
+  type: 'array',
+  items: {
+    type: 'object',
+    required: ['name'],
+    properties: {
+      name: { type: 'string', minLength: 1 },
+      required: { type: 'boolean' },
+      description: { type: 'string' }
+    },
+    additionalProperties: false
+  }
+};
+
 const entrySchema = {
   type: 'object',
   required: ['Question', 'Answer'],
   properties: {
     id: { type: 'string' },
     Question: { type: 'string', minLength: 1 },
-    Answer: { type: 'string', minLength: 1 }
+    Answer: { type: 'string', minLength: 1 },
+    translations: translationsSchema,
+    variables: variablesSchema
   },
   additionalProperties: false
 };
@@ -31,7 +62,9 @@ const patchSchema = {
   type: 'object',
   properties: {
     Question: { type: 'string', minLength: 1 },
-    Answer: { type: 'string', minLength: 1 }
+    Answer: { type: 'string', minLength: 1 },
+    translations: translationsSchema,
+    variables: variablesSchema
   },
   additionalProperties: false,
   minProperties: 1
@@ -42,6 +75,8 @@ const approveSchema = {
   properties: {
     Question: { type: 'string', minLength: 1 },
     Answer: { type: 'string', minLength: 1 },
+    translations: translationsSchema,
+    variables: variablesSchema,
     meta: { type: 'object' }
   },
   additionalProperties: false
@@ -96,7 +131,15 @@ router.post('/qa/pending/:id/approve', authMiddleware(['admin', 'editor']), (req
     const editor = req.headers['x-editor'];
     logModeration('approve', req.params.id, editor, req.body);
     logger.info({ id: req.params.id, editor, changes: req.body }, 'QA approved');
-    auditLog(req, { action: 'qa.pending.approve', ok: true, details: { id: req.params.id } });
+    auditLog(req, {
+      action: 'qa.pending.approve',
+      ok: true,
+      details: {
+        id: req.params.id,
+        langs: Object.keys(req.body.translations || {}),
+        vars: (req.body.variables || []).map((v) => v.name)
+      }
+    });
     res.json(item);
   } catch (err) {
     req.log.error({ err }, 'Failed to approve QA');
@@ -130,16 +173,6 @@ router.post('/qa/pending/:id/reject', authMiddleware(['admin', 'editor']), (req,
   }
 });
 
-router.get('/qa/:id', authMiddleware(['admin', 'editor']), (req, res) => {
-  const item = store.getById(req.params.id);
-  if (!item) {
-    auditLog(req, { action: 'qa.get', ok: false, details: { id: req.params.id } });
-    return res.status(404).json({ error: 'Not found' });
-  }
-  auditLog(req, { action: 'qa.get', ok: true, details: { id: req.params.id } });
-  res.json(item);
-});
-
 router.get('/qa', authMiddleware(['admin', 'editor']), (req, res) => {
   const all = store.getAll();
   auditLog(req, { action: 'qa.list', ok: true, details: { count: all.length } });
@@ -156,7 +189,15 @@ router.post('/qa', authMiddleware(['admin']), (req, res) => {
   try {
     const item = store.addApproved(req.body);
     logger.info({ id: item.id }, 'QA added');
-    auditLog(req, { action: 'qa.create', ok: true, details: { id: item.id } });
+    auditLog(req, {
+      action: 'qa.create',
+      ok: true,
+      details: {
+        id: item.id,
+        langs: Object.keys(req.body.translations || {}),
+        vars: (req.body.variables || []).map((v) => v.name)
+      }
+    });
     res.json(item);
   } catch (err) {
     req.log.error({ err }, 'Failed to add QA');
@@ -179,7 +220,15 @@ router.put('/qa/:id', authMiddleware(['admin', 'editor']), (req, res) => {
       return res.status(404).json({ error: 'Not found' });
     }
     logger.info({ id: req.params.id }, 'QA updated');
-    auditLog(req, { action: 'qa.update', ok: true, details: { id: req.params.id } });
+    auditLog(req, {
+      action: 'qa.update',
+      ok: true,
+      details: {
+        id: req.params.id,
+        langs: Object.keys(req.body.translations || {}),
+        vars: (req.body.variables || []).map((v) => v.name)
+      }
+    });
     res.json(updated);
   } catch (err) {
     req.log.error({ err }, 'Failed to update QA');

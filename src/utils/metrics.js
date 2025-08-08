@@ -16,7 +16,9 @@ const timings = {
   count: 0
 };
 
-function recordRequest(durationMs, source) {
+const langCounters = {};
+
+function recordRequest(durationMs, source, lang) {
   counters.totalRequests += 1;
   timings.totalDurationMs += durationMs;
   timings.count += 1;
@@ -30,6 +32,8 @@ function recordRequest(durationMs, source) {
   } else if (source === 'none') {
     counters.noMatch += 1;
   }
+  const key = lang || 'unknown';
+  langCounters[key] = (langCounters[key] || 0) + 1;
 }
 
 function recordNoMatch(question) {
@@ -57,7 +61,8 @@ function snapshot() {
     openaiCached: counters.openaiCached,
     pendingTotal,
     avgDurationMs,
-    maxDurationMs: timings.maxDurationMs
+    maxDurationMs: timings.maxDurationMs,
+    langCounters
   };
 }
 

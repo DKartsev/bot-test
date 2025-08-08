@@ -13,6 +13,32 @@ const backupDir = path.join(dataDir, 'backups');
 const ajv = new Ajv({ allErrors: true });
 addFormats(ajv);
 
+const translationEntry = {
+  type: 'object',
+  properties: {
+    Question: { type: 'string', minLength: 1 },
+    Answer: { type: 'string', minLength: 1 }
+  },
+  additionalProperties: false
+};
+
+const translationsSchema = {
+  type: 'object',
+  propertyNames: { type: 'string', pattern: '^[a-zA-Z-]{2,5}$' },
+  additionalProperties: translationEntry
+};
+
+const variableSchema = {
+  type: 'object',
+  required: ['name'],
+  properties: {
+    name: { type: 'string', minLength: 1 },
+    required: { type: 'boolean' },
+    description: { type: 'string' }
+  },
+  additionalProperties: false
+};
+
 const entrySchema = {
   type: 'object',
   required: ['id', 'Question', 'Answer', 'status', 'createdAt', 'updatedAt'],
@@ -20,6 +46,8 @@ const entrySchema = {
     id: { type: 'string' },
     Question: { type: 'string', minLength: 1 },
     Answer: { type: 'string', minLength: 1 },
+    translations: translationsSchema,
+    variables: { type: 'array', items: variableSchema },
     status: { enum: ['approved', 'pending', 'rejected'] },
     source: { enum: ['local', 'openai'] },
     createdAt: { type: 'string', format: 'date-time' },
@@ -45,6 +73,8 @@ const patchValidator = ajv.compile({
   properties: {
     Question: { type: 'string', minLength: 1 },
     Answer: { type: 'string', minLength: 1 },
+    translations: translationsSchema,
+    variables: { type: 'array', items: variableSchema },
     status: { enum: ['approved', 'pending', 'rejected'] },
     meta: { type: 'object' }
   },
@@ -59,6 +89,8 @@ const importEntrySchema = {
     id: { type: 'string' },
     Question: { type: 'string', minLength: 1 },
     Answer: { type: 'string', minLength: 1 },
+    translations: translationsSchema,
+    variables: { type: 'array', items: variableSchema },
     status: { enum: ['approved', 'pending', 'rejected'] },
     source: { enum: ['local', 'openai'] },
     createdAt: { type: 'string' },
@@ -80,6 +112,34 @@ function ensureDirs() {
 
 function normalizeString(str) {
   return String(str || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function normalizeTranslations(translations) {
+  if (!translations || typeof translations !== 'object') return undefined;
+  const out = {};
+  for (const [lang, value] of Object.entries(translations)) {
+    const code = String(lang).toLowerCase().slice(0, 5);
+    if (!/^[a-z-]{2,5}$/.test(code)) continue;
+    const q = value && typeof value.Question === 'string' ? value.Question.trim() : '';
+    const a = value && typeof value.Answer === 'string' ? value.Answer.trim() : '';
+    const entry = {};
+    if (q) entry.Question = q;
+    if (a) entry.Answer = a;
+    if (Object.keys(entry).length) out[code] = entry;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+function normalizeVariables(vars) {
+  if (!Array.isArray(vars)) return undefined;
+  const out = vars
+    .map((v) => ({
+      name: String(v.name || '').trim(),
+      required: Boolean(v.required),
+      description: typeof v.description === 'string' ? v.description : undefined
+    }))
+    .filter((v) => v.name);
+  return out.length ? out : undefined;
 }
 
 function findSimilarPending(question, answer) {
@@ -112,6 +172,8 @@ function load() {
         id: item.id || uuidv4(),
         Question: String(item.Question || ''),
         Answer: String(item.Answer || ''),
+        translations: normalizeTranslations(item.translations),
+        variables: normalizeVariables(item.variables),
         status: item.status || 'approved',
         source: item.source,
         createdAt: item.createdAt || now,
@@ -136,7 +198,11 @@ function load() {
 
 function backup() {
   if (!fs.existsSync(dataFile)) return;
-  const ts = new Date().toISOString().replace(/[-:]/g, '').replace(/\..*/, '').replace('T', '-');
+  const ts = new Date()
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\..*/, '')
+    .replace('T', '-');
   const backupPath = path.join(backupDir, `qa_pairs.${ts}.json`);
   fs.copyFileSync(dataFile, backupPath);
 }
@@ -153,19 +219,23 @@ function getAll() {
 }
 
 function getApproved() {
-  return qaPairs.filter((q) => q.status === 'approved').map((q) => ({ ...q }));
+  return qaPairs
+    .filter((q) => q.status === 'approved')
+    .map((q) => ({ ...q }));
 }
 
 function getById(id) {
   return qaPairs.find((q) => q.id === id) || null;
 }
 
-function addApproved({ Question, Answer, source }) {
+function addApproved({ Question, Answer, translations, variables, source }) {
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
     Question,
     Answer,
+    translations: normalizeTranslations(translations),
+    variables: normalizeVariables(variables),
     status: 'approved',
     source: source || 'local',
     createdAt: now,
@@ -178,7 +248,7 @@ function addApproved({ Question, Answer, source }) {
   return { ...item };
 }
 
-function addPending({ Question, Answer, source = 'openai', meta = {} }) {
+function addPending({ Question, Answer, translations, variables, source = 'openai', meta = {} }) {
   const existing = findSimilarPending(Question, Answer);
   if (existing) return { ...existing };
   const now = new Date().toISOString();
@@ -186,6 +256,8 @@ function addPending({ Question, Answer, source = 'openai', meta = {} }) {
     id: uuidv4(),
     Question,
     Answer,
+    translations: normalizeTranslations(translations),
+    variables: normalizeVariables(variables),
     status: 'pending',
     source,
     createdAt: now,
@@ -200,10 +272,15 @@ function addPending({ Question, Answer, source = 'openai', meta = {} }) {
 }
 
 function update(id, patch) {
-  if (!patchValidator(patch)) throw new Error('Invalid Q&A entry');
+  const normalizedPatch = {
+    ...patch,
+    translations: normalizeTranslations(patch.translations),
+    variables: normalizeVariables(patch.variables)
+  };
+  if (!patchValidator(normalizedPatch)) throw new Error('Invalid Q&A entry');
   const item = qaPairs.find((q) => q.id === id);
   if (!item) return null;
-  const updated = { ...item, ...patch, updatedAt: new Date().toISOString() };
+  const updated = { ...item, ...normalizedPatch, updatedAt: new Date().toISOString() };
   if (!entryValidator(updated)) throw new Error('Invalid Q&A entry');
   Object.assign(item, updated);
   save();
@@ -212,11 +289,16 @@ function update(id, patch) {
 }
 
 function approve(id, patch = {}) {
+  const normalizedPatch = {
+    ...patch,
+    translations: normalizeTranslations(patch.translations),
+    variables: normalizeVariables(patch.variables)
+  };
   const item = qaPairs.find((q) => q.id === id);
   if (!item) return null;
   const updated = {
     ...item,
-    ...patch,
+    ...normalizedPatch,
     status: 'approved',
     updatedAt: new Date().toISOString()
   };
@@ -264,6 +346,8 @@ function replaceAll(array) {
       id: item.id || uuidv4(),
       Question: item.Question,
       Answer: item.Answer,
+      translations: normalizeTranslations(item.translations),
+      variables: normalizeVariables(item.variables),
       status: item.status || 'approved',
       source: item.source,
       createdAt: item.createdAt || now,
