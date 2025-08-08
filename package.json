@@ -1,0 +1,14 @@
+{
+  "name": "my-support-bot",
+  "version": "1.0.0",
+  "main": "src/api/index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "node src/api/index.js",
+    "test": "echo \"No tests defined\" && exit 0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "fuse.js": "^6.6.2"
+  }
+}
