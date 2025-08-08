@@ -6,6 +6,7 @@ const path = require('path');
 const { logger } = require('../utils/logger');
 const store = require('../data/store');
 const { authMiddleware, auditLog } = require('../utils/security');
+const { runSync, getStatus, getLastDiff } = require('../sync/engine');
 
 const router = express.Router();
 
@@ -224,6 +225,54 @@ router.get('/qa/export', authMiddleware(['admin']), (req, res) => {
   const all = store.getAll();
   auditLog(req, { action: 'qa.export', ok: true, details: { count: all.length } });
   res.json(all);
+});
+
+router.post('/sync/run', authMiddleware(['admin', 'editor']), async (req, res) => {
+  try {
+    const summary = await runSync();
+    auditLog(req, { action: 'sync.run', ok: true, details: summary });
+    res.json(summary);
+  } catch (err) {
+    req.log.error({ err }, 'Sync run failed');
+    auditLog(req, {
+      action: 'sync.run',
+      ok: false,
+      details: { error: err.message }
+    });
+    res.status(503).json({ error: 'Sync failed' });
+  }
+});
+
+router.get('/sync/status', authMiddleware(['admin', 'editor']), (req, res) => {
+  try {
+    const status = getStatus();
+    auditLog(req, { action: 'sync.status', ok: true });
+    res.json(status);
+  } catch (err) {
+    req.log.error({ err }, 'Sync status failed');
+    auditLog(req, {
+      action: 'sync.status',
+      ok: false,
+      details: { error: err.message }
+    });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/sync/diff', authMiddleware(['admin', 'editor']), (req, res) => {
+  try {
+    const diff = getLastDiff();
+    auditLog(req, { action: 'sync.diff', ok: true });
+    res.json(diff);
+  } catch (err) {
+    req.log.error({ err }, 'Sync diff failed');
+    auditLog(req, {
+      action: 'sync.diff',
+      ok: false,
+      details: { error: err.message }
+    });
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 module.exports = router;
