@@ -1,11 +1,13 @@
 const fs = require('fs');
 const path = require('path');
+const store = require('../data/store');
 
 const counters = {
   totalRequests: 0,
   localHits: 0,
   openaiHits: 0,
-  noMatch: 0
+  noMatch: 0,
+  openaiCached: 0
 };
 
 const timings = {
@@ -38,13 +40,22 @@ function recordNoMatch(question) {
   fs.appendFileSync(path.join(dir, 'no_match.jsonl'), line);
 }
 
+function recordOpenaiCached() {
+  counters.openaiCached += 1;
+}
+
 function snapshot() {
   const avgDurationMs = timings.count ? timings.totalDurationMs / timings.count : 0;
+  const pendingTotal = store
+    .getAll()
+    .filter((i) => i.status === 'pending').length;
   return {
     totalRequests: counters.totalRequests,
     localHits: counters.localHits,
     openaiHits: counters.openaiHits,
     noMatch: counters.noMatch,
+    openaiCached: counters.openaiCached,
+    pendingTotal,
     avgDurationMs,
     maxDurationMs: timings.maxDurationMs
   };
@@ -53,5 +64,6 @@ function snapshot() {
 module.exports = {
   recordRequest,
   recordNoMatch,
+  recordOpenaiCached,
   snapshot
 };

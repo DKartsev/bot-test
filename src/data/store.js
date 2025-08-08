@@ -15,27 +15,60 @@ addFormats(ajv);
 
 const entrySchema = {
   type: 'object',
-  required: ['Question', 'Answer'],
+  required: ['id', 'Question', 'Answer', 'status', 'createdAt', 'updatedAt'],
   properties: {
     id: { type: 'string' },
     Question: { type: 'string', minLength: 1 },
-    Answer: { type: 'string', minLength: 1 }
+    Answer: { type: 'string', minLength: 1 },
+    status: { enum: ['approved', 'pending', 'rejected'] },
+    source: { enum: ['local', 'openai'] },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+    meta: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        model: { type: 'string' },
+        score: { type: 'number' },
+        requestHash: { type: 'string' },
+        notes: { type: 'string' }
+      }
+    }
   },
   additionalProperties: false
 };
 
 const entryValidator = ajv.compile(entrySchema);
-const entryPatchValidator = ajv.compile({
+
+const patchValidator = ajv.compile({
   type: 'object',
   properties: {
     Question: { type: 'string', minLength: 1 },
-    Answer: { type: 'string', minLength: 1 }
+    Answer: { type: 'string', minLength: 1 },
+    status: { enum: ['approved', 'pending', 'rejected'] },
+    meta: { type: 'object' }
   },
   additionalProperties: false,
   minProperties: 1
 });
 
-const arrayValidator = ajv.compile({ type: 'array', items: entrySchema });
+const importEntrySchema = {
+  type: 'object',
+  required: ['Question', 'Answer'],
+  properties: {
+    id: { type: 'string' },
+    Question: { type: 'string', minLength: 1 },
+    Answer: { type: 'string', minLength: 1 },
+    status: { enum: ['approved', 'pending', 'rejected'] },
+    source: { enum: ['local', 'openai'] },
+    createdAt: { type: 'string' },
+    updatedAt: { type: 'string' },
+    meta: { type: 'object' }
+  },
+  additionalProperties: false
+};
+
+const arrayValidator = ajv.compile({ type: 'array', items: importEntrySchema });
 
 const emitter = new EventEmitter();
 let qaPairs = [];
@@ -43,6 +76,23 @@ let qaPairs = [];
 function ensureDirs() {
   fs.mkdirSync(dataDir, { recursive: true });
   fs.mkdirSync(backupDir, { recursive: true });
+}
+
+function normalizeString(str) {
+  return String(str || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function findSimilarPending(question, answer) {
+  const nq = normalizeString(question);
+  const na = normalizeString(answer);
+  return (
+    qaPairs.find(
+      (item) =>
+        item.status === 'pending' &&
+        normalizeString(item.Question) === nq &&
+        normalizeString(item.Answer) === na
+    ) || null
+  );
 }
 
 function load() {
@@ -57,12 +107,25 @@ function load() {
     const parsed = JSON.parse(raw);
     let changed = false;
     qaPairs = parsed.map((item) => {
+      const now = new Date().toISOString();
       const normalized = {
         id: item.id || uuidv4(),
         Question: String(item.Question || ''),
-        Answer: String(item.Answer || '')
+        Answer: String(item.Answer || ''),
+        status: item.status || 'approved',
+        source: item.source,
+        createdAt: item.createdAt || now,
+        updatedAt: item.updatedAt || item.createdAt || now,
+        meta: item.meta || undefined
       };
-      if (!item.id) changed = true;
+      if (
+        !item.id ||
+        !item.status ||
+        !item.createdAt ||
+        !item.updatedAt
+      )
+        changed = true;
+      if (!entryValidator(normalized)) throw new Error('Invalid Q&A entry');
       return normalized;
     });
     if (changed) save();
@@ -89,15 +152,47 @@ function getAll() {
   return JSON.parse(JSON.stringify(qaPairs));
 }
 
+function getApproved() {
+  return qaPairs.filter((q) => q.status === 'approved').map((q) => ({ ...q }));
+}
+
 function getById(id) {
   return qaPairs.find((q) => q.id === id) || null;
 }
 
-function add({ Question, Answer }) {
-  const item = { id: uuidv4(), Question, Answer };
-  if (!entryValidator(item)) {
-    throw new Error('Invalid Q&A entry');
-  }
+function addApproved({ Question, Answer, source }) {
+  const now = new Date().toISOString();
+  const item = {
+    id: uuidv4(),
+    Question,
+    Answer,
+    status: 'approved',
+    source: source || 'local',
+    createdAt: now,
+    updatedAt: now
+  };
+  if (!entryValidator(item)) throw new Error('Invalid Q&A entry');
+  qaPairs.push(item);
+  save();
+  emitter.emit('updated');
+  return { ...item };
+}
+
+function addPending({ Question, Answer, source = 'openai', meta = {} }) {
+  const existing = findSimilarPending(Question, Answer);
+  if (existing) return { ...existing };
+  const now = new Date().toISOString();
+  const item = {
+    id: uuidv4(),
+    Question,
+    Answer,
+    status: 'pending',
+    source,
+    createdAt: now,
+    updatedAt: now,
+    meta
+  };
+  if (!entryValidator(item)) throw new Error('Invalid Q&A entry');
   qaPairs.push(item);
   save();
   emitter.emit('updated');
@@ -105,17 +200,48 @@ function add({ Question, Answer }) {
 }
 
 function update(id, patch) {
-  if (!entryPatchValidator(patch)) {
-    throw new Error('Invalid Q&A entry');
-  }
+  if (!patchValidator(patch)) throw new Error('Invalid Q&A entry');
   const item = qaPairs.find((q) => q.id === id);
   if (!item) return null;
-  const updated = { ...item, ...patch };
-  if (!entryValidator(updated)) {
-    throw new Error('Invalid Q&A entry');
-  }
-  item.Question = updated.Question;
-  item.Answer = updated.Answer;
+  const updated = { ...item, ...patch, updatedAt: new Date().toISOString() };
+  if (!entryValidator(updated)) throw new Error('Invalid Q&A entry');
+  Object.assign(item, updated);
+  save();
+  emitter.emit('updated');
+  return { ...item };
+}
+
+function approve(id, patch = {}) {
+  const item = qaPairs.find((q) => q.id === id);
+  if (!item) return null;
+  const updated = {
+    ...item,
+    ...patch,
+    status: 'approved',
+    updatedAt: new Date().toISOString()
+  };
+  if (!entryValidator(updated)) throw new Error('Invalid Q&A entry');
+  Object.assign(item, updated);
+  save();
+  emitter.emit('updated');
+  return { ...item };
+}
+
+function reject(id, reason) {
+  const item = qaPairs.find((q) => q.id === id);
+  if (!item) return null;
+  const ts = new Date().toISOString();
+  const notes = reason
+    ? `${item.meta?.notes ? item.meta.notes + '\n' : ''}[${ts}] ${reason}`
+    : item.meta?.notes;
+  const updated = {
+    ...item,
+    status: 'rejected',
+    updatedAt: ts,
+    meta: { ...(item.meta || {}), notes }
+  };
+  if (!entryValidator(updated)) throw new Error('Invalid Q&A entry');
+  Object.assign(item, updated);
   save();
   emitter.emit('updated');
   return { ...item };
@@ -131,14 +257,22 @@ function remove(id) {
 }
 
 function replaceAll(array) {
-  if (!arrayValidator(array)) {
-    throw new Error('Invalid Q&A array');
-  }
-  qaPairs = array.map((item) => ({
-    id: item.id || uuidv4(),
-    Question: item.Question,
-    Answer: item.Answer
-  }));
+  if (!arrayValidator(array)) throw new Error('Invalid Q&A array');
+  qaPairs = array.map((item) => {
+    const now = new Date().toISOString();
+    const normalized = {
+      id: item.id || uuidv4(),
+      Question: item.Question,
+      Answer: item.Answer,
+      status: item.status || 'approved',
+      source: item.source,
+      createdAt: item.createdAt || now,
+      updatedAt: item.updatedAt || item.createdAt || now,
+      meta: item.meta || undefined
+    };
+    if (!entryValidator(normalized)) throw new Error('Invalid Q&A entry');
+    return normalized;
+  });
   save();
   emitter.emit('updated');
   return getAll();
@@ -153,11 +287,15 @@ load();
 module.exports = {
   load,
   getAll,
+  getApproved,
   getById,
-  add,
+  addApproved,
+  addPending,
   update,
+  approve,
+  reject,
   remove,
   replaceAll,
-  onUpdated
+  onUpdated,
+  findSimilarPending
 };
-

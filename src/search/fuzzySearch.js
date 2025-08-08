@@ -2,11 +2,11 @@ const Fuse = require('fuse.js');
 const fuseConfig = require('./fuseConfig');
 const store = require('../data/store');
 
-let data = store.getAll();
+let data = store.getApproved();
 let fuse = new Fuse(data, fuseConfig);
 
 store.onUpdated(() => {
-  data = store.getAll();
+  data = store.getApproved();
   fuse = new Fuse(data, fuseConfig);
 });
 
