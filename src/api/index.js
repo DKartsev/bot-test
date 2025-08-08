@@ -1,11 +1,16 @@
+require('dotenv').config();
+
 const express = require('express');
+const cors = require('cors');
 const crypto = require('crypto');
 const { getAnswer } = require('../support/support');
 const { logger, withRequest } = require('../utils/logger');
 const metrics = require('../utils/metrics');
+const adminRouter = require('./admin');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
+app.use(cors());
 
 app.use((req, res, next) => {
   req.id = crypto.randomUUID();
@@ -13,6 +18,8 @@ app.use((req, res, next) => {
   req.log = withRequest(req);
   next();
 });
+
+app.use('/admin', adminRouter);
 
 app.post('/ask', async (req, res) => {
   const { question } = req.body || {};
@@ -50,6 +57,11 @@ app.post('/ask', async (req, res) => {
 
 app.get('/metrics', (req, res) => {
   res.json(metrics.snapshot());
+});
+
+app.use((err, req, res, next) => {
+  (req.log || logger).error({ err }, 'Unhandled error');
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 const PORT = process.env.PORT || 3000;
