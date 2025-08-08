@@ -8,6 +8,7 @@
     "test": "echo \"No tests defined\" && exit 0"
   },
   "dependencies": {
+    "accept-language-parser": "^1.5.0",
     "airtable": "^0.12.1",
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
@@ -21,6 +22,7 @@
     "googleapis": "^136.0.0",
     "helmet": "^7.0.0",
     "ipaddr.js": "^2.1.0",
+    "mustache": "^4.2.0",
     "node-cron": "^3.0.3",
     "openai": "^5.12.2",
     "pino": "^9.8.0",

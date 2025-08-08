@@ -45,26 +45,36 @@ app.options('/admin/*', adminCors, ipAllowlistMiddleware(), rateLimiter(), (req,
 app.use('/admin', adminCors, ipAllowlistMiddleware(), rateLimiter(), adminRouter);
 
 app.post('/ask', cors(), async (req, res) => {
-  const { question } = req.body || {};
+  const { question, lang, vars } = req.body || {};
+  const acceptLanguageHeader = req.headers['accept-language'];
   const log = req.log;
-  log.info({ question }, 'incoming question');
+  log.info({ question, lang }, 'incoming question');
   try {
-    const result = await getAnswer(question);
+    const result = await getAnswer(question, { lang, vars, acceptLanguageHeader });
     const durationMs = Date.now() - req.start;
-    metrics.recordRequest(durationMs, result.source);
+    metrics.recordRequest(durationMs, result.source, result.lang);
     if (result.source === 'openai') {
       metrics.recordNoMatch(question);
       if (result.pendingId) {
         metrics.recordOpenaiCached();
       }
-      log.info({ source: result.source, method: result.method, durationMs, pendingId: result.pendingId });
+      log.info({
+        source: result.source,
+        method: result.method,
+        durationMs,
+        pendingId: result.pendingId,
+        lang: result.lang
+      });
     } else {
       log.info({
         source: result.source,
         method: result.method,
         matchedQuestion: result.matchedQuestion,
         score: result.score,
-        durationMs
+        durationMs,
+        lang: result.lang,
+        variablesUsed: result.variablesUsed,
+        needVars: result.needVars
       });
     }
     res.json({
@@ -74,7 +84,10 @@ app.post('/ask', cors(), async (req, res) => {
       matchedQuestion: result.matchedQuestion,
       score: result.score,
       pendingId: result.pendingId,
-      durationMs
+      durationMs,
+      lang: result.lang,
+      variablesUsed: result.variablesUsed,
+      needVars: result.needVars
     });
   } catch (error) {
     req.log.error({ err: error }, 'Error handling /ask');
