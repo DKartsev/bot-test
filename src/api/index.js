@@ -1,16 +1,33 @@
 require('dotenv').config();
 
 const express = require('express');
+const helmet = require('helmet');
 const cors = require('cors');
 const crypto = require('crypto');
 const { getAnswer } = require('../support/support');
 const { logger, withRequest } = require('../utils/logger');
 const metrics = require('../utils/metrics');
 const adminRouter = require('./admin');
+const { ipAllowlistMiddleware, rateLimiter } = require('../utils/security');
 
 const app = express();
+app.set('trust proxy', 1);
+app.use(helmet());
 app.use(express.json({ limit: '1mb' }));
-app.use(cors());
+
+const adminOrigins = (process.env.ADMIN_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+const adminCors = cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    if (adminOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  optionsSuccessStatus: 204
+});
 
 app.use((req, res, next) => {
   req.id = crypto.randomUUID();
@@ -19,9 +36,12 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use('/admin', adminRouter);
+app.options('/admin/*', adminCors, ipAllowlistMiddleware(), rateLimiter(), (req, res) => {
+  res.sendStatus(204);
+});
+app.use('/admin', adminCors, ipAllowlistMiddleware(), rateLimiter(), adminRouter);
 
-app.post('/ask', async (req, res) => {
+app.post('/ask', cors(), async (req, res) => {
   const { question } = req.body || {};
   const log = req.log;
   log.info({ question }, 'incoming question');

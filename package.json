@@ -16,6 +16,9 @@
     "fuse.js": "^6.6.2",
     "openai": "^5.12.2",
     "pino": "^9.8.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "helmet": "^7.0.0",
+    "express-rate-limit": "^7.0.0",
+    "ipaddr.js": "^2.1.0"
   }
 }
