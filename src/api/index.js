@@ -1,22 +1,24 @@
 const express = require('express');
 const { getAnswer } = require('../support/support');
+const logger = require('../utils/logger');
 
 const app = express();
 app.use(express.json());
 
-app.post('/ask', (req, res) => {
+app.post('/ask', async (req, res) => {
   const { question } = req.body || {};
-  const answer = getAnswer(question);
-  if (typeof answer === 'string') {
-    res.json({ answer, source: 'local' });
-  } else {
-    res.json({ answer: 'Извините, пока не знаю. Веду поиск…', source: 'none' });
+  try {
+    const { answer, source } = await getAnswer(question);
+    res.json({ answer, source });
+  } catch (error) {
+    logger.error('Error handling /ask', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+  logger.log(`Server listening on port ${PORT}`);
 });
 
 module.exports = app;
