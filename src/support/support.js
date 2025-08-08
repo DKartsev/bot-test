@@ -1,25 +1,35 @@
 const { fuzzySearch } = require('../search/fuzzySearch');
 const { fallbackQuery } = require('../llm/fallback');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
 
 async function getAnswer(question) {
   if (!question) {
-    return { answer: null, source: 'local' };
+    return { answer: null, source: 'local', method: 'exact' };
   }
   try {
-    const results = fuzzySearch(question);
-    const exact = results.find((r) => r.score === 0);
-    if (exact) {
-      return { answer: exact.item.Answer, source: 'local' };
+    const [best] = fuzzySearch(question, 1);
+    if (best && best.score === 0) {
+      return {
+        answer: best.item.Answer,
+        source: 'local',
+        method: 'exact',
+        matchedQuestion: best.item.Question,
+        score: best.score
+      };
     }
-    const best = results.find((r) => r.score <= 0.4);
-    if (best) {
-      return { answer: best.item.Answer, source: 'local' };
+    if (best && best.score <= 0.4) {
+      return {
+        answer: best.item.Answer,
+        source: 'local',
+        method: 'fuzzy',
+        matchedQuestion: best.item.Question,
+        score: best.score
+      };
     }
     const answer = await fallbackQuery(question);
-    return { answer, source: 'openai' };
+    return { answer, source: 'openai', method: 'openai' };
   } catch (error) {
-    logger.error('Error in getAnswer', error);
+    logger.error({ err: error }, 'Error in getAnswer');
     throw error;
   }
 }

@@ -1,6 +1,6 @@
 const OpenAI = require('openai');
 const dotenv = require('dotenv');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
 
 dotenv.config();
 
@@ -26,7 +26,7 @@ async function fallbackQuery(question) {
     const answer = completion.choices[0]?.message?.content || '';
     return answer.trim();
   } catch (error) {
-    logger.error('OpenAI fallback failed', error);
+    logger.error({ err: error }, 'OpenAI fallback failed');
     throw error;
   }
 }
