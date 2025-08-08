@@ -31,7 +31,10 @@ app.post('/ask', async (req, res) => {
     metrics.recordRequest(durationMs, result.source);
     if (result.source === 'openai') {
       metrics.recordNoMatch(question);
-      log.info({ source: result.source, method: result.method, durationMs });
+      if (result.pendingId) {
+        metrics.recordOpenaiCached();
+      }
+      log.info({ source: result.source, method: result.method, durationMs, pendingId: result.pendingId });
     } else {
       log.info({
         source: result.source,
@@ -47,6 +50,7 @@ app.post('/ask', async (req, res) => {
       method: result.method,
       matchedQuestion: result.matchedQuestion,
       score: result.score,
+      pendingId: result.pendingId,
       durationMs
     });
   } catch (error) {
