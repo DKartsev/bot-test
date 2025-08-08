@@ -1,18 +1,22 @@
-const fs = require('fs');
-const path = require('path');
 const Fuse = require('fuse.js');
 const fuseConfig = require('./fuseConfig');
+const store = require('../data/store');
 
-const dataPath = path.join(__dirname, '..', '..', 'data', 'qa_pairs.json');
-const qaPairs = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+let data = store.getAll();
+let fuse = new Fuse(data, fuseConfig);
 
-const fuse = new Fuse(qaPairs, fuseConfig);
+store.onUpdated(() => {
+  data = store.getAll();
+  fuse = new Fuse(data, fuseConfig);
+});
 
 function fuzzySearch(query, limit = 5) {
-  if (!query) {
-    return [];
-  }
+  if (!query) return [];
   return fuse.search(query, { limit }).map(({ item, score }) => ({ item, score }));
 }
 
-module.exports = { fuzzySearch };
+function getIndexSize() {
+  return data.length;
+}
+
+module.exports = { fuzzySearch, getIndexSize };
