@@ -7,8 +7,11 @@ const { logger } = require('../utils/logger');
 const store = require('../data/store');
 const { authMiddleware, auditLog } = require('../utils/security');
 const { runSync, getStatus, getLastDiff } = require('../sync/engine');
+const versionsRouter = require('./versions');
 
 const router = express.Router();
+
+router.use('/versions', versionsRouter);
 
 const ajv = new Ajv({ allErrors: true });
 addFormats(ajv);
