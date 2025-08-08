@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { v4: uuidv4 } = require('uuid');
 const { fuzzySearch } = require('../search/fuzzySearch');
 const { fallbackQuery } = require('../llm/fallback');
 const { logger } = require('../utils/logger');
@@ -26,8 +27,9 @@ async function getAnswer(question, opts = {}) {
     supported: SUPPORTED_LANGS,
     fallback: DEFAULT_LANG
   });
+  const responseId = uuidv4();
   if (!question) {
-    return { answer: null, source: 'local', method: 'exact', lang };
+    return { responseId, answer: null, source: 'local', method: 'exact', lang };
   }
   try {
     const [best] = fuzzySearch(question, 1);
@@ -39,24 +41,28 @@ async function getAnswer(question, opts = {}) {
         const list = check.missing.join(', ');
         const msg = `Чтобы я дал точный ответ, уточните, пожалуйста: ${list} 🙌`;
         return {
+          responseId,
           answer: msg,
           source: 'local',
           method,
           lang,
           matchedQuestion: questionText,
           score: best.score,
+          itemId: best.item.id,
           needVars: check.missing
         };
       }
       const safeVars = sanitizeVars(vars || {});
       const rendered = renderAnswer(answerTemplate, safeVars);
       return {
+        responseId,
         answer: rendered,
         source: 'local',
         method,
         lang,
         matchedQuestion: questionText,
         score: best.score,
+        itemId: best.item.id,
         variablesUsed: Object.keys(safeVars)
       };
     }
@@ -80,7 +86,7 @@ async function getAnswer(question, opts = {}) {
         logger.error({ err }, 'Failed to cache OpenAI answer');
       }
     }
-    return { answer, source: 'openai', method: 'openai', pendingId, lang };
+    return { responseId, answer, source: 'openai', method: 'openai', pendingId, lang };
   } catch (error) {
     logger.error({ err: error }, 'Error in getAnswer');
     throw error;

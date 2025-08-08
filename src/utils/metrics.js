@@ -7,7 +7,11 @@ const counters = {
   localHits: 0,
   openaiHits: 0,
   noMatch: 0,
-  openaiCached: 0
+  openaiCached: 0,
+  feedbackTotal: 0,
+  feedbackPositive: 0,
+  feedbackNegative: 0,
+  feedbackNeutral: 0
 };
 
 const timings = {
@@ -17,6 +21,7 @@ const timings = {
 };
 
 const langCounters = {};
+const feedbackLangCounters = {};
 
 function recordRequest(durationMs, source, lang) {
   counters.totalRequests += 1;
@@ -48,6 +53,25 @@ function recordOpenaiCached() {
   counters.openaiCached += 1;
 }
 
+function recordFeedback({ positive, negative, neutral, lang, source }) {
+  counters.feedbackTotal += 1;
+  if (positive) counters.feedbackPositive += 1;
+  else if (negative) counters.feedbackNegative += 1;
+  else counters.feedbackNeutral += 1;
+  const key = lang || 'unknown';
+  const entry = feedbackLangCounters[key] || {
+    total: 0,
+    positive: 0,
+    negative: 0,
+    neutral: 0
+  };
+  entry.total += 1;
+  if (positive) entry.positive += 1;
+  else if (negative) entry.negative += 1;
+  else entry.neutral += 1;
+  feedbackLangCounters[key] = entry;
+}
+
 function snapshot() {
   const avgDurationMs = timings.count ? timings.totalDurationMs / timings.count : 0;
   const pendingTotal = store
@@ -59,10 +83,15 @@ function snapshot() {
     openaiHits: counters.openaiHits,
     noMatch: counters.noMatch,
     openaiCached: counters.openaiCached,
+    feedbackTotal: counters.feedbackTotal,
+    feedbackPositive: counters.feedbackPositive,
+    feedbackNegative: counters.feedbackNegative,
+    feedbackNeutral: counters.feedbackNeutral,
     pendingTotal,
     avgDurationMs,
     maxDurationMs: timings.maxDurationMs,
-    langCounters
+    langCounters,
+    feedbackLangCounters
   };
 }
 
@@ -70,5 +99,6 @@ module.exports = {
   recordRequest,
   recordNoMatch,
   recordOpenaiCached,
+  recordFeedback,
   snapshot
 };
