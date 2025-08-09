@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [18.x, 20.x]
+    env:
+      ADMIN_TOKENS: test-admin
+      EDITOR_TOKENS: test-editor
+      ADMIN_IP_ALLOWLIST: 127.0.0.1,::1
+      DEFAULT_LANG: ru
+      SUPPORTED_LANGS: ru,en,eo
+      AUTO_CACHE_OPENAI: '0'
+      SYNC_CRON: ''
+      FEEDBACK_AGG_INTERVAL_MIN: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+      - run: npm ci
+      - run: mkdir -p data/backups logs feedback data/versions
+      - run: cp test/__fixtures__/qa_pairs.fixture.json data/qa_pairs.json
+      - run: npm test
+      - run: npm run coverage

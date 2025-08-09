@@ -1,0 +1,35 @@
+[
+  {
+    "id": "1",
+    "Question": "Как пополнить баланс?",
+    "Answer": "Используйте карту.",
+    "translations": {
+      "en": { "Question": "How to top up balance?", "Answer": "Use a card." }
+    },
+    "status": "approved",
+    "source": "local",
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "2",
+    "Question": "Что такое Эсперанто?",
+    "Answer": "Эсперанто — международный язык.",
+    "status": "approved",
+    "source": "local",
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "3",
+    "Question": "Когда поступит перевод?",
+    "Answer": "Сумма {{amount}} отправлена.",
+    "variables": [
+      { "name": "amount", "required": true }
+    ],
+    "status": "approved",
+    "source": "local",
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z"
+  }
+]

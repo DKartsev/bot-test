@@ -1,5 +1,3 @@
-require('dotenv').config();
-
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -112,10 +110,5 @@ app.use((err, req, res, next) => {
 initVersioning(store);
 startScheduler();
 startFeedbackAggregator(store);
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  logger.info(`Server listening on port ${PORT}`);
-});
 
 module.exports = app;

@@ -86,6 +86,9 @@ README.md
 - yarn workspace operator-admin dev — запуск админки
 - yarn workspace worker dev — запуск воркера
 - yarn workspace kb-tools index:kb — массовая индексация Markdown в pgvector
+- npm test — запуск юнит-тестов
+- npm run coverage — отчёт о покрытии
+- npm run load:ask — простой нагрузочный тест эндпоинта /ask
 
 ## 8. Разработка
 Пишите код в соответствующих папках apps/* и используйте shared для общих модулей. Миграции размещены в infrastructure.
