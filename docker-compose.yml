@@ -1,0 +1,28 @@
+version: '3.9'
+services:
+  bot:
+    build: .
+    image: my-support-bot:latest
+    ports:
+      - "3000:3000"
+    env_file: .env
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./feedback:/app/feedback
+    depends_on: []
+  bot-dev:
+    build: .
+    image: my-support-bot:latest
+    ports:
+      - "3000:3000"
+    env_file: .env
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./feedback:/app/feedback
+      - ./src:/app/src
+    profiles: ["dev"]
+    depends_on: []

@@ -6,11 +6,14 @@
   "type": "commonjs",
   "scripts": {
     "start": "node src/api/server.js",
+    "start:prod": "NODE_ENV=production node src/api/server.js",
     "dev": "node src/api/server.js",
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "test:watch": "cross-env NODE_ENV=test jest --watch",
     "coverage": "cross-env NODE_ENV=test jest --coverage",
-    "load:ask": "node test/load/autocannon.ask.js"
+    "load:ask": "node test/load/autocannon.ask.js",
+    "docker:build": "docker build -t my-support-bot:latest .",
+    "docker:run": "docker run --rm -p 3000:3000 --env-file .env -v $PWD/data:/app/data -v $PWD/logs:/app/logs -v $PWD/feedback:/app/feedback my-support-bot:latest"
   },
   "dependencies": {
     "accept-language-parser": "^1.5.0",
