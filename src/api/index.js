@@ -17,7 +17,7 @@ const feedbackRouter = require('./feedback');
 const uiRouter = require('./ui');
 const webhooksRouter = require('./webhooks');
 const { initMatrix } = require('../integrations/matrix');
-const { ipAllowlistMiddleware, rateLimiter } = require('../utils/security');
+const { ipAllowlistMiddleware, rateLimiter, authMiddleware } = require('../utils/security');
 const { startScheduler } = require('../sync/engine');
 const { createStore } = require('../data/store');
 const store = createStore();
@@ -28,6 +28,7 @@ const { initRagIndex } = require('../rag/index');
 const { embed, initEmbedder } = require('../semantic/embedder');
 const dlp = require('../security/dlp');
 const adminSecurityRouter = require('./admin-security');
+const orgsRouter = require('./orgs');
 
 const quotaErrors = {
   quota_requests: 'Monthly request quota exceeded',
@@ -80,6 +81,15 @@ app.use(
 );
 app.use('/admin', adminCors, ipAllowlistMiddleware(), rateLimiter(), uiRouter);
 app.use('/admin', adminCors, ipAllowlistMiddleware(), rateLimiter(), adminRouter);
+app.use(
+  '/admin/orgs',
+  adminCors,
+  ipAllowlistMiddleware(),
+  rateLimiter(),
+  authMiddleware(['admin']),
+  tenantCtx(),
+  orgsRouter
+);
 app.use('/admin/security', adminCors, adminSecurityRouter);
 app.use('/feedback', cors(), tenantCtx(), tenantRateLimiter(), feedbackRouter);
 app.use(webhooksRouter);
