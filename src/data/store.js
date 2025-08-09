@@ -5,10 +5,13 @@ const { v4: uuidv4 } = require('uuid');
 const Ajv = require('ajv');
 const addFormats = require('ajv-formats');
 
-const dataDir = path.join(__dirname, '..', '..', 'data');
-const dataFile = path.join(dataDir, 'qa_pairs.json');
-const tempFile = path.join(dataDir, 'qa_pairs.tmp.json');
-const backupDir = path.join(dataDir, 'backups');
+let basePath = path.join(__dirname, '..', '..', 'data', 'tenants', process.env.TENANT_DEFAULT_ID || 'default');
+function setBasePath(p) {
+  basePath = p;
+}
+function dataFile() { return path.join(basePath, 'qa_pairs.json'); }
+function tempFile() { return path.join(basePath, 'qa_pairs.tmp.json'); }
+function backupDir() { return path.join(basePath, 'backups'); }
 
 const ajv = new Ajv({ allErrors: true });
 addFormats(ajv);
@@ -106,8 +109,8 @@ const emitter = new EventEmitter();
 let qaPairs = [];
 
 function ensureDirs() {
-  fs.mkdirSync(dataDir, { recursive: true });
-  fs.mkdirSync(backupDir, { recursive: true });
+  fs.mkdirSync(basePath, { recursive: true });
+  fs.mkdirSync(backupDir(), { recursive: true });
 }
 
 function normalizeString(str) {
@@ -157,12 +160,12 @@ function findSimilarPending(question, answer) {
 
 function load() {
   ensureDirs();
-  if (!fs.existsSync(dataFile)) {
+  if (!fs.existsSync(dataFile())) {
     qaPairs = [];
     save();
     return;
   }
-  const raw = fs.readFileSync(dataFile, 'utf8');
+  const raw = fs.readFileSync(dataFile(), 'utf8');
   try {
     const parsed = JSON.parse(raw);
     let changed = false;
@@ -197,21 +200,21 @@ function load() {
 }
 
 function backup() {
-  if (!fs.existsSync(dataFile)) return;
+  if (!fs.existsSync(dataFile())) return;
   const ts = new Date()
     .toISOString()
     .replace(/[-:]/g, '')
     .replace(/\..*/, '')
     .replace('T', '-');
-  const backupPath = path.join(backupDir, `qa_pairs.${ts}.json`);
-  fs.copyFileSync(dataFile, backupPath);
+  const backupPath = path.join(backupDir(), `qa_pairs.${ts}.json`);
+  fs.copyFileSync(dataFile(), backupPath);
 }
 
 function save() {
   ensureDirs();
   backup();
-  fs.writeFileSync(tempFile, JSON.stringify(qaPairs, null, 2));
-  fs.renameSync(tempFile, dataFile);
+  fs.writeFileSync(tempFile(), JSON.stringify(qaPairs, null, 2));
+  fs.renameSync(tempFile(), dataFile());
 }
 
 function getAll() {
@@ -381,5 +384,6 @@ module.exports = {
   remove,
   replaceAll,
   onUpdated,
-  findSimilarPending
+  findSimilarPending,
+  setBasePath
 };

@@ -38,12 +38,13 @@ let promHooks = {};
 const requestEvents = [];
 const errorEvents = [];
 const openaiEvents = [];
+const tenantCounters = {};
 
 function setPromHooks(hooks = {}) {
   promHooks = hooks;
 }
 
-function recordRequest(durationMs, source, lang) {
+function recordRequest(durationMs, source, lang, tenant) {
   counters.totalRequests += 1;
   timings.totalDurationMs += durationMs;
   timings.count += 1;
@@ -63,6 +64,10 @@ function recordRequest(durationMs, source, lang) {
   langCounters[key] = (langCounters[key] || 0) + 1;
   requestEvents.push(Date.now());
   if (promHooks.incRequests) promHooks.incRequests({ source, lang: key });
+  if (tenant && tenant.orgId) {
+    const tkey = `${tenant.orgId}:${tenant.projectId}`;
+    tenantCounters[tkey] = (tenantCounters[tkey] || 0) + 1;
+  }
 }
 
 function recordSemantic({ accepted }) {
@@ -159,7 +164,8 @@ function snapshot() {
     avgDurationMs,
     maxDurationMs: timings.maxDurationMs,
     langCounters,
-    feedbackLangCounters
+    feedbackLangCounters,
+    tenantCounters
   };
 }
 

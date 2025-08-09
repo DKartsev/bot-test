@@ -3,9 +3,13 @@ const helmet = require('helmet');
 const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
+const orgStore = require('../tenancy/orgStore');
+orgStore.init();
 const { getAnswer } = require('../support/support');
 const { logger, withRequest } = require('../utils/logger');
 const metrics = require('../utils/metrics');
+const { tenantCtx, withTenantLogger } = require('../tenancy/tenantCtx');
+const { tenantRateLimiter } = require('../tenancy/quotas');
 const { initObservabilityHooks, renderPromMetrics } = require('../utils/observability');
 const { startAlertScheduler } = require('../alerts/engine');
 const adminRouter = require('./admin');
@@ -69,14 +73,15 @@ app.use(
 app.use('/admin', adminCors, ipAllowlistMiddleware(), rateLimiter(), uiRouter);
 app.use('/admin', adminCors, ipAllowlistMiddleware(), rateLimiter(), adminRouter);
 app.use('/admin/security', adminCors, adminSecurityRouter);
-app.use('/feedback', cors(), feedbackRouter);
+app.use('/feedback', cors(), tenantCtx(), tenantRateLimiter(), feedbackRouter);
 app.use(webhooksRouter);
 
 dlp.loadPolicies();
 
-app.post('/ask', cors(), async (req, res) => {
+app.post('/ask', cors(), tenantCtx(), tenantRateLimiter(), async (req, res) => {
   const { question, lang, vars } = req.body || {};
   const acceptLanguageHeader = req.headers['accept-language'];
+  req.log = withTenantLogger(req, req.log);
   const log = req.log;
   log.info({ question, lang }, 'incoming question');
   const scan = dlp.scanIn({ text: question || '', route: '/ask' });
@@ -86,7 +91,7 @@ app.post('/ask', cors(), async (req, res) => {
       .json({ error: 'Похоже, в запросе есть чувствительные данные. Удалите или замаскируйте их и попробуйте снова.' });
   }
   try {
-    let result = await getAnswer(question, { lang, vars, acceptLanguageHeader });
+    let result = await getAnswer(question, { lang, vars, acceptLanguageHeader, tenant: req.tenant });
     const out = dlp.sanitizeOut({ text: result.answer || '', route: '/ask' });
     if (out.blocked) {
       result.answer = `Я не могу отправить потенциально секретные данные. Вот безопасная версия: ${out.text}`;
@@ -96,7 +101,7 @@ app.post('/ask', cors(), async (req, res) => {
       result.answer = out.text;
     }
     const durationMs = Date.now() - req.start;
-    metrics.recordRequest(durationMs, result.source, result.lang);
+    metrics.recordRequest(durationMs, result.source, result.lang, req.tenant);
     if (result.source === 'openai') {
       metrics.recordNoMatch(question);
       if (result.pendingId) {

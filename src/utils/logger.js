@@ -86,7 +86,17 @@ if (process.env.ELASTIC_ENABLED === '1') {
 const logger = pino({}, pino.multistream(streams));
 
 function withRequest(req) {
-  return logger.child({ requestId: req.id });
+  const meta = { requestId: req.id };
+  if (req.tenant) {
+    meta.tenantId = req.tenant.orgId;
+    meta.projectId = req.tenant.projectId;
+  }
+  return logger.child(meta);
 }
 
-module.exports = { logger, withRequest };
+function withTenant(tenant, base = logger) {
+  if (!tenant) return base;
+  return base.child({ tenantId: tenant.orgId, projectId: tenant.projectId });
+}
+
+module.exports = { logger, withRequest, withTenant };

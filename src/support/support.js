@@ -37,7 +37,10 @@ const RAG_ENABLED = process.env.RAG_ENABLED === '1';
 const RAG_MIN_SIM = Number(process.env.RAG_MIN_SIM || '0.62');
 
 async function getAnswer(question, opts = {}) {
-  const { lang: explicitLang, vars, acceptLanguageHeader } = opts || {};
+  const { lang: explicitLang, vars, acceptLanguageHeader, tenant } = opts || {};
+  if (tenant && tenant.basePath) {
+    store.setBasePath(tenant.basePath);
+  }
   const lang = detectLang({
     explicitLang,
     acceptLanguageHeader,
@@ -77,7 +80,7 @@ async function getAnswer(question, opts = {}) {
     return result;
   }
   try {
-    const fuzzyTop = fuzzySearch(question, TOPK);
+    const fuzzyTop = fuzzySearch(question, TOPK, tenant);
     const bestExact = fuzzyTop[0];
     if (bestExact && bestExact.score === 0) {
       const { questionText, answerTemplate } = selectLocalizedQA(
@@ -281,6 +284,8 @@ async function getAnswer(question, opts = {}) {
   } finally {
     liveBus.emit('ask', {
       ts: new Date().toISOString(),
+      tenantId: tenant?.orgId,
+      projectId: tenant?.projectId,
       responseId,
       question,
       lang,
