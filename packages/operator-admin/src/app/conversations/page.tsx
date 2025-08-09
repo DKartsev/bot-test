@@ -13,8 +13,8 @@ interface Filters {
 
 export default function ConversationsPage() {
   const [filters, setFilters] = useState<Filters>({
-    status: 'all',
-    handoff: 'all',
+    status: 'open',
+    handoff: 'human',
     search: '',
   });
 

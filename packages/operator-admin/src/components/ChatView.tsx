@@ -18,14 +18,15 @@ interface Message {
 
 interface ChatViewProps {
   conversationId: string;
+  initialHandoff?: boolean;
 }
 
-export default function ChatView({ conversationId }: ChatViewProps) {
+export default function ChatView({ conversationId, initialHandoff = false }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [handoff, setHandoff] = useState(false);
+  const [handoff, setHandoff] = useState(initialHandoff);
   const messagesRef = useRef<Message[]>([]);
 
   messagesRef.current = messages;
@@ -58,10 +59,14 @@ export default function ChatView({ conversationId }: ChatViewProps) {
     setMessages([]);
     setCursor(null);
     setHasMore(true);
-    setHandoff(false);
+    setHandoff(initialHandoff);
     loadMessages(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
+
+  useEffect(() => {
+    setHandoff(initialHandoff);
+  }, [initialHandoff]);
 
   useEffect(() => {
     const handleLocal = (e: Event) => {
@@ -93,7 +98,7 @@ export default function ChatView({ conversationId }: ChatViewProps) {
     es.addEventListener('handoff', (e) => {
       const data = JSON.parse((e as MessageEvent).data);
       if (data.conversation_id === conversationId) {
-        setHandoff(true);
+        setHandoff(data.handoff === 'human');
       }
     });
     return () => {

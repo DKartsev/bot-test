@@ -127,6 +127,24 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
     reply.send(message);
   });
 
+  server.get('/conversations/:id', async (request, reply) => {
+    const paramsSchema = z.object({ id: z.string() });
+    const { id } = paramsSchema.parse(request.params);
+
+    const { data, error } = await supabase
+      .from('conversations')
+      .select('id, user_telegram_id, status, handoff, updated_at')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) {
+      reply.code(404).send({ error: error?.message });
+      return;
+    }
+
+    reply.send(data);
+  });
+
   server.patch('/conversations/:id', async (request, reply) => {
     const paramsSchema = z.object({ id: z.string() });
     const bodySchema = z
@@ -152,6 +170,13 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
     if (error || !data) {
       reply.code(500).send({ error: error?.message });
       return;
+    }
+
+    if (payload.handoff) {
+      liveBus.emit('handoff', {
+        conversation_id: Number(id),
+        handoff: data.handoff,
+      });
     }
 
     reply.send(data);

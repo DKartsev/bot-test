@@ -18,7 +18,7 @@ export default async function adminStreamRoutes(server: FastifyInstance) {
 
       const ping = setInterval(() => send('ping', {}), 15000);
 
-      const handoff = (p: { conversation_id: number; text: string }) =>
+      const handoff = (p: { conversation_id: number; handoff: 'human' | 'bot' }) =>
         send('handoff', p);
       const newUser = (p: { conversation_id: number; message_id: number }) =>
         send('user_msg', p);
