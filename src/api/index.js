@@ -5,6 +5,8 @@ const crypto = require('crypto');
 const { getAnswer } = require('../support/support');
 const { logger, withRequest } = require('../utils/logger');
 const metrics = require('../utils/metrics');
+const { initObservabilityHooks, renderPromMetrics } = require('../utils/observability');
+const { startAlertScheduler } = require('../alerts/engine');
 const adminRouter = require('./admin');
 const feedbackRouter = require('./feedback');
 const { ipAllowlistMiddleware, rateLimiter } = require('../utils/security');
@@ -97,6 +99,7 @@ app.post('/ask', cors(), async (req, res) => {
       needVars: result.needVars
     });
   } catch (error) {
+    metrics.recordError('ask');
     req.log.error({ err: error }, 'Error handling /ask');
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -106,7 +109,23 @@ app.get('/metrics', (req, res) => {
   res.json(metrics.snapshot());
 });
 
+if (process.env.PROM_ENABLED !== '0') {
+  const promPath = process.env.PROM_METRICS_PATH || '/metrics/prom';
+  app.get(promPath, async (req, res) => {
+    try {
+      const body = await renderPromMetrics();
+      res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+      res.send(body);
+    } catch (err) {
+      metrics.recordError('metrics_prom');
+      (req.log || logger).error({ err }, 'Error rendering prom metrics');
+      res.status(500).end();
+    }
+  });
+}
+
 app.use((err, req, res, next) => {
+  metrics.recordError('unhandled');
   (req.log || logger).error({ err }, 'Unhandled error');
   res.status(500).json({ error: 'Internal server error' });
 });
@@ -114,5 +133,7 @@ app.use((err, req, res, next) => {
 initVersioning(store);
 startScheduler();
 startFeedbackAggregator(store);
+initObservabilityHooks(metrics, store);
+startAlertScheduler(store, metrics);
 
 module.exports = app;
