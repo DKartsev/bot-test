@@ -104,6 +104,7 @@ heroku container:release web
 
 ## Logs
 Logs are written to `logs/app.log` with rotation controlled by `OBS_ROTATE_*` variables.
+Set `LOG_LEVEL` to control verbosity (default `info`).
 Set `LOKI_ENABLED=1` or `ELASTIC_ENABLED=1` to ship logs to Loki or Elasticsearch.
 
 ## Prometheus
