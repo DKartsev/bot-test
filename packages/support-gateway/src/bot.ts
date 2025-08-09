@@ -15,7 +15,7 @@ try {
   const { BOT_TOKEN } = envSchema.parse(process.env);
   bot = new Telegraf(BOT_TOKEN);
   bot.on('text', textHandler);
-  bot.on(['photo', 'video'], mediaHandler);
+  bot.on(['photo', 'video', 'voice', 'audio'], mediaHandler);
   logger.info('Bot initialized');
 } catch (err) {
   logger.error({ err }, 'Failed to initialize bot');
