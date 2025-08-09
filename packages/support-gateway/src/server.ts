@@ -10,6 +10,7 @@ import adminCategoriesRoutes from './routes/admin.categories';
 import adminStreamRoutes from './routes/admin.stream';
 import adminNotesRoutes from './routes/admin.notes';
 import adminSavedRepliesRoutes from './routes/admin.saved-replies';
+import adminCasesRoutes from './routes/admin.cases';
 import verifyOperatorAuth from './config/auth';
 
 config();
@@ -27,6 +28,7 @@ async function buildServer() {
   await server.register(adminCategoriesRoutes, { prefix: '/admin' });
   await server.register(adminNotesRoutes, { prefix: '/admin' });
   await server.register(adminSavedRepliesRoutes, { prefix: '/admin' });
+  await server.register(adminCasesRoutes, { prefix: '/admin' });
   await server.register(adminStreamRoutes);
 
   server.get('/healthz', async () => ({ ok: true }));
