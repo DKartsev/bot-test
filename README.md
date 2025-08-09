@@ -57,5 +57,10 @@ Alerts fire when error rate, OpenAI rate or pending backlog exceed thresholds an
 ## Dashboards
 Grafana dashboards can chart request rate, error rate, share of OpenAI answers and pending backlog using the exported metrics.
 
+## Operator Panel
+Open `/admin/ui` in a browser with a valid Bearer token (admin or editor) and an allowed IP.
+It provides a live feed of incoming questions, inline moderation (approve, reject or edit),
+manual Q&A creation and export to XLSX/CSV. The panel uses Server-Sent Events at `/admin/stream`.
+
 ## License
 MIT

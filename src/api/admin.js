@@ -6,6 +6,8 @@ const path = require('path');
 const { logger } = require('../utils/logger');
 const store = require('../data/store');
 const { authMiddleware, auditLog } = require('../utils/security');
+const ExcelJS = require('exceljs');
+const { liveBus } = require('../live/bus');
 const { runSync, getStatus, getLastDiff } = require('../sync/engine');
 const { recomputeAll, getSnapshot, suggestActions, applyAutoActions } = require('../feedback/engine');
 const versionsRouter = require('./versions');
@@ -132,6 +134,13 @@ router.post('/qa/pending/:id/approve', authMiddleware(['admin', 'editor']), (req
     const editor = req.headers['x-editor'];
     logModeration('approve', req.params.id, editor, req.body);
     logger.info({ id: req.params.id, editor, changes: req.body }, 'QA approved');
+    liveBus.emit('moderation', {
+      ts: new Date().toISOString(),
+      action: 'approve',
+      id: req.params.id,
+      editor,
+      changes: req.body
+    });
     auditLog(req, {
       action: 'qa.pending.approve',
       ok: true,
@@ -165,6 +174,13 @@ router.post('/qa/pending/:id/reject', authMiddleware(['admin', 'editor']), (req,
     const editor = req.headers['x-editor'];
     logModeration('reject', req.params.id, editor, req.body);
     logger.info({ id: req.params.id, editor, reason: req.body?.reason }, 'QA rejected');
+    liveBus.emit('moderation', {
+      ts: new Date().toISOString(),
+      action: 'reject',
+      id: req.params.id,
+      editor,
+      changes: req.body
+    });
     auditLog(req, { action: 'qa.pending.reject', ok: true, details: { id: req.params.id } });
     res.json(item);
   } catch (err) {
@@ -221,6 +237,13 @@ router.put('/qa/:id', authMiddleware(['admin', 'editor']), (req, res) => {
       return res.status(404).json({ error: 'Not found' });
     }
     logger.info({ id: req.params.id }, 'QA updated');
+    liveBus.emit('moderation', {
+      ts: new Date().toISOString(),
+      action: 'update',
+      id: req.params.id,
+      editor: req.headers['x-editor'],
+      changes: req.body
+    });
     auditLog(req, {
       action: 'qa.update',
       ok: true,
@@ -278,6 +301,80 @@ router.get('/qa/export', authMiddleware(['admin']), (req, res) => {
   const all = store.getAll();
   auditLog(req, { action: 'qa.export', ok: true, details: { count: all.length } });
   res.json(all);
+});
+
+router.get('/export/xlsx', authMiddleware(['admin', 'editor']), async (req, res) => {
+  try {
+    const all = store.getAll();
+    const approved = all.filter((i) => i.status === 'approved');
+    const pending = all.filter((i) => i.status === 'pending');
+    const wb = new ExcelJS.Workbook();
+    const s1 = wb.addWorksheet('Approved');
+    s1.columns = [
+      { header: 'id', key: 'id', width: 36 },
+      { header: 'Question', key: 'Question', width: 50 },
+      { header: 'Answer', key: 'Answer', width: 50 },
+      { header: 'lang', key: 'lang', width: 10 },
+      { header: 'createdAt', key: 'createdAt', width: 24 },
+      { header: 'updatedAt', key: 'updatedAt', width: 24 }
+    ];
+    approved.forEach((i) => s1.addRow(i));
+    const s2 = wb.addWorksheet('Pending');
+    s2.columns = [
+      { header: 'id', key: 'id', width: 36 },
+      { header: 'Question', key: 'Question', width: 50 },
+      { header: 'Answer', key: 'Answer', width: 50 },
+      { header: 'source', key: 'source', width: 15 },
+      { header: 'createdAt', key: 'createdAt', width: 24 }
+    ];
+    pending.forEach((i) => s2.addRow(i));
+    const s3 = wb.addWorksheet('Stats');
+    const pendingTotal = pending.length;
+    const itemsTotal = approved.length;
+    const openaiShare = all.length ? pending.filter((p) => p.source === 'openai').length / all.length : 0;
+    s3.addRow(['pendingTotal', pendingTotal]);
+    s3.addRow(['itemsTotal', itemsTotal]);
+    s3.addRow(['openaiShare', openaiShare]);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="export.xlsx"');
+    await wb.xlsx.write(res);
+    res.end();
+    auditLog(req, {
+      action: 'export.xlsx',
+      ok: true,
+      details: { approved: approved.length, pending: pending.length }
+    });
+  } catch (err) {
+    req.log.error({ err }, 'Export xlsx failed');
+    auditLog(req, { action: 'export.xlsx', ok: false, details: { error: err.message } });
+    res.status(500).json({ error: 'Export failed' });
+  }
+});
+
+router.get('/export/csv', authMiddleware(['admin', 'editor']), (req, res) => {
+  try {
+    const approved = store.getAll().filter((i) => i.status === 'approved');
+    const header = 'id,Question,Answer,lang,createdAt,updatedAt\n';
+    const rows = approved
+      .map((i) =>
+        [i.id, i.Question, i.Answer, i.lang || '', i.createdAt, i.updatedAt]
+          .map((v) => '"' + (v ? String(v).replace(/"/g, '""') : '') + '"')
+          .join(',')
+      )
+      .join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="export.csv"');
+    res.send(header + rows);
+    auditLog(req, {
+      action: 'export.csv',
+      ok: true,
+      details: { count: approved.length }
+    });
+  } catch (err) {
+    req.log.error({ err }, 'Export csv failed');
+    auditLog(req, { action: 'export.csv', ok: false, details: { error: err.message } });
+    res.status(500).json({ error: 'Export failed' });
+  }
 });
 
 router.post('/sync/run', authMiddleware(['admin', 'editor']), async (req, res) => {
