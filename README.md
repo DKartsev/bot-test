@@ -22,6 +22,21 @@ docker-compose up --build
 See [`.env.example`](./.env.example) for all configuration options.
 Create a `.env` file based on this before running locally or in Docker.
 
+## Self-hosted messenger (Matrix)
+
+1. Run a Synapse homeserver and create a bot user. Obtain its access token and invite the bot to a room.
+2. Set the Matrix variables in `.env`:
+   - `MATRIX_HOMESERVER_URL`
+   - `MATRIX_ACCESS_TOKEN`
+   - `MATRIX_BOT_USER_ID`
+   - `MATRIX_ROOM_ID`
+   - `MATRIX_ALLOWED_MXIDS`
+3. Operators from the allowlist can use commands in the room:
+   `/pending`, `/approve <id>`, `/reject <id> [reason]`, `/find <query>`, `/add`, `/edit <id>`.
+
+Matrix commands call the internal admin API via `OPERATOR_API_TOKEN` and all actions are audit logged.
+Telegram remains enabled via Telegraf and Slack support has been removed.
+
 ## Deploy
 ### Render
 Connect the repository and Render will pick up [`render.yaml`](./render.yaml).

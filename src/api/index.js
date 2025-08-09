@@ -11,6 +11,8 @@ const { startAlertScheduler } = require('../alerts/engine');
 const adminRouter = require('./admin');
 const feedbackRouter = require('./feedback');
 const uiRouter = require('./ui');
+const webhooksRouter = require('./webhooks');
+const { initMatrix } = require('../integrations/matrix');
 const { ipAllowlistMiddleware, rateLimiter } = require('../utils/security');
 const { startScheduler } = require('../sync/engine');
 const store = require('../data/store');
@@ -62,6 +64,7 @@ app.use(
 app.use('/admin', adminCors, ipAllowlistMiddleware(), rateLimiter(), uiRouter);
 app.use('/admin', adminCors, ipAllowlistMiddleware(), rateLimiter(), adminRouter);
 app.use('/feedback', cors(), feedbackRouter);
+app.use(webhooksRouter);
 
 app.post('/ask', cors(), async (req, res) => {
   const { question, lang, vars } = req.body || {};
@@ -147,5 +150,16 @@ startScheduler();
 startFeedbackAggregator(store);
 initObservabilityHooks(metrics, store);
 startAlertScheduler(store, metrics);
+
+if (process.env.MATRIX_ENABLED === '1') {
+  (async () => {
+    try {
+      const matrix = initMatrix();
+      await matrix.start();
+    } catch (err) {
+      logger.error({ err }, 'Failed to start Matrix bot');
+    }
+  })();
+}
 
 module.exports = app;
