@@ -1,5 +1,7 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const { logger } = require('../utils/logger');
+const { auditLog, hashToken } = require('../utils/security');
 
 const router = express.Router();
 
@@ -8,7 +10,24 @@ if (process.env.TELEGRAM_ENABLED === '1') {
     const { initTelegram } = require('../integrations/telegram');
     const tg = initTelegram();
     const path = process.env.TG_WEBHOOK_PATH || '/webhooks/telegram';
-    router.post(path, async (req, res) => {
+    const limiter = rateLimit({
+      windowMs: parseInt(process.env.TG_WEBHOOK_RATE_WINDOW_MS || '60000', 10),
+      max: parseInt(process.env.TG_WEBHOOK_RATE_MAX || '100', 10),
+      standardHeaders: true,
+      legacyHeaders: false
+    });
+    router.post(path, limiter, async (req, res) => {
+      const token = req.get('X-Telegram-Bot-Api-Secret-Token');
+      const expected = process.env.TG_WEBHOOK_SECRET;
+      if (!expected || token !== expected) {
+        logger.warn({ ip: req.ip }, 'Unauthorized Telegram webhook access');
+        auditLog(req, {
+          action: 'tg.webhook',
+          ok: false,
+          details: { reason: 'invalid_token', tokenHash: token ? hashToken(token) : null }
+        });
+        return res.sendStatus(401);
+      }
       try {
         await tg.handleUpdate(req.body);
       } catch (err) {
