@@ -22,6 +22,28 @@ docker-compose up --build
 See [`.env.example`](./.env.example) for all configuration options.
 Create a `.env` file based on this before running locally or in Docker.
 
+## Retrieval-Augmented Generation (RAG)
+
+When `RAG_ENABLED=1` the bot can search uploaded documents and cite them in answers.
+
+### Uploading sources
+- `POST /admin/rag/upload` (multipart form, field `file`) – PDF, HTML, Markdown or plain text.
+- `POST /admin/rag/text` – JSON `{ title, text }` for raw snippets.
+
+Both endpoints require admin or editor auth. Uploaded content is chunked and indexed in
+`./data/rag`. Current sources can be listed with `GET /admin/rag/sources` and removed with
+`DELETE /admin/rag/source/:id`.
+
+### Query flow
+During `/ask` the bot first tries exact/hybrid matches. If confidence is low it queries the
+RAG index. When top similarity exceeds `RAG_MIN_SIM` the answer is synthesized from the
+retrieved chunks and returns `source:"rag"` with `citations` in `[1]`, `[2]` format. Otherwise
+the system falls back to the generic OpenAI model.
+
+### Tuning
+Chunk size, overlap, top-k and other parameters can be adjusted via `RAG_*` variables in
+`.env.example`.
+
 ## Self-hosted messenger (Matrix)
 
 1. Run a Synapse homeserver and create a bot user. Obtain its access token and invite the bot to a room.
