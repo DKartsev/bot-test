@@ -1,21 +1,19 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
 import AuthGuard from '../../../components/AuthGuard';
-import { Button } from '@shadcn/ui/button';
+import ChatView from '../../../components/ChatView';
+import MessageInput from '../../../components/MessageInput';
 
-export default function ConversationPage() {
-  const params = useParams();
-  const router = useRouter();
-  const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
-
+export default function ConversationPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   return (
     <AuthGuard>
-      <div className="p-4">
-        <h1 className="text-2xl font-bold mb-4">Диалог {id}</h1>
-        <Button onClick={() => router.back()}>Назад</Button>
+      <div className="flex flex-col h-screen p-4">
+        <div className="flex-1 overflow-y-auto mb-4">
+          <ChatView conversationId={id} />
+        </div>
+        <MessageInput conversationId={id} />
       </div>
     </AuthGuard>
   );
 }
-
