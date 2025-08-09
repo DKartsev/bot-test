@@ -1,13 +1,18 @@
 import { Job } from 'bullmq';
+import { z } from 'zod';
 import logger from '../utils/logger';
 import supabase from '../utils/supabaseClient';
 
 export default async function audioProcessor(job: Job) {
   try {
-    const url: string | undefined = job.data?.url;
-    if (!url) throw new Error('Missing audio URL');
+    const schema = z.object({
+      messageId: z.number(),
+      mediaUrl: z.string().url(),
+    });
 
-    const response = await fetch(url);
+    const { messageId, mediaUrl } = schema.parse(job.data);
+
+    const response = await fetch(mediaUrl);
     const buffer = Buffer.from(await response.arrayBuffer());
 
     const form = new FormData();
@@ -22,9 +27,13 @@ export default async function audioProcessor(job: Job) {
       body: form,
     }).then((r) => r.json());
 
-    const text = transcription.text as string;
+    const transcript = transcription.text as string;
 
-    await supabase.from('messages').insert({ content: text, audio_url: url });
+    const { error } = await supabase
+      .from('messages')
+      .update({ transcript, content: transcript })
+      .eq('id', messageId);
+    if (error) throw error;
 
     logger.info({ jobId: job.id }, 'Audio processed');
   } catch (err) {

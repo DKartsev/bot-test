@@ -1,15 +1,18 @@
 import { Context } from 'telegraf';
+import { z } from 'zod';
 import logger from '../utils/logger';
 import { audioQueue, videoQueue } from '../queue';
 import supabase from '../db';
+import { getOrCreateConversation } from '../services/conversation';
 
 export default async function mediaHandler(ctx: Context) {
   try {
     const message: any = ctx.message;
     if (!message) return;
 
+    const mediaTypeSchema = z.enum(['audio', 'video', 'photo', 'document']);
     let fileId: string | undefined;
-    let mediaType: 'audio' | 'video' | 'photo' | undefined;
+    let mediaType: z.infer<typeof mediaTypeSchema> | undefined;
 
     if (message.voice) {
       fileId = message.voice.file_id;
@@ -24,6 +27,9 @@ export default async function mediaHandler(ctx: Context) {
       const photo = message.photo[message.photo.length - 1];
       fileId = photo.file_id;
       mediaType = 'photo';
+    } else if (message.document) {
+      fileId = message.document.file_id;
+      mediaType = 'document';
     }
 
     if (!fileId || !mediaType) {
@@ -32,19 +38,42 @@ export default async function mediaHandler(ctx: Context) {
     }
 
     const link = await ctx.telegram.getFileLink(fileId);
-    const url = typeof link === 'string' ? link : link.href;
+    const publicUrl = z.string().url().parse(typeof link === 'string' ? link : link.href);
+
+    const { id: conversation_id } = await getOrCreateConversation({
+      userTelegramId: String(ctx.from?.id),
+      chatTelegramId: String(ctx.chat?.id),
+      username: ctx.from?.username ?? null,
+    });
+
+    const { data: inserted, error } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id,
+        sender: 'user',
+        content: 'Processing media…',
+        media_urls: [publicUrl],
+        media_types: [mediaType],
+      })
+      .select('id')
+      .single();
+
+    if (error || !inserted) {
+      logger.error({ error }, 'Failed to insert media message');
+      return;
+    }
 
     if (mediaType === 'audio') {
-      await audioQueue.add('transcription', { url });
+      await audioQueue.add('transcribe', {
+        messageId: inserted.id,
+        mediaUrl: publicUrl,
+      });
     } else {
-      let messageId: number | undefined;
-      const { data } = await supabase
-        .from('messages')
-        .insert({ video_url: url })
-        .select('id')
-        .single();
-      messageId = data?.id;
-      await videoQueue.add('vision', { url, messageId });
+      await videoQueue.add('vision', {
+        messageId: inserted.id,
+        mediaUrl: publicUrl,
+        mediaType,
+      });
     }
 
     await ctx.reply('Media received, processing...');
