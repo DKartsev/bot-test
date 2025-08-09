@@ -1,8 +1,27 @@
 const fs = require('fs');
 const path = require('path');
-const { HierarchicalNSW } = require('hnswlib-node');
+let HierarchicalNSW;
+let hnswlibAvailable = true;
+try {
+  ({ HierarchicalNSW } = require('hnswlib-node'));
+} catch (err) {
+  hnswlibAvailable = false;
+}
 const { embed, initEmbedder } = require('./embedder');
 const { logger } = require('../utils/logger');
+
+let warned = false;
+function warnFallback() {
+  if (!warned) {
+    logger.warn('hnswlib-node not available, using brute-force search');
+    warned = true;
+  }
+}
+function cosine(a, b) {
+  let dot = 0;
+  for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
+  return dot;
+}
 const { createStore } = require('../data/store');
 
 const TOPK = Number(process.env.SEM_TOPK || '5');
@@ -36,6 +55,7 @@ function getState(tenant = {}) {
     const paths = resolvePaths(tenant);
     states.set(key, {
       index: null,
+      vectors: [],
       idToIdx: new Map(),
       idxToId: [],
       dim: 0,
@@ -81,17 +101,27 @@ async function rebuildAll(tenant = {}) {
     });
     const vectors = await embed(texts);
     st.dim = vectors[0].length;
-    st.index = new HierarchicalNSW('cosine', st.dim);
-    st.index.initIndex(vectors.length);
     st.idxToId = [];
     st.idToIdx = new Map();
-    vectors.forEach((vec, i) => {
-      st.index.addPoint(vec, i);
-      const id = items[i].id;
-      st.idxToId[i] = id;
-      st.idToIdx.set(id, i);
-    });
-    st.index.writeIndexSync(indexFile);
+    if (hnswlibAvailable) {
+      st.index = new HierarchicalNSW('cosine', st.dim);
+      st.index.initIndex(vectors.length);
+      vectors.forEach((vec, i) => {
+        st.index.addPoint(vec, i);
+        const id = items[i].id;
+        st.idxToId[i] = id;
+        st.idToIdx.set(id, i);
+      });
+      st.index.writeIndexSync(indexFile);
+    } else {
+      warnFallback();
+      st.vectors = vectors;
+      vectors.forEach((_, i) => {
+        const id = items[i].id;
+        st.idxToId[i] = id;
+        st.idToIdx.set(id, i);
+      });
+    }
     const meta = {
       dim: st.dim,
       size: vectors.length,
@@ -118,7 +148,8 @@ async function initSemantic(tenant = {}) {
   if (
     process.env.SEM_REBUILD_ON_START === '1' ||
     !fs.existsSync(indexFile) ||
-    !fs.existsSync(metaFile)
+    !fs.existsSync(metaFile) ||
+    !hnswlibAvailable
   ) {
     await rebuildAll(tenant);
   } else {
@@ -155,19 +186,25 @@ function scheduleRebuild(tenant = {}) {
 
 async function searchSemantic(query, k = TOPK, tenant = {}) {
   const st = getState(tenant);
-  if (!st.index || st.idxToId.length === 0) return [];
+  if ((!hnswlibAvailable && (!st.vectors || st.vectors.length === 0)) || (hnswlibAvailable && (!st.index || st.idxToId.length === 0))) return [];
   const [vec] = await embed([query]);
   if (!vec) return [];
-  const result = st.index.searchKnn(vec, Math.min(k, st.idxToId.length));
-  const neighbors = result.neighbors || result[0] || [];
-  const distances = result.distances || result[1] || [];
-  const out = [];
-  for (let i = 0; i < neighbors.length; i++) {
-    const id = st.idxToId[neighbors[i]];
-    const sim = 1 - distances[i];
-    out.push({ id, sim });
+  if (hnswlibAvailable && st.index) {
+    const result = st.index.searchKnn(vec, Math.min(k, st.idxToId.length));
+    const neighbors = result.neighbors || result[0] || [];
+    const distances = result.distances || result[1] || [];
+    const out = [];
+    for (let i = 0; i < neighbors.length; i++) {
+      const id = st.idxToId[neighbors[i]];
+      const sim = 1 - distances[i];
+      out.push({ id, sim });
+    }
+    return out;
   }
-  return out;
+  warnFallback();
+  const sims = st.vectors.map((v, i) => ({ id: st.idxToId[i], sim: cosine(vec, v) }));
+  sims.sort((a, b) => b.sim - a.sim);
+  return sims.slice(0, Math.min(k, sims.length));
 }
 
 function status(tenant = {}) {

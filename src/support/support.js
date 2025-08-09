@@ -26,7 +26,7 @@ if (SEM_ENABLED) {
   ({ hybridRank, MIN_SIM } = require('../semantic/rerank'));
 }
 
-const OPENAI_MODEL = 'gpt-3.5-turbo';
+const OPENAI_MODEL = process.env.RAG_OPENAI_MODEL || 'gpt-4o-mini';
 const DEFAULT_LANG = process.env.DEFAULT_LANG || 'en';
 const SUPPORTED_LANGS = (process.env.SUPPORTED_LANGS || 'en')
   .split(',')
