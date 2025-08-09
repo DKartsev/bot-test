@@ -6,6 +6,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import logger from '../utils/logger';
 import supabase from '../utils/supabaseClient';
+import { liveBus } from '../utils/liveBus';
 
 export default async function videoProcessor(job: Job) {
   const schema = z.object({
@@ -46,6 +47,8 @@ export default async function videoProcessor(job: Job) {
         .update({ vision_summary: summary, content: summary })
         .eq('id', messageId);
       if (error) throw error;
+
+      liveBus.emit('media_updated', { message_id: messageId, kind: 'vision' });
 
       logger.info({ jobId: job.id }, 'Image processed');
       return;
@@ -107,6 +110,8 @@ export default async function videoProcessor(job: Job) {
       .update({ vision_summary: summary, content: summary })
       .eq('id', messageId);
     if (error) throw error;
+
+    liveBus.emit('media_updated', { message_id: messageId, kind: 'vision' });
 
     logger.info({ jobId: job.id }, 'Video processed');
   } catch (err) {

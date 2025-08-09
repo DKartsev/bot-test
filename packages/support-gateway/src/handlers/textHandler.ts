@@ -5,7 +5,7 @@ import supabase from '../db';
 import { generateResponse } from '../services/ragService';
 import { getOrCreateConversation } from '../services/conversation';
 import { detectHandoff } from '../utils/detectHandoff';
-import { liveBus } from '../utils/liveBus';
+import { liveBus } from '../lib/liveBus';
 
 export default async function textHandler(ctx: Context) {
   try {
@@ -39,15 +39,25 @@ export default async function textHandler(ctx: Context) {
 
     const shouldHandoff = conv?.handoff === 'human' || detectHandoff(text);
 
-    const { error: userError } = await supabase.from('messages').insert({
-      conversation_id,
-      sender: 'user',
-      content: text,
-    });
-    if (userError) {
+    const { data: userMsg, error: userError } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id,
+        sender: 'user',
+        content: text,
+      })
+      .select('id')
+      .single();
+
+    if (userError || !userMsg) {
       logger.error({ err: userError }, 'Failed to insert user message');
       return;
     }
+
+    liveBus.emit('new_user_msg', {
+      conversation_id,
+      message_id: userMsg.id,
+    });
 
     if (shouldHandoff) {
       if (conv?.handoff !== 'human') {

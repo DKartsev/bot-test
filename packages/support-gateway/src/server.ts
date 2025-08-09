@@ -5,6 +5,8 @@ import logger from './utils/logger';
 import bot from './bot';
 import { generateResponse } from './services/ragService';
 import adminRoutes from './routes/admin.conversations';
+import adminStreamRoutes from './routes/admin.stream';
+import verifyOperatorAuth from './config/auth';
 
 config();
 
@@ -15,7 +17,11 @@ const envSchema = z.object({
 async function buildServer() {
   const server = Fastify({ logger: logger as any });
 
+  await server.register(verifyOperatorAuth);
   await server.register(adminRoutes, { prefix: '/admin' });
+  await server.register(adminStreamRoutes);
+
+  server.get('/healthz', async () => ({ ok: true }));
 
   server.post('/webhook', async (request, reply) => {
     try {
