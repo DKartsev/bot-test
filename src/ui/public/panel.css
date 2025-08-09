@@ -1,0 +1,9 @@
+body{margin:0;font-family:sans-serif;}
+.topbar{padding:10px;background:#f5f5f5;display:flex;gap:8px;flex-wrap:wrap;}
+.content{display:flex;}
+#feed{flex:1;list-style:none;padding:10px;margin:0;overflow-y:auto;height:80vh;}
+#feed li{border-bottom:1px solid #ddd;padding:6px 0;}
+#stats{width:200px;border-left:1px solid #ddd;padding:10px;}
+.badge{padding:2px 4px;border-radius:4px;font-size:12px;}
+.badge.local{background:#d1fae5;}
+.badge.openai{background:#fee2e2;}

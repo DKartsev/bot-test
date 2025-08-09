@@ -11,6 +11,7 @@ const {
   renderAnswer,
   sanitizeVars
 } = require('../i18n/renderer');
+const { liveBus } = require('../live/bus');
 
 const OPENAI_MODEL = 'gpt-3.5-turbo';
 const DEFAULT_LANG = process.env.DEFAULT_LANG || 'en';
@@ -28,8 +29,17 @@ async function getAnswer(question, opts = {}) {
     fallback: DEFAULT_LANG
   });
   const responseId = uuidv4();
+  let result = { responseId, answer: null, source: 'local', method: 'exact', lang };
   if (!question) {
-    return { responseId, answer: null, source: 'local', method: 'exact', lang };
+    liveBus.emit('ask', {
+      ts: new Date().toISOString(),
+      responseId,
+      question,
+      lang,
+      source: result.source,
+      method: result.method
+    });
+    return result;
   }
   try {
     const [best] = fuzzySearch(question, 1);
@@ -40,7 +50,7 @@ async function getAnswer(question, opts = {}) {
       if (!check.ok) {
         const list = check.missing.join(', ');
         const msg = `Чтобы я дал точный ответ, уточните, пожалуйста: ${list} 🙌`;
-        return {
+        result = {
           responseId,
           answer: msg,
           source: 'local',
@@ -51,45 +61,62 @@ async function getAnswer(question, opts = {}) {
           itemId: best.item.id,
           needVars: check.missing
         };
+      } else {
+        const safeVars = sanitizeVars(vars || {});
+        const rendered = renderAnswer(answerTemplate, safeVars);
+        result = {
+          responseId,
+          answer: rendered,
+          source: 'local',
+          method,
+          lang,
+          matchedQuestion: questionText,
+          score: best.score,
+          itemId: best.item.id,
+          variablesUsed: Object.keys(safeVars)
+        };
       }
-      const safeVars = sanitizeVars(vars || {});
-      const rendered = renderAnswer(answerTemplate, safeVars);
-      return {
-        responseId,
-        answer: rendered,
-        source: 'local',
-        method,
-        lang,
-        matchedQuestion: questionText,
-        score: best.score,
-        itemId: best.item.id,
-        variablesUsed: Object.keys(safeVars)
-      };
-    }
-    const answer = await fallbackQuery(question, lang);
-    let pendingId;
-    if (process.env.AUTO_CACHE_OPENAI !== '0') {
-      try {
-        const requestHash = crypto
-          .createHash('sha1')
-          .update(`${question}\n${answer}`)
-          .digest('hex');
-        const pending = await store.addPending({
-          Question: question,
-          Answer: answer,
-          source: 'openai',
-          meta: { model: OPENAI_MODEL, requestHash }
-        });
-        pendingId = pending.id;
-        logger.info({ id: pendingId }, 'Cached OpenAI answer as pending');
-      } catch (err) {
-        logger.error({ err }, 'Failed to cache OpenAI answer');
+    } else {
+      const answer = await fallbackQuery(question, lang);
+      let pendingId;
+      if (process.env.AUTO_CACHE_OPENAI !== '0') {
+        try {
+          const requestHash = crypto
+            .createHash('sha1')
+            .update(`${question}\n${answer}`)
+            .digest('hex');
+          const pending = await store.addPending({
+            Question: question,
+            Answer: answer,
+            source: 'openai',
+            meta: { model: OPENAI_MODEL, requestHash }
+          });
+          pendingId = pending.id;
+          logger.info({ id: pendingId }, 'Cached OpenAI answer as pending');
+        } catch (err) {
+          logger.error({ err }, 'Failed to cache OpenAI answer');
+        }
       }
+      result = { responseId, answer, source: 'openai', method: 'openai', pendingId, lang };
     }
-    return { responseId, answer, source: 'openai', method: 'openai', pendingId, lang };
+    return result;
   } catch (error) {
     logger.error({ err: error }, 'Error in getAnswer');
     throw error;
+  } finally {
+    liveBus.emit('ask', {
+      ts: new Date().toISOString(),
+      responseId,
+      question,
+      lang,
+      source: result.source,
+      method: result.method,
+      itemId: result.itemId,
+      pendingId: result.pendingId,
+      matchedQuestion: result.matchedQuestion,
+      score: result.score,
+      answer: result.answer
+    });
   }
 }
 

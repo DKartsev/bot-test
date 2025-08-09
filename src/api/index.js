@@ -2,6 +2,7 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const crypto = require('crypto');
+const path = require('path');
 const { getAnswer } = require('../support/support');
 const { logger, withRequest } = require('../utils/logger');
 const metrics = require('../utils/metrics');
@@ -9,6 +10,7 @@ const { initObservabilityHooks, renderPromMetrics } = require('../utils/observab
 const { startAlertScheduler } = require('../alerts/engine');
 const adminRouter = require('./admin');
 const feedbackRouter = require('./feedback');
+const uiRouter = require('./ui');
 const { ipAllowlistMiddleware, rateLimiter } = require('../utils/security');
 const { startScheduler } = require('../sync/engine');
 const store = require('../data/store');
@@ -19,6 +21,8 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(helmet());
 app.use(express.json({ limit: '1mb' }));
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, '../ui/views'));
 
 const adminOrigins = (process.env.ADMIN_ALLOWED_ORIGINS || '')
   .split(',')
@@ -48,6 +52,14 @@ app.get('/healthz', (req, res) => {
 app.options('/admin/*', adminCors, ipAllowlistMiddleware(), rateLimiter(), (req, res) => {
   res.sendStatus(204);
 });
+app.use(
+  '/admin/ui/static',
+  adminCors,
+  ipAllowlistMiddleware(),
+  rateLimiter(),
+  express.static(path.join(__dirname, '../ui/public'))
+);
+app.use('/admin', adminCors, ipAllowlistMiddleware(), rateLimiter(), uiRouter);
 app.use('/admin', adminCors, ipAllowlistMiddleware(), rateLimiter(), adminRouter);
 app.use('/feedback', cors(), feedbackRouter);
 
