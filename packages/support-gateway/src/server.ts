@@ -7,6 +7,7 @@ import { generateResponse } from './services/ragService';
 import adminRoutes from './routes/admin.conversations';
 import adminStreamRoutes from './routes/admin.stream';
 import adminNotesRoutes from './routes/admin.notes';
+import adminSavedRepliesRoutes from './routes/admin.saved-replies';
 import verifyOperatorAuth from './config/auth';
 
 config();
@@ -21,6 +22,7 @@ async function buildServer() {
   await server.register(verifyOperatorAuth);
   await server.register(adminRoutes, { prefix: '/admin' });
   await server.register(adminNotesRoutes, { prefix: '/admin' });
+  await server.register(adminSavedRepliesRoutes, { prefix: '/admin' });
   await server.register(adminStreamRoutes);
 
   server.get('/healthz', async () => ({ ok: true }));

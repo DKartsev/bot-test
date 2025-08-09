@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@shadcn/ui/button';
 import { Input } from '@shadcn/ui/input';
 import { api } from '../lib/api';
+import SavedRepliesDrawer from './SavedRepliesDrawer';
 
 interface MessageInputProps {
   conversationId: string;
@@ -43,6 +44,7 @@ export default function MessageInput({ conversationId }: MessageInputProps) {
 
   return (
     <div className="flex space-x-2">
+      <SavedRepliesDrawer onInsert={(t) => setText((prev) => prev + t)} />
       <Input
         value={text}
         onChange={(e) => setText(e.target.value)}
