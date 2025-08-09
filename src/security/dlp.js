@@ -15,7 +15,7 @@ const stats = { in: { pii: 0, secrets: 0, profanity: 0, blocked: 0 }, out: { pii
 
 function hashIfNeeded(val) {
   if (process.env.DLP_HASH_SENSITIVE_IN_LOGS === '1') {
-    return crypto.createHash('sha1').update(String(val)).digest('hex');
+    return crypto.createHash('sha256').update(String(val)).digest('hex');
   }
   return val;
 }
