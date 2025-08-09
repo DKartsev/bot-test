@@ -36,10 +36,20 @@ const feedbackLangCounters = {};
 
 let promHooks = {};
 
+// Maximum number of event timestamps to retain for moving window metrics.
+// Older entries are pruned on insertion so arrays never grow beyond this size.
+const MAX_EVENT_ENTRIES = 1000;
+
 const requestEvents = [];
 const errorEvents = [];
 const openaiEvents = [];
 const tenantCounters = {};
+
+function pushWithCap(arr, ts) {
+  arr.push(ts);
+  // Keep only the most recent MAX_EVENT_ENTRIES timestamps to prevent memory growth.
+  if (arr.length > MAX_EVENT_ENTRIES) arr.splice(0, arr.length - MAX_EVENT_ENTRIES);
+}
 
 function setPromHooks(hooks = {}) {
   promHooks = hooks;
@@ -56,14 +66,14 @@ function recordRequest(durationMs, source, lang, tenant) {
     counters.localHits += 1;
   } else if (source === 'openai') {
     counters.openaiHits += 1;
-    openaiEvents.push(Date.now());
+    pushWithCap(openaiEvents, Date.now());
     if (promHooks.incOpenAI) promHooks.incOpenAI();
   } else if (source === 'none') {
     counters.noMatch += 1;
   }
   const key = lang || 'unknown';
   langCounters[key] = (langCounters[key] || 0) + 1;
-  requestEvents.push(Date.now());
+  pushWithCap(requestEvents, Date.now());
   if (promHooks.incRequests) promHooks.incRequests({ source, lang: key });
   if (tenant && tenant.orgId) {
     const tkey = `${tenant.orgId}:${tenant.projectId}`;
@@ -91,13 +101,13 @@ function recordOpenaiCached() {
 }
 
 function recordError(route) {
-  errorEvents.push(Date.now());
+  pushWithCap(errorEvents, Date.now());
   if (promHooks.incErrors) promHooks.incErrors({ route });
 }
 
 function recordOpenAI() {
   counters.openaiHits += 1;
-  openaiEvents.push(Date.now());
+  pushWithCap(openaiEvents, Date.now());
   if (promHooks.incOpenAI) promHooks.incOpenAI();
 }
 
