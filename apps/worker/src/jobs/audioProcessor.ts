@@ -2,6 +2,7 @@ import { Job } from 'bullmq';
 import { z } from 'zod';
 import logger from '../utils/logger';
 import supabase from '../utils/supabaseClient';
+import { liveBus } from '../utils/liveBus';
 
 export default async function audioProcessor(job: Job) {
   try {
@@ -34,6 +35,8 @@ export default async function audioProcessor(job: Job) {
       .update({ transcript, content: transcript })
       .eq('id', messageId);
     if (error) throw error;
+
+    liveBus.emit('media_updated', { message_id: messageId, kind: 'transcript' });
 
     logger.info({ jobId: job.id }, 'Audio processed');
   } catch (err) {
