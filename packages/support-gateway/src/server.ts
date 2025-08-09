@@ -6,6 +6,7 @@ import logger from './utils/logger';
 import bot from './bot';
 import { generateResponse } from './services/ragService';
 import adminRoutes from './routes/admin.conversations';
+import adminCategoriesRoutes from './routes/admin.categories';
 import adminStreamRoutes from './routes/admin.stream';
 import adminNotesRoutes from './routes/admin.notes';
 import adminSavedRepliesRoutes from './routes/admin.saved-replies';
@@ -23,6 +24,7 @@ async function buildServer() {
   await server.register(multipart);
   await server.register(verifyOperatorAuth);
   await server.register(adminRoutes, { prefix: '/admin' });
+  await server.register(adminCategoriesRoutes, { prefix: '/admin' });
   await server.register(adminNotesRoutes, { prefix: '/admin' });
   await server.register(adminSavedRepliesRoutes, { prefix: '/admin' });
   await server.register(adminStreamRoutes);
