@@ -12,10 +12,24 @@ const { runSync, getStatus, getLastDiff } = require('../sync/engine');
 const { recomputeAll, getSnapshot, suggestActions, applyAutoActions } = require('../feedback/engine');
 const versionsRouter = require('./versions');
 const { rebuildAll: rebuildSemantic, status: semanticStatus } = require('../semantic/index');
+const multer = require('multer');
+const {
+  ingestFile,
+  ingestText
+} = require('../rag/ingest');
+const {
+  upsertChunks,
+  removeSource,
+  searchChunks,
+  status: ragStatus,
+  rebuildAll: rebuildRag
+} = require('../rag/index');
 
 const router = express.Router();
 
 router.use('/versions', versionsRouter);
+
+const upload = multer({ dest: path.join(__dirname, '..', '..', 'data', 'tmp') });
 
 const ajv = new Ajv({ allErrors: true });
 addFormats(ajv);
@@ -515,6 +529,110 @@ router.get('/semantic/status', authMiddleware(['admin', 'editor']), (req, res) =
   } catch (err) {
     req.log.error({ err }, 'Semantic status failed');
     auditLog(req, { action: 'sem.status', ok: false, details: { error: err.message } });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ---- RAG routes
+router.post('/rag/upload', authMiddleware(['admin', 'editor']), upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    auditLog(req, { action: 'rag.upload', ok: false, details: { error: 'No file' } });
+    return res.status(400).json({ error: 'No file' });
+  }
+  try {
+    const { source, chunks } = await ingestFile(req.file.path, {
+      originalName: req.file.originalname,
+      mime: req.file.mimetype
+    });
+    const enriched = chunks.map((c) => ({ ...c, sourceId: source.id }));
+    await upsertChunks(enriched);
+    auditLog(req, { action: 'rag.upload', ok: true, details: { id: source.id, chunks: enriched.length } });
+    liveBus.emit('rag.uploaded', { id: source.id, title: source.title, chunks: enriched.length });
+    res.json({ ok: true, source, added: enriched.length });
+  } catch (err) {
+    req.log.error({ err }, 'RAG upload failed');
+    auditLog(req, { action: 'rag.upload', ok: false, details: { error: err.message } });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/rag/text', authMiddleware(['admin', 'editor']), async (req, res) => {
+  const { title, text, lang } = req.body || {};
+  if (!title || !text) {
+    auditLog(req, { action: 'rag.text', ok: false, details: { error: 'Missing title or text' } });
+    return res.status(400).json({ error: 'Missing title or text' });
+  }
+  try {
+    const { source, chunks } = await ingestText(text, { title, lang, type: 'txt' });
+    const enriched = chunks.map((c) => ({ ...c, sourceId: source.id }));
+    await upsertChunks(enriched);
+    auditLog(req, { action: 'rag.text', ok: true, details: { id: source.id, chunks: enriched.length } });
+    res.json({ ok: true, source, added: enriched.length });
+  } catch (err) {
+    req.log.error({ err }, 'RAG text ingest failed');
+    auditLog(req, { action: 'rag.text', ok: false, details: { error: err.message } });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/rag/sources', authMiddleware(['admin', 'editor']), (req, res) => {
+  try {
+    const file = path.join(process.env.RAG_INDEX_PATH || path.join(__dirname, '..', '..', 'data', 'rag'), 'sources.json');
+    const list = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : [];
+    auditLog(req, { action: 'rag.sources', ok: true, details: { count: list.length } });
+    res.json(list);
+  } catch (err) {
+    req.log.error({ err }, 'RAG sources failed');
+    auditLog(req, { action: 'rag.sources', ok: false, details: { error: err.message } });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/rag/source/:id', authMiddleware(['admin', 'editor']), async (req, res) => {
+  try {
+    await removeSource(req.params.id);
+    auditLog(req, { action: 'rag.delete', ok: true, details: { id: req.params.id } });
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, 'RAG delete failed');
+    auditLog(req, { action: 'rag.delete', ok: false, details: { error: err.message } });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/rag/reindex', authMiddleware(['admin', 'editor']), async (req, res) => {
+  try {
+    const result = await rebuildRag();
+    auditLog(req, { action: 'rag.reindex', ok: true, details: result });
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, 'RAG reindex failed');
+    auditLog(req, { action: 'rag.reindex', ok: false, details: { error: err.message } });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/rag/search', authMiddleware(['admin', 'editor']), async (req, res) => {
+  const q = req.query.q || '';
+  try {
+    const items = await searchChunks(q, Number(req.query.k));
+    auditLog(req, { action: 'rag.search', ok: true, details: { q, count: items.length } });
+    res.json(items);
+  } catch (err) {
+    req.log.error({ err }, 'RAG search failed');
+    auditLog(req, { action: 'rag.search', ok: false, details: { error: err.message } });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/rag/status', authMiddleware(['admin', 'editor']), (req, res) => {
+  try {
+    const st = ragStatus();
+    auditLog(req, { action: 'rag.status', ok: true });
+    res.json(st);
+  } catch (err) {
+    req.log.error({ err }, 'RAG status failed');
+    auditLog(req, { action: 'rag.status', ok: false, details: { error: err.message } });
     res.status(500).json({ error: 'Internal server error' });
   }
 });

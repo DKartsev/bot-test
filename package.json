@@ -15,7 +15,8 @@
     "docker:build": "docker build -t my-support-bot:latest .",
     "docker:run": "docker run --rm -p 3000:3000 --env-file .env -v $PWD/data:/app/data -v $PWD/logs:/app/logs -v $PWD/feedback:/app/feedback my-support-bot:latest",
     "metrics:print": "curl -s localhost:${PORT:-3000}${PROM_METRICS_PATH:-/metrics/prom}",
-    "sem:rebuild": "node -e \"require('./src/semantic/index').rebuildAll().then(console.log).catch(console.error)\""
+    "sem:rebuild": "node -e \"require('./src/semantic/index').rebuildAll().then(console.log).catch(console.error)\"",
+    "rag:reindex": "node -e \"require('./src/rag/index').rebuildAll && require('./src/rag/index').rebuildAll().then(console.log).catch(console.error)\""
   },
   "dependencies": {
     "accept-language-parser": "^1.5.0",
@@ -46,7 +47,13 @@
     "pino-loki": "^2.1.0",
     "prom-client": "^15.1.1",
     "rotating-file-stream": "^3.0.3",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "multer": "^1.4.5-lts.1",
+    "pdf-parse": "^1.1.1",
+    "jsdom": "^24.0.0",
+    "turndown": "^7.1.2",
+    "reading-time": "^1.5.0",
+    "nanoid": "^5.0.3"
   },
   "devDependencies": {
     "autocannon": "^7.12.0",

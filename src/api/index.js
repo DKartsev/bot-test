@@ -19,6 +19,8 @@ const store = require('../data/store');
 const { initVersioning } = require('../versioning/engine');
 const { startFeedbackAggregator } = require('../feedback/engine');
 const { initSemantic } = require('../semantic/index');
+const { initRagIndex } = require('../rag/index');
+const { embed, initEmbedder } = require('../semantic/embedder');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -172,6 +174,18 @@ if (process.env.SEM_ENABLED === '1') {
       );
     } catch (err) {
       logger.error({ err }, 'Failed to initialize semantic index');
+    }
+  })();
+}
+
+if (process.env.RAG_ENABLED === '1') {
+  (async () => {
+    try {
+      await initEmbedder();
+      const info = await initRagIndex({ embed });
+      logger.info({ size: info.size, dim: info.dim }, 'RAG index initialized');
+    } catch (err) {
+      logger.error({ err }, 'Failed to initialize RAG index');
     }
   })();
 }

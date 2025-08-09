@@ -13,6 +13,8 @@ const {
   sanitizeVars
 } = require('../i18n/renderer');
 const { liveBus } = require('../live/bus');
+const { retrieve } = require('../rag/retriever');
+const { answerWithRag } = require('../rag/answerer');
 
 const SEM_ENABLED = process.env.SEM_ENABLED === '1';
 let searchSemantic;
@@ -30,6 +32,8 @@ const SUPPORTED_LANGS = (process.env.SUPPORTED_LANGS || 'en')
   .map((l) => l.trim().toLowerCase())
   .filter(Boolean);
 const TOPK = Number(process.env.SEM_TOPK || '5');
+const RAG_ENABLED = process.env.RAG_ENABLED === '1';
+const RAG_MIN_SIM = Number(process.env.RAG_MIN_SIM || '0.62');
 
 async function getAnswer(question, opts = {}) {
   const { lang: explicitLang, vars, acceptLanguageHeader } = opts || {};
@@ -192,8 +196,39 @@ async function getAnswer(question, opts = {}) {
       }
     }
 
+    let retrieval = null;
+    if (RAG_ENABLED) {
+      try {
+        retrieval = await retrieve(question);
+        const topSim = retrieval.items[0]?.sim || 0;
+        if (retrieval.contextText && topSim >= RAG_MIN_SIM) {
+          const ragAns = await answerWithRag({
+            question,
+            lang,
+            contextText: retrieval.contextText,
+            citations: retrieval.citations
+          });
+          result = {
+            responseId,
+            answer: ragAns.answer,
+            source: 'rag',
+            method: 'rag',
+            lang,
+            citations: retrieval.citations,
+            rag: { topSim, chunks: retrieval.items.length }
+          };
+          metrics.recordRag({ used: true, chunks: retrieval.items.length });
+          return result;
+        }
+        metrics.recordRag({ used: false, chunks: retrieval.items.length });
+      } catch (err) {
+        logger.error({ err }, 'RAG retrieval failed');
+      }
+    }
+
     // Fallback to OpenAI
-    const answer = await fallbackQuery(question, lang);
+    const fallbackCtx = retrieval && retrieval.contextText ? `\n\n${retrieval.contextText}` : '';
+    const answer = await fallbackQuery(question + fallbackCtx, lang);
     let pendingId;
     if (process.env.AUTO_CACHE_OPENAI !== '0') {
       try {

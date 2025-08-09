@@ -14,7 +14,10 @@ const counters = {
   feedbackNeutral: 0,
   semanticQueriesTotal: 0,
   semanticAccepted: 0,
-  semanticRejected: 0
+  semanticRejected: 0,
+  ragQueriesTotal: 0,
+  ragUsed: 0,
+  ragChunksReturned: 0
 };
 
 const timings = {
@@ -88,6 +91,12 @@ function recordOpenAI() {
   if (promHooks.incOpenAI) promHooks.incOpenAI();
 }
 
+function recordRag({ used, chunks }) {
+  counters.ragQueriesTotal += 1;
+  if (used) counters.ragUsed += 1;
+  if (chunks) counters.ragChunksReturned += chunks;
+}
+
 function recordFeedback({ positive, negative, neutral, lang, source }) {
   counters.feedbackTotal += 1;
   if (positive) counters.feedbackPositive += 1;
@@ -125,6 +134,9 @@ function snapshot() {
     semanticQueriesTotal: counters.semanticQueriesTotal,
     semanticAccepted: counters.semanticAccepted,
     semanticRejected: counters.semanticRejected,
+    ragQueriesTotal: counters.ragQueriesTotal,
+    ragUsed: counters.ragUsed,
+    ragChunksReturned: counters.ragChunksReturned,
     pendingTotal,
     avgDurationMs,
     maxDurationMs: timings.maxDurationMs,
@@ -157,6 +169,7 @@ module.exports = {
   recordError,
   recordOpenAI,
   recordSemantic,
+  recordRag,
   getMovingWindowStats,
   snapshot
 };
