@@ -20,7 +20,6 @@ if (process.env.TELEGRAM_ENABLED === '1') {
       const token = req.get('X-Telegram-Bot-Api-Secret-Token');
       const expected = process.env.TG_WEBHOOK_SECRET;
       if (!expected || token !== expected) {
-        logger.warn({ ip: req.ip }, 'Unauthorized Telegram webhook access');
         auditLog(req, {
           action: 'tg.webhook',
           ok: false,
