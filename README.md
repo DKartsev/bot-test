@@ -22,6 +22,10 @@ docker-compose up --build
 See [`.env.example`](./.env.example) for all configuration options.
 Create a `.env` file based on this before running locally or in Docker.
 
+### Multi-tenancy
+
+Requests to `/ask` and `/feedback` must include a tenant API key in the `X-API-Key` header. Admin endpoints accept an optional `X-Tenant-Id` header to operate on a specific tenant (defaults to `TENANT_DEFAULT_ID`). Data for each tenant is stored under `data/tenants/<id>`.
+
 ## Retrieval-Augmented Generation (RAG)
 
 When `RAG_ENABLED=1` the bot can search uploaded documents and cite them in answers.

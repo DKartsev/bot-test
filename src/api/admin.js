@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { logger } = require('../utils/logger');
 const store = require('../data/store');
+const { tenantCtx } = require('../tenancy/tenantCtx');
 const { authMiddleware, auditLog } = require('../utils/security');
 const ExcelJS = require('exceljs');
 const { liveBus } = require('../live/bus');
@@ -26,6 +27,7 @@ const {
 } = require('../rag/index');
 
 const router = express.Router();
+router.use(tenantCtx());
 
 router.use('/versions', versionsRouter);
 
