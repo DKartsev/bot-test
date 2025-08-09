@@ -16,18 +16,18 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
       status: z.enum(['open', 'closed']).optional(),
       handoff: z.enum(['human', 'bot']).optional(),
       category_id: z.string().optional(),
+      assignee_name: z.string().optional(),
       limit: z.coerce.number().default(20),
       cursor: z.string().optional(),
     });
 
-    const { status, handoff, category_id, limit, cursor } = querySchema.parse(
-      request.query
-    );
+    const { status, handoff, category_id, assignee_name, limit, cursor } =
+      querySchema.parse(request.query);
 
     let q = supabase
       .from('conversations')
       .select(
-        'id, user_telegram_id, status, handoff, updated_at, category:categories(id, name, color)'
+        'id, user_telegram_id, status, handoff, assignee_name, assigned_at, updated_at, category:categories(id, name, color)'
       )
       .order('updated_at', { ascending: false })
       .limit(limit);
@@ -35,6 +35,7 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
     if (status) q = q.eq('status', status);
     if (handoff) q = q.eq('handoff', handoff);
     if (category_id) q = q.eq('category_id', category_id);
+    if (assignee_name) q = q.eq('assignee_name', assignee_name);
     if (cursor) q = q.lt('updated_at', cursor);
 
     const { data, error } = await q;
@@ -92,82 +93,102 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
     reply.send({ messages: data || [] });
   });
 
-  server.post('/conversations/:id/reply', async (request, reply) => {
-    const paramsSchema = z.object({ id: z.string() });
-    const bodySchema = z.object({ text: z.string() });
+    server.post('/conversations/:id/reply', async (request, reply) => {
+      const paramsSchema = z.object({ id: z.string() });
+      const bodySchema = z.object({ text: z.string(), author_name: z.string() });
+      const querySchema = z.object({ force: z.coerce.boolean().optional() });
 
-    const { id } = paramsSchema.parse(request.params);
-    const { text } = bodySchema.parse(request.body);
+      const { id } = paramsSchema.parse(request.params);
+      const { text, author_name } = bodySchema.parse(request.body);
+      const { force } = querySchema.parse(request.query);
 
-    const { data: conv, error: convErr } = await supabase
-      .from('conversations')
-      .select('user_telegram_id')
-      .eq('id', id)
-      .single();
+      const { data: conv, error: convErr } = await supabase
+        .from('conversations')
+        .select('user_telegram_id, assignee_name')
+        .eq('id', id)
+        .single();
 
-    if (convErr || !conv) {
-      reply.code(404).send({ error: 'conversation_not_found' });
-      return;
-    }
+      if (convErr || !conv) {
+        reply.code(404).send({ error: 'conversation_not_found' });
+        return;
+      }
 
-    const { data: message, error: msgErr } = await supabase
-      .from('messages')
-      .insert({ conversation_id: id, sender: 'operator', content: text })
-      .select('id, sender, content, media_urls, media_types, transcript, vision_summary, created_at')
-      .single();
+      if (!force && conv.assignee_name !== author_name) {
+        reply.code(409).send({ error: 'not_assigned' });
+        return;
+      }
 
-    if (msgErr || !message) {
-      reply.code(500).send({ error: msgErr?.message });
-      return;
-    }
+      const { data: message, error: msgErr } = await supabase
+        .from('messages')
+        .insert({ conversation_id: id, sender: 'operator', content: text })
+        .select('id, sender, content, media_urls, media_types, transcript, vision_summary, created_at')
+        .single();
 
-    try {
-      await bot.telegram.sendMessage(conv.user_telegram_id, text);
-    } catch (err) {
-      reply.code(500).send({ error: 'telegram_error' });
-      return;
-    }
+      if (msgErr || !message) {
+        reply.code(500).send({ error: msgErr?.message });
+        return;
+      }
 
-    liveBus.emit('operator_reply', { conversation_id: Number(id), message_id: message.id });
+      try {
+        await bot.telegram.sendMessage(conv.user_telegram_id, text);
+      } catch (err) {
+        reply.code(500).send({ error: 'telegram_error' });
+        return;
+      }
 
-    reply.send(message);
-  });
+      liveBus.emit('operator_reply', {
+        conversation_id: Number(id),
+        message_id: message.id,
+      });
 
-  server.post('/conversations/:id/attachments', async (request, reply) => {
-    const paramsSchema = z.object({ id: z.string() });
-    const { id } = paramsSchema.parse(request.params);
+      reply.send(message);
+    });
 
-    const file = await (request as any).file();
-    if (!file) {
-      reply.code(400).send({ error: 'file_required' });
-      return;
-    }
+    server.post('/conversations/:id/attachments', async (request, reply) => {
+      const paramsSchema = z.object({ id: z.string() });
+      const querySchema = z.object({
+        author_name: z.string(),
+        force: z.coerce.boolean().optional(),
+      });
+      const { id } = paramsSchema.parse(request.params);
+      const { author_name, force } = querySchema.parse(request.query);
 
-    const buffer = await file.toBuffer();
-    const mime = file.mimetype;
-    let method: 'sendPhoto' | 'sendVideo' | 'sendDocument';
-    let mediaType: 'photo' | 'video' | 'document';
-    if (mime.startsWith('image/')) {
-      method = 'sendPhoto';
-      mediaType = 'photo';
-    } else if (mime.startsWith('video/')) {
-      method = 'sendVideo';
-      mediaType = 'video';
-    } else {
-      method = 'sendDocument';
-      mediaType = 'document';
-    }
+      const file = await (request as any).file();
+      if (!file) {
+        reply.code(400).send({ error: 'file_required' });
+        return;
+      }
 
-    const { data: conv, error: convErr } = await supabase
-      .from('conversations')
-      .select('user_telegram_id')
-      .eq('id', id)
-      .single();
+      const { data: conv, error: convErr } = await supabase
+        .from('conversations')
+        .select('user_telegram_id, assignee_name')
+        .eq('id', id)
+        .single();
 
-    if (convErr || !conv) {
-      reply.code(404).send({ error: 'conversation_not_found' });
-      return;
-    }
+      if (convErr || !conv) {
+        reply.code(404).send({ error: 'conversation_not_found' });
+        return;
+      }
+
+      if (!force && conv.assignee_name !== author_name) {
+        reply.code(409).send({ error: 'not_assigned' });
+        return;
+      }
+
+      const buffer = await file.toBuffer();
+      const mime = file.mimetype;
+      let method: 'sendPhoto' | 'sendVideo' | 'sendDocument';
+      let mediaType: 'photo' | 'video' | 'document';
+      if (mime.startsWith('image/')) {
+        method = 'sendPhoto';
+        mediaType = 'photo';
+      } else if (mime.startsWith('video/')) {
+        method = 'sendVideo';
+        mediaType = 'video';
+      } else {
+        method = 'sendDocument';
+        mediaType = 'document';
+      }
 
     let tgMessage: any;
     try {
@@ -204,20 +225,94 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
       message_id: message.id,
     });
 
-    reply.send(message);
-  });
+      reply.send(message);
+    });
+
+    server.post('/conversations/:id/claim', async (request, reply) => {
+      const paramsSchema = z.object({ id: z.string() });
+      const bodySchema = z.object({ assignee_name: z.string() });
+      const { id } = paramsSchema.parse(request.params);
+      const { assignee_name } = bodySchema.parse(request.body);
+
+      const { data: conv, error } = await supabase
+        .from('conversations')
+        .select('assignee_name')
+        .eq('id', id)
+        .single();
+
+      if (error || !conv) {
+        reply.code(404).send({ error: 'conversation_not_found' });
+        return;
+      }
+
+      if (conv.assignee_name) {
+        reply
+          .code(409)
+          .send({ error: 'assigned', assignee_name: conv.assignee_name });
+        return;
+      }
+
+      const { data: updated, error: updErr } = await supabase
+        .from('conversations')
+        .update({
+          assignee_name,
+          assigned_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select('assignee_name, assigned_at')
+        .single();
+
+      if (updErr) {
+        reply.code(500).send({ error: updErr.message });
+        return;
+      }
+
+      liveBus.emit('assigned', {
+        conversation_id: Number(id),
+        assignee_name,
+      });
+
+      reply.send(updated);
+    });
+
+    server.post('/conversations/:id/takeover', async (request, reply) => {
+      const paramsSchema = z.object({ id: z.string() });
+      const bodySchema = z.object({ assignee_name: z.string() });
+      const { id } = paramsSchema.parse(request.params);
+      const { assignee_name } = bodySchema.parse(request.body);
+
+      const { error: updErr } = await supabase
+        .from('conversations')
+        .update({
+          assignee_name,
+          assigned_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (updErr) {
+        reply.code(500).send({ error: updErr.message });
+        return;
+      }
+
+      liveBus.emit('assigned', {
+        conversation_id: Number(id),
+        assignee_name,
+      });
+
+      reply.send({ ok: true });
+    });
 
   server.get('/conversations/:id', async (request, reply) => {
     const paramsSchema = z.object({ id: z.string() });
     const { id } = paramsSchema.parse(request.params);
 
-    const { data, error } = await supabase
-      .from('conversations')
-      .select(
-        'id, user_telegram_id, status, handoff, updated_at, category:categories(id, name, color)'
-      )
-      .eq('id', id)
-      .single();
+      const { data, error } = await supabase
+        .from('conversations')
+        .select(
+          'id, user_telegram_id, status, handoff, assignee_name, assigned_at, updated_at, category:categories(id, name, color)'
+        )
+        .eq('id', id)
+        .single();
 
     if (error || !data) {
       reply.code(404).send({ error: error?.message });

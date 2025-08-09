@@ -13,7 +13,9 @@ interface ConversationFiltersProps {
     handoff?: string;
     search?: string;
     categoryId?: string;
+    mine?: boolean;
   }) => void;
+  mine?: boolean;
 }
 
 export default function ConversationFilters({
@@ -23,21 +25,26 @@ export default function ConversationFilters({
   categoryId = 'all',
   categories = [],
   onChange,
+  mine = false,
 }: ConversationFiltersProps) {
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onChange({ status: e.target.value, handoff, search });
+    onChange({ status: e.target.value, handoff, search, categoryId, mine });
   };
 
   const handleHandoffChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onChange({ status, handoff: e.target.value, search });
+    onChange({ status, handoff: e.target.value, search, categoryId, mine });
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange({ status, handoff, search: e.target.value });
+    onChange({ status, handoff, search: e.target.value, categoryId, mine });
   };
 
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onChange({ status, handoff, search, categoryId: e.target.value });
+    onChange({ status, handoff, search, categoryId: e.target.value, mine });
+  };
+
+  const handleMineChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange({ status, handoff, search, categoryId, mine: e.target.checked });
   };
 
   return (
@@ -78,6 +85,10 @@ export default function ConversationFilters({
           </option>
         ))}
       </select>
+      <label className="flex items-center space-x-1">
+        <input type="checkbox" checked={mine} onChange={handleMineChange} />
+        <span>Мои</span>
+      </label>
     </div>
   );
 }
