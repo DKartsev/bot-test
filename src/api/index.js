@@ -63,6 +63,10 @@ app.get('/healthz', (req, res) => {
   res.json({ ok: true, status: 'healthy' });
 });
 
+app.get('/', (req, res) => {
+  res.redirect('/admin');
+});
+
 app.options('/admin/*', adminCors, ipAllowlistMiddleware(), rateLimiter(), (req, res) => {
   res.sendStatus(204);
 });
