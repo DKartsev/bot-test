@@ -1,8 +1,11 @@
 /**
  * agents/agents.js
- * 
+ *
  * Готовые промты для Codex, используемые для автоматизации генерации кода
  * в монорепозитории Telegram Support Bot для Rapira.
+ * Операторская панель реализована как Next.js приложение `operator-admin`
+ * и взаимодействует только через API `support-gateway`.
+ * Устаревшие панели на EJS и статичных HTML/CSS удалены.
  */
 
 module.exports = {
