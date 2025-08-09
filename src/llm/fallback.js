@@ -15,7 +15,7 @@ async function fallbackQuery(question, lang) {
       ? `You are a helpful support bot. Respond in ${lang}. Use provided QA context when possible.`
       : 'You are a helpful support bot. Use provided QA context when possible.';
     const completion = await client.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: process.env.RAG_OPENAI_MODEL || 'gpt-4o-mini',
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: question }

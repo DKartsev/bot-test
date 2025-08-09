@@ -3,6 +3,8 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
+# Install build tools for native deps like hnswlib-node
+RUN apk add --no-cache python3 make g++ git
 RUN npm ci --omit=dev
 
 FROM node:20-alpine AS runner
