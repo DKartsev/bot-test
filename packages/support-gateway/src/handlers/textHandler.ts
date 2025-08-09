@@ -4,6 +4,8 @@ import logger from '../utils/logger';
 import supabase from '../db';
 import { generateResponse } from '../services/ragService';
 import { getOrCreateConversation } from '../services/conversation';
+import { detectHandoff } from '../utils/detectHandoff';
+import { liveBus } from '../utils/liveBus';
 
 export default async function textHandler(ctx: Context) {
   try {
@@ -29,6 +31,14 @@ export default async function textHandler(ctx: Context) {
       username,
     });
 
+    const { data: conv } = await supabase
+      .from('conversations')
+      .select('handoff')
+      .eq('id', conversation_id)
+      .single();
+
+    const shouldHandoff = conv?.handoff === 'human' || detectHandoff(text);
+
     const { error: userError } = await supabase.from('messages').insert({
       conversation_id,
       sender: 'user',
@@ -36,6 +46,30 @@ export default async function textHandler(ctx: Context) {
     });
     if (userError) {
       logger.error({ err: userError }, 'Failed to insert user message');
+      return;
+    }
+
+    if (shouldHandoff) {
+      if (conv?.handoff !== 'human') {
+        await supabase
+          .from('conversations')
+          .update({ handoff: 'human', status: 'open' })
+          .eq('id', conversation_id);
+      }
+
+      const notice = 'Передаю ваш вопрос оператору. Пожалуйста, ожидайте 🙌';
+      await supabase.from('messages').insert({
+        conversation_id,
+        sender: 'bot',
+        content: notice,
+      });
+      await ctx.reply(notice);
+
+      liveBus?.emit?.('handoff', {
+        conversation_id,
+        userTelegramId: String(userId),
+        text,
+      });
       return;
     }
 
