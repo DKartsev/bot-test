@@ -75,11 +75,10 @@ export default async function textHandler(ctx: Context) {
       });
       await ctx.reply(notice);
 
-      liveBus?.emit?.('handoff', {
-        conversation_id,
-        userTelegramId: String(userId),
-        text,
-      });
+        liveBus?.emit?.('handoff', {
+          conversation_id,
+          handoff: 'human',
+        });
       return;
     }
 
