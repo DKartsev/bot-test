@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const cron = require('node-cron');
 const deepEqual = require('fast-deep-equal');
-const store = require('../data/store');
+const { createStore } = require('../data/store');
+const store = createStore();
 const { logger } = require('../utils/logger');
 const { toLocalItem, toProviderRow } = require('./map');
 

@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const store = require('../data/store');
+const { createStore } = require('../data/store');
+const store = createStore();
 const { logger } = require('../utils/logger');
 
 const logPath = path.join(__dirname, '..', '..', 'logs', 'feedback.jsonl');

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const store = require('../data/store');
+const { createStore } = require('../data/store');
+const store = createStore();
 
 const counters = {
   totalRequests: 0,

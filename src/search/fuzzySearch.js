@@ -1,11 +1,11 @@
 const Fuse = require('fuse.js');
 const fuseConfig = require('./fuseConfig');
-const store = require('../data/store');
+const { createStore } = require('../data/store');
 
 const indices = new Map();
 
 function buildIndex(basePath) {
-  store.setBasePath(basePath);
+  const store = createStore(basePath);
   const data = store.getApproved().map((item) => {
     const searchTexts = [item.Question];
     if (item.translations) {
@@ -16,12 +16,10 @@ function buildIndex(basePath) {
     return { id: item.id, Question: item.Question, searchTexts, itemRef: item };
   });
   const fuse = new Fuse(data, { ...fuseConfig, keys: ['Question', 'searchTexts'] });
-  indices.set(basePath, { fuse, data });
+  const entry = { fuse, data };
+  store.onUpdated(() => indices.delete(basePath));
+  indices.set(basePath, entry);
 }
-
-store.onUpdated(() => {
-  indices.clear();
-});
 
 function getFuse(basePath) {
   if (!indices.has(basePath)) buildIndex(basePath);
