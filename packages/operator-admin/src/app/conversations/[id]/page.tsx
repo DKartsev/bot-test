@@ -5,6 +5,7 @@ import { Button } from '@shadcn/ui/button';
 import AuthGuard from '../../../components/AuthGuard';
 import ChatView from '../../../components/ChatView';
 import MessageInput from '../../../components/MessageInput';
+import NotesPanel from '../../../components/NotesPanel';
 import { api } from '../../../lib/api';
 
 interface Conversation {
@@ -64,10 +65,17 @@ export default function ConversationPage({ params }: { params: { id: string } })
             <Button onClick={handleReturn}>Вернуть боту</Button>
           )}
         </div>
-        <div className="flex-1 overflow-y-auto mb-4">
-          <ChatView conversationId={id} initialHandoff={conversation?.handoff === 'human'} />
+        <div className="flex-1 flex flex-col md:flex-row gap-4 mb-4 overflow-hidden">
+          <div className="flex-1 flex flex-col">
+            <div className="flex-1 overflow-y-auto mb-4">
+              <ChatView conversationId={id} initialHandoff={conversation?.handoff === 'human'} />
+            </div>
+            <MessageInput conversationId={id} />
+          </div>
+          <div className="md:w-80 w-full flex-shrink-0 overflow-y-auto">
+            <NotesPanel conversationId={id} />
+          </div>
         </div>
-        <MessageInput conversationId={id} />
       </div>
     </AuthGuard>
   );
