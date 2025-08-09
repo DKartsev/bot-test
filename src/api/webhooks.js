@@ -2,6 +2,19 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const { logger } = require('../utils/logger');
 const { auditLog, hashToken } = require('../utils/security');
+const ipRangeCheck = require('ip-range-check');
+
+const ALLOWED_IPS = [
+  '149.154.160.0/20', // Telegram
+  '91.108.4.0/22', // Telegram
+  '10.0.0.0/8', // Render внутренние адреса
+  '193.233.115.178' // Твой IP
+];
+
+function isAllowedIP(ip) {
+  const realIP = (ip || '').replace('::ffff:', '');
+  return ipRangeCheck(realIP, ALLOWED_IPS);
+}
 
 const router = express.Router();
 
@@ -26,6 +39,11 @@ if (process.env.TELEGRAM_ENABLED === '1') {
           details: { reason: 'invalid_token', tokenHash: token ? hashToken(token) : null }
         });
         return res.sendStatus(401);
+      }
+      const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+      if (!isAllowedIP(clientIP)) {
+        console.warn(`Unauthorized Telegram webhook access from ${clientIP}`);
+        return res.sendStatus(403);
       }
       try {
         await tg.handleUpdate(req.body);
