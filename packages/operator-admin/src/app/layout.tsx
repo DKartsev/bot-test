@@ -24,6 +24,7 @@ export default function RootLayout({
           <nav className="flex gap-4 items-center">
             <Link href="/conversations">Диалоги</Link>
             <Link href="/ask-bot">Спросить у бота</Link>
+            <Link href="/settings">Настройки</Link>
             <button onClick={handleLogout}>Выход</button>
           </nav>
         </header>
