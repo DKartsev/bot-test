@@ -6,6 +6,7 @@ const {
   AutojoinRoomsMixin,
   RichReply
 } = require('matrix-bot-sdk');
+const https = require('https');
 const fetch = global.fetch;
 const { liveBus } = require('../live/bus');
 const { fuzzySearch } = require('../search/fuzzySearch');
@@ -59,18 +60,26 @@ function initMatrix() {
     await client.sendMessage(roomId, content);
   }
 
-  const apiBase = `http://localhost:${process.env.PORT || 3000}/admin`;
+  const apiBase =
+    process.env.MATRIX_ADMIN_API_BASE ||
+    `http://localhost:${process.env.PORT || 3000}/admin`;
+  const allowSelfSigned = process.env.MATRIX_ADMIN_API_ALLOW_SELF_SIGNED === '1';
   const apiToken = process.env.OPERATOR_API_TOKEN;
 
   async function callAdmin(method, url, body) {
-    const res = await fetch(`${apiBase}${url}`, {
+    const target = `${apiBase}${url}`;
+    const options = {
       method,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiToken}`
       },
       body: body ? JSON.stringify(body) : undefined
-    });
+    };
+    if (target.startsWith('https://') && allowSelfSigned) {
+      options.agent = new https.Agent({ rejectUnauthorized: false });
+    }
+    const res = await fetch(target, options);
     if (!res.ok) throw new Error(`API ${res.status}`);
     return await res.json();
   }
