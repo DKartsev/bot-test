@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AuthGuard from '../../components/AuthGuard';
 import ConversationFilters from '../../components/ConversationFilters';
 import ConversationList from '../../components/ConversationList';
+import { connectSSE } from '../../lib/stream';
 
 interface Filters {
   status?: string;
@@ -17,6 +18,15 @@ export default function ConversationsPage() {
     handoff: 'human',
     search: '',
   });
+  const [stream, setStream] = useState<EventSource | null>(null);
+
+  useEffect(() => {
+    const s = connectSSE();
+    setStream(s);
+    return () => {
+      s.close();
+    };
+  }, []);
 
   const handleChange = (f: Filters) => {
     setFilters((prev) => ({ ...prev, ...f }));
@@ -36,6 +46,7 @@ export default function ConversationsPage() {
           status={filters.status}
           handoff={filters.handoff}
           search={filters.search}
+          stream={stream}
         />
       </div>
     </AuthGuard>

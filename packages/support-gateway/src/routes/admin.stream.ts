@@ -20,7 +20,7 @@ export default async function adminStreamRoutes(server: FastifyInstance) {
 
       const handoff = (p: { conversation_id: number; handoff: 'human' | 'bot' }) =>
         send('handoff', p);
-      const newUser = (p: { conversation_id: number; message_id: number }) =>
+      const newUser = (p: { conversation_id: number; updated_at: string }) =>
         send('user_msg', p);
       const opReply = (p: { conversation_id: number; message_id: number }) =>
         send('op_reply', p);

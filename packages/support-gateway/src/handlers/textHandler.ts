@@ -54,9 +54,19 @@ export default async function textHandler(ctx: Context) {
       return;
     }
 
+    const updated_at = new Date().toISOString();
+    const { error: convUpdErr } = await supabase
+      .from('conversations')
+      .update({ updated_at })
+      .eq('id', conversation_id);
+
+    if (convUpdErr) {
+      logger.error({ err: convUpdErr }, 'Failed to update conversation timestamp');
+    }
+
     liveBus.emit('new_user_msg', {
       conversation_id,
-      message_id: userMsg.id,
+      updated_at,
     });
 
     if (shouldHandoff) {
