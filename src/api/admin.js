@@ -11,6 +11,7 @@ const { liveBus } = require('../live/bus');
 const { runSync, getStatus, getLastDiff } = require('../sync/engine');
 const { recomputeAll, getSnapshot, suggestActions, applyAutoActions } = require('../feedback/engine');
 const versionsRouter = require('./versions');
+const { rebuildAll: rebuildSemantic, status: semanticStatus } = require('../semantic/index');
 
 const router = express.Router();
 
@@ -490,6 +491,30 @@ router.get('/feedback/item/:id', authMiddleware(['admin', 'editor']), (req, res)
   } catch (err) {
     req.log.error({ err }, 'Feedback item failed');
     auditLog(req, { action: 'fb.item', ok: false, details: { id: req.params.id, error: err.message } });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/semantic/rebuild', authMiddleware(['admin', 'editor']), async (req, res) => {
+  try {
+    const summary = await rebuildSemantic();
+    auditLog(req, { action: 'sem.rebuild', ok: true, details: summary });
+    res.json(summary);
+  } catch (err) {
+    req.log.error({ err }, 'Semantic rebuild failed');
+    auditLog(req, { action: 'sem.rebuild', ok: false, details: { error: err.message } });
+    res.status(500).json({ error: 'Rebuild failed' });
+  }
+});
+
+router.get('/semantic/status', authMiddleware(['admin', 'editor']), (req, res) => {
+  try {
+    const st = semanticStatus();
+    auditLog(req, { action: 'sem.status', ok: true });
+    res.json(st);
+  } catch (err) {
+    req.log.error({ err }, 'Semantic status failed');
+    auditLog(req, { action: 'sem.status', ok: false, details: { error: err.message } });
     res.status(500).json({ error: 'Internal server error' });
   }
 });

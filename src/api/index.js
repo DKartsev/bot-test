@@ -18,6 +18,7 @@ const { startScheduler } = require('../sync/engine');
 const store = require('../data/store');
 const { initVersioning } = require('../versioning/engine');
 const { startFeedbackAggregator } = require('../feedback/engine');
+const { initSemantic } = require('../semantic/index');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -91,8 +92,11 @@ app.post('/ask', cors(), async (req, res) => {
       log.info({
         source: result.source,
         method: result.method,
+        rankMethod: result.rankMethod,
         matchedQuestion: result.matchedQuestion,
         score: result.score,
+        semSim: result.semSim,
+        combinedScore: result.combinedScore,
         durationMs,
         lang: result.lang,
         variablesUsed: result.variablesUsed,
@@ -111,7 +115,10 @@ app.post('/ask', cors(), async (req, res) => {
       durationMs,
       lang: result.lang,
       variablesUsed: result.variablesUsed,
-      needVars: result.needVars
+      needVars: result.needVars,
+      semSim: result.semSim,
+      combinedScore: result.combinedScore,
+      rankMethod: result.rankMethod
     });
   } catch (error) {
     metrics.recordError('ask');
@@ -150,6 +157,24 @@ startScheduler();
 startFeedbackAggregator(store);
 initObservabilityHooks(metrics, store);
 startAlertScheduler(store, metrics);
+
+if (process.env.SEM_ENABLED === '1') {
+  (async () => {
+    try {
+      const info = await initSemantic(store);
+      logger.info(
+        {
+          provider: info.provider,
+          size: info.size,
+          dim: info.dim
+        },
+        'Semantic index initialized'
+      );
+    } catch (err) {
+      logger.error({ err }, 'Failed to initialize semantic index');
+    }
+  })();
+}
 
 if (process.env.MATRIX_ENABLED === '1') {
   (async () => {

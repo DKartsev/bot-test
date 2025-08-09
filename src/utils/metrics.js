@@ -11,7 +11,10 @@ const counters = {
   feedbackTotal: 0,
   feedbackPositive: 0,
   feedbackNegative: 0,
-  feedbackNeutral: 0
+  feedbackNeutral: 0,
+  semanticQueriesTotal: 0,
+  semanticAccepted: 0,
+  semanticRejected: 0
 };
 
 const timings = {
@@ -53,6 +56,13 @@ function recordRequest(durationMs, source, lang) {
   langCounters[key] = (langCounters[key] || 0) + 1;
   requestEvents.push(Date.now());
   if (promHooks.incRequests) promHooks.incRequests({ source, lang: key });
+}
+
+function recordSemantic({ accepted }) {
+  counters.semanticQueriesTotal += 1;
+  if (accepted) counters.semanticAccepted += 1;
+  else counters.semanticRejected += 1;
+  if (promHooks.incSemantic) promHooks.incSemantic({ accepted });
 }
 
 function recordNoMatch(question) {
@@ -112,6 +122,9 @@ function snapshot() {
     feedbackPositive: counters.feedbackPositive,
     feedbackNegative: counters.feedbackNegative,
     feedbackNeutral: counters.feedbackNeutral,
+    semanticQueriesTotal: counters.semanticQueriesTotal,
+    semanticAccepted: counters.semanticAccepted,
+    semanticRejected: counters.semanticRejected,
     pendingTotal,
     avgDurationMs,
     maxDurationMs: timings.maxDurationMs,
@@ -143,6 +156,7 @@ module.exports = {
   recordFeedback,
   recordError,
   recordOpenAI,
+  recordSemantic,
   getMovingWindowStats,
   snapshot
 };
