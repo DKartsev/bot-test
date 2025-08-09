@@ -573,6 +573,12 @@ router.post('/rag/upload', authMiddleware(['admin', 'editor']), upload.single('f
     req.log.error({ err }, 'RAG upload failed');
     auditLog(req, { action: 'rag.upload', ok: false, details: { error: err.message } });
     res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    fs.unlink(req.file.path, (err) => {
+      if (err) {
+        req.log.error({ err }, 'Failed to remove uploaded file');
+      }
+    });
   }
 });
 
