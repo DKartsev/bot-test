@@ -15,6 +15,7 @@ const {
 const { liveBus } = require('../live/bus');
 const { retrieve } = require('../rag/retriever');
 const { answerWithRag } = require('../rag/answerer');
+const dlp = require('../security/dlp');
 
 const SEM_ENABLED = process.env.SEM_ENABLED === '1';
 let searchSemantic;
@@ -45,6 +46,24 @@ async function getAnswer(question, opts = {}) {
   });
   const responseId = uuidv4();
   let result = { responseId, answer: null, source: 'local', method: 'exact', lang };
+
+  async function sanitizeResult(res) {
+    const out = dlp.sanitizeOut({ text: res.answer || '', route: '/ask' });
+    if (out.blocked) {
+      return {
+        responseId: res.responseId,
+        answer: out.text,
+        source: 'blocked',
+        method: 'dlp',
+        lang: res.lang,
+        dlp: { blocked: true, reasons: out.detections.map((d) => d.key) }
+      };
+    }
+    res.answer = out.text;
+    res.dlp = { blocked: false, reasons: out.detections.map((d) => d.key) };
+    return res;
+  }
+
   if (!question) {
     liveBus.emit('ask', {
       ts: new Date().toISOString(),
@@ -54,6 +73,7 @@ async function getAnswer(question, opts = {}) {
       source: result.source,
       method: result.method
     });
+    result = await sanitizeResult(result);
     return result;
   }
   try {
@@ -95,6 +115,7 @@ async function getAnswer(question, opts = {}) {
           variablesUsed: Object.keys(safeVars)
         };
       }
+      result = await sanitizeResult(result);
       return result;
     }
 
@@ -148,6 +169,7 @@ async function getAnswer(question, opts = {}) {
               variablesUsed: Object.keys(safeVars)
             };
           }
+          result = await sanitizeResult(result);
           return result;
         }
       } else {
@@ -192,6 +214,7 @@ async function getAnswer(question, opts = {}) {
             variablesUsed: Object.keys(safeVars)
           };
         }
+        result = await sanitizeResult(result);
         return result;
       }
     }
@@ -218,6 +241,7 @@ async function getAnswer(question, opts = {}) {
             rag: { topSim, chunks: retrieval.items.length }
           };
           metrics.recordRag({ used: true, chunks: retrieval.items.length });
+          result = await sanitizeResult(result);
           return result;
         }
         metrics.recordRag({ used: false, chunks: retrieval.items.length });
@@ -249,6 +273,7 @@ async function getAnswer(question, opts = {}) {
       }
     }
     result = { responseId, answer, source: 'openai', method: 'openai', pendingId, lang };
+    result = await sanitizeResult(result);
     return result;
   } catch (error) {
     logger.error({ err: error }, 'Error in getAnswer');

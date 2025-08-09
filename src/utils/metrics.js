@@ -17,7 +17,11 @@ const counters = {
   semanticRejected: 0,
   ragQueriesTotal: 0,
   ragUsed: 0,
-  ragChunksReturned: 0
+  ragChunksReturned: 0,
+  dlpDetectionsIn: { pii: 0, secrets: 0, profanity: 0 },
+  dlpDetectionsOut: { pii: 0, secrets: 0, profanity: 0 },
+  dlpBlockedIn: 0,
+  dlpBlockedOut: 0
 };
 
 const timings = {
@@ -97,6 +101,16 @@ function recordRag({ used, chunks }) {
   if (chunks) counters.ragChunksReturned += chunks;
 }
 
+function recordDlp({ direction, type, blocked }) {
+  if (direction === 'in') {
+    counters.dlpDetectionsIn[type] = (counters.dlpDetectionsIn[type] || 0) + 1;
+    if (blocked) counters.dlpBlockedIn += 1;
+  } else {
+    counters.dlpDetectionsOut[type] = (counters.dlpDetectionsOut[type] || 0) + 1;
+    if (blocked) counters.dlpBlockedOut += 1;
+  }
+}
+
 function recordFeedback({ positive, negative, neutral, lang, source }) {
   counters.feedbackTotal += 1;
   if (positive) counters.feedbackPositive += 1;
@@ -137,6 +151,10 @@ function snapshot() {
     ragQueriesTotal: counters.ragQueriesTotal,
     ragUsed: counters.ragUsed,
     ragChunksReturned: counters.ragChunksReturned,
+    dlpDetectionsIn: counters.dlpDetectionsIn,
+    dlpDetectionsOut: counters.dlpDetectionsOut,
+    dlpBlockedIn: counters.dlpBlockedIn,
+    dlpBlockedOut: counters.dlpBlockedOut,
     pendingTotal,
     avgDurationMs,
     maxDurationMs: timings.maxDurationMs,
@@ -170,6 +188,7 @@ module.exports = {
   recordOpenAI,
   recordSemantic,
   recordRag,
+   recordDlp,
   getMovingWindowStats,
   snapshot
 };

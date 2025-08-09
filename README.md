@@ -44,6 +44,25 @@ the system falls back to the generic OpenAI model.
 Chunk size, overlap, top-k and other parameters can be adjusted via `RAG_*` variables in
 `.env.example`.
 
+## Data Loss Prevention (DLP)
+
+All questions, answers and ingested documents are scanned for PII, secrets and profanity
+according to `data/security/policies.yaml`. Matches can be redacted or blocked based on
+severity and environment toggles. Detections are logged to `logs/dlp.jsonl` (values hashed
+when `DLP_HASH_SENSITIVE_IN_LOGS=1`).
+
+Configure via `DLP_*` variables in `.env.example`: enable/observe mode, redaction style,
+allow lists and blocking behaviour. Policies can be hot-reloaded with the admin API.
+
+### Admin security API
+
+- `GET /admin/security/policy`
+- `POST /admin/security/policy/reload`
+- `GET /admin/security/detections?n=200`
+- `POST /admin/security/test`
+
+Metrics `dlpDetections*` and `dlpBlocked*` expose counters for Prometheus.
+
 ## Self-hosted messenger (Matrix)
 
 1. Run a Synapse homeserver and create a bot user. Obtain its access token and invite the bot to a room.

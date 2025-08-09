@@ -21,6 +21,8 @@ const { startFeedbackAggregator } = require('../feedback/engine');
 const { initSemantic } = require('../semantic/index');
 const { initRagIndex } = require('../rag/index');
 const { embed, initEmbedder } = require('../semantic/embedder');
+const dlp = require('../security/dlp');
+const adminSecurityRouter = require('./admin-security');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -66,16 +68,33 @@ app.use(
 );
 app.use('/admin', adminCors, ipAllowlistMiddleware(), rateLimiter(), uiRouter);
 app.use('/admin', adminCors, ipAllowlistMiddleware(), rateLimiter(), adminRouter);
+app.use('/admin/security', adminCors, adminSecurityRouter);
 app.use('/feedback', cors(), feedbackRouter);
 app.use(webhooksRouter);
+
+dlp.loadPolicies();
 
 app.post('/ask', cors(), async (req, res) => {
   const { question, lang, vars } = req.body || {};
   const acceptLanguageHeader = req.headers['accept-language'];
   const log = req.log;
   log.info({ question, lang }, 'incoming question');
+  const scan = dlp.scanIn({ text: question || '', route: '/ask' });
+  if (scan.blocked) {
+    return res
+      .status(400)
+      .json({ error: 'Похоже, в запросе есть чувствительные данные. Удалите или замаскируйте их и попробуйте снова.' });
+  }
   try {
-    const result = await getAnswer(question, { lang, vars, acceptLanguageHeader });
+    let result = await getAnswer(question, { lang, vars, acceptLanguageHeader });
+    const out = dlp.sanitizeOut({ text: result.answer || '', route: '/ask' });
+    if (out.blocked) {
+      result.answer = `Я не могу отправить потенциально секретные данные. Вот безопасная версия: ${out.text}`;
+      result.source = 'blocked';
+      result.method = 'dlp';
+    } else {
+      result.answer = out.text;
+    }
     const durationMs = Date.now() - req.start;
     metrics.recordRequest(durationMs, result.source, result.lang);
     if (result.source === 'openai') {
