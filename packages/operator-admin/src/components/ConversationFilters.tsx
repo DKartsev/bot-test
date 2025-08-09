@@ -6,13 +6,22 @@ interface ConversationFiltersProps {
   status?: string;
   handoff?: string;
   search?: string;
-  onChange: (filters: { status?: string; handoff?: string; search?: string }) => void;
+  categoryId?: string;
+  categories?: { id: string; name: string }[];
+  onChange: (filters: {
+    status?: string;
+    handoff?: string;
+    search?: string;
+    categoryId?: string;
+  }) => void;
 }
 
 export default function ConversationFilters({
   status = 'all',
   handoff = 'all',
   search = '',
+  categoryId = 'all',
+  categories = [],
   onChange,
 }: ConversationFiltersProps) {
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -25,6 +34,10 @@ export default function ConversationFilters({
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange({ status, handoff, search: e.target.value });
+  };
+
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onChange({ status, handoff, search, categoryId: e.target.value });
   };
 
   return (
@@ -53,6 +66,18 @@ export default function ConversationFilters({
         onChange={handleSearchChange}
         className="max-w-xs"
       />
+      <select
+        className="border p-2 rounded"
+        value={categoryId}
+        onChange={handleCategoryChange}
+      >
+        <option value="all">Все категории</option>
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

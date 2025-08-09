@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@shadcn/ui/button';
+import CategoryBadge from './CategoryBadge';
 
 interface Conversation {
   id: string;
@@ -11,12 +12,14 @@ interface Conversation {
   handoff: string;
   updated_at: string;
   last_message_preview?: string;
+  category?: { name: string; color?: string } | null;
 }
 
 interface ConversationListProps {
   status?: string;
   handoff?: string;
   search?: string;
+  categoryId?: string;
   onLoadMore?: () => void;
   stream?: EventSource | null;
 }
@@ -25,6 +28,7 @@ export default function ConversationList({
   status,
   handoff,
   search,
+  categoryId,
   onLoadMore,
   stream,
 }: ConversationListProps) {
@@ -39,6 +43,8 @@ export default function ConversationList({
     if (status && status !== 'all') params.append('status', status);
     if (handoff && handoff !== 'all') params.append('handoff', handoff);
     if (search) params.append('search', search);
+    if (categoryId && categoryId !== 'all')
+      params.append('category_id', categoryId);
     params.append('limit', '20');
     if (cur) params.append('cursor', cur);
     return params.toString();
@@ -50,7 +56,9 @@ export default function ConversationList({
       const res = await fetch(`/admin/conversations?${buildQuery(initial ? undefined : cursor || undefined)}`);
       if (!res.ok) throw new Error('Network error');
       const data = await res.json();
-      const list: Conversation[] = Array.isArray(data) ? data : data.data || [];
+      const list: Conversation[] = Array.isArray(data)
+        ? data
+        : data.conversations || data.data || [];
       setItems((prev) => (initial ? list : [...prev, ...list]));
       if (list.length < 20) setHasMore(false);
       if (list.length > 0) {
@@ -70,7 +78,7 @@ export default function ConversationList({
     setHasMore(true);
     load(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, handoff, search]);
+  }, [status, handoff, search, categoryId]);
 
   const handleLoadMore = () => {
     if (!loading) {
@@ -109,7 +117,7 @@ export default function ConversationList({
       stopPoll();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stream, status, handoff, search]);
+  }, [stream, status, handoff, search, categoryId]);
 
   return (
     <div>
@@ -117,6 +125,7 @@ export default function ConversationList({
         <thead>
           <tr>
             <th className="p-2 border-b">Telegram ID</th>
+            <th className="p-2 border-b">Категория</th>
             <th className="p-2 border-b">Статус</th>
             <th className="p-2 border-b">Handoff</th>
             <th className="p-2 border-b">Обновлено</th>
@@ -131,6 +140,14 @@ export default function ConversationList({
               onClick={() => router.push(`/conversations/${conv.id}`)}
             >
               <td className="p-2 border-b">{conv.user_telegram_id}</td>
+              <td className="p-2 border-b">
+                {conv.category ? (
+                  <CategoryBadge
+                    name={conv.category.name}
+                    color={conv.category.color}
+                  />
+                ) : null}
+              </td>
               <td className="p-2 border-b">{conv.status}</td>
               <td className="p-2 border-b">{conv.handoff}</td>
               <td className="p-2 border-b">{new Date(conv.updated_at).toLocaleString()}</td>

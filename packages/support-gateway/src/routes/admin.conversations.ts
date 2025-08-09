@@ -15,20 +15,26 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
     const querySchema = z.object({
       status: z.enum(['open', 'closed']).optional(),
       handoff: z.enum(['human', 'bot']).optional(),
+      category_id: z.string().optional(),
       limit: z.coerce.number().default(20),
       cursor: z.string().optional(),
     });
 
-    const { status, handoff, limit, cursor } = querySchema.parse(request.query);
+    const { status, handoff, category_id, limit, cursor } = querySchema.parse(
+      request.query
+    );
 
     let q = supabase
       .from('conversations')
-      .select('id, user_telegram_id, status, handoff, updated_at')
+      .select(
+        'id, user_telegram_id, status, handoff, updated_at, category:categories(id, name, color)'
+      )
       .order('updated_at', { ascending: false })
       .limit(limit);
 
     if (status) q = q.eq('status', status);
     if (handoff) q = q.eq('handoff', handoff);
+    if (category_id) q = q.eq('category_id', category_id);
     if (cursor) q = q.lt('updated_at', cursor);
 
     const { data, error } = await q;
@@ -207,7 +213,9 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
 
     const { data, error } = await supabase
       .from('conversations')
-      .select('id, user_telegram_id, status, handoff, updated_at')
+      .select(
+        'id, user_telegram_id, status, handoff, updated_at, category:categories(id, name, color)'
+      )
       .eq('id', id)
       .single();
 
@@ -226,6 +234,7 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
         status: z.enum(['open', 'closed']).optional(),
         handoff: z.enum(['bot', 'human']).optional(),
         assignee_id: z.string().nullable().optional(),
+        category_id: z.string().nullable().optional(),
       })
       .refine((data) => Object.keys(data).length > 0, {
         message: 'No fields to update',
@@ -238,7 +247,9 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
       .from('conversations')
       .update(payload)
       .eq('id', id)
-      .select('*')
+      .select(
+        'id, user_telegram_id, status, handoff, updated_at, category:categories(id, name, color)'
+      )
       .single();
 
     if (error || !data) {
