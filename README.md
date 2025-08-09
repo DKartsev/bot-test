@@ -53,7 +53,7 @@ Chunk size, overlap, top-k and other parameters can be adjusted via `RAG_*` vari
 All questions, answers and ingested documents are scanned for PII, secrets and profanity
 according to `data/security/policies.yaml`. Matches can be redacted or blocked based on
 severity and environment toggles. Detections are logged to `logs/dlp.jsonl` (values hashed
-when `DLP_HASH_SENSITIVE_IN_LOGS=1`).
+with SHA-256 when `DLP_HASH_SENSITIVE_IN_LOGS=1`).
 
 Configure via `DLP_*` variables in `.env.example`: enable/observe mode, redaction style,
 allow lists and blocking behaviour. Policies can be hot-reloaded with the admin API.
