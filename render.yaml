@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: my-support-bot
+    env: docker
+    plan: starter
+    autoDeploy: true
+    healthCheckPath: /healthz
+    envVars:
+      - key: OPENAI_API_KEY
+      - key: ADMIN_TOKENS
+      - key: EDITOR_TOKENS
+      - key: DEFAULT_LANG
+      - key: SUPPORTED_LANGS
+      - key: ADMIN_IP_ALLOWLIST
+      - key: ADMIN_ALLOWED_ORIGINS
+      - key: ADMIN_RATE_WINDOW_MS
+      - key: ADMIN_RATE_MAX
+      - key: AUTO_CACHE_OPENAI
+      - key: SYNC_PROVIDER
+      - key: SYNC_CRON
+      - key: SYNC_BIDIRECTIONAL
+      - key: SYNC_ALLOW_DELETES
+      - key: GOOGLE_SHEETS_ID
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON_B64
+      - key: AIRTABLE_API_KEY
+      - key: AIRTABLE_BASE_ID
+      - key: AIRTABLE_TABLE_NAME
+      - key: FEEDBACK_PROMOTE_MIN
+      - key: FEEDBACK_PROMOTE_RATIO
+      - key: FEEDBACK_FLAG_MIN
+      - key: FEEDBACK_FLAG_RATIO
+      - key: FEEDBACK_ENABLE_AUTO
+      - key: FEEDBACK_AGG_INTERVAL_MIN
+      - key: VERSIONS_MAX
+      - key: VERSIONS_TTL_DAYS
+      - key: VERSIONS_DEBOUNCE_MS
+      - key: VERSIONS_INCLUDE_PENDING
+      - key: VERSIONS_REASON_ON_MUTATION
+      - key: PORT
+    disks:
+      - name: data
+        mountPath: /app/data
+        sizeGB: 1
+      - name: logs
+        mountPath: /app/logs
+        sizeGB: 1
+      - name: feedback
+        mountPath: /app/feedback
+        sizeGB: 1

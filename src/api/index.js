@@ -39,6 +39,10 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/healthz', (req, res) => {
+  res.json({ ok: true, status: 'healthy' });
+});
+
 app.options('/admin/*', adminCors, ipAllowlistMiddleware(), rateLimiter(), (req, res) => {
   res.sendStatus(204);
 });
