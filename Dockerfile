@@ -3,6 +3,7 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
+COPY scripts ./scripts
 # Install build tools for native deps like hnswlib-node
 RUN apk add --no-cache python3 make g++ git
 RUN npm ci --omit=dev
@@ -18,6 +19,7 @@ COPY data ./data
 COPY logs ./logs
 COPY feedback ./feedback
 COPY package.json README.md ./
+COPY scripts ./scripts
 RUN mkdir -p /app/data /app/logs /app/feedback \
   && chown -R node:node /app
 ENV NODE_ENV=production

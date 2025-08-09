@@ -17,7 +17,7 @@
     "docker:run": "docker run --rm -p 3000:3000 --env-file .env -v $PWD/data:/app/data -v $PWD/logs:/app/logs -v $PWD/feedback:/app/feedback my-support-bot:latest",
     "sem:rebuild": "node -e \"(async()=>{const s=require('./src/semantic/index');if(s.rebuildAll){console.log(await s.rebuildAll())}})()\"",
     "rag:reindex": "node -e \"(async()=>{const r=require('./src/rag/index');if(r.rebuildAll){console.log(await r.rebuildAll())}})()\"",
-    "preinstall": "node scripts/preinstall.js"
+    "preinstall": "if [ \"$NODE_ENV\" != \"production\" ]; then node scripts/preinstall.js; fi"
   },
   "dependencies": {
     "@xenova/transformers": "^2.17.2",
