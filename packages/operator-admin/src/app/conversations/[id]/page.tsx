@@ -8,6 +8,7 @@ import MessageInput from '../../../components/MessageInput';
 import NotesPanel from '../../../components/NotesPanel';
 import { api } from '../../../lib/api';
 import CategoryBadge from '../../../components/CategoryBadge';
+import CreateCaseModal from '../../../components/CreateCaseModal';
 
 interface Conversation {
   id: string;
@@ -22,6 +23,7 @@ export default function ConversationPage({ params }: { params: { id: string } })
   const [toast, setToast] = useState('');
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [editingCategory, setEditingCategory] = useState(false);
+  const [showCaseModal, setShowCaseModal] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -107,6 +109,9 @@ export default function ConversationPage({ params }: { params: { id: string } })
             <Button variant="secondary" onClick={handleEditCategory}>
               Изменить категорию
             </Button>
+            <Button variant="secondary" onClick={() => setShowCaseModal(true)}>
+              Создать кейс
+            </Button>
             {editingCategory && (
               <select
                 className="border p-1 rounded"
@@ -135,6 +140,16 @@ export default function ConversationPage({ params }: { params: { id: string } })
           </div>
         </div>
       </div>
+      {showCaseModal && (
+        <CreateCaseModal
+          conversationId={id}
+          onClose={() => setShowCaseModal(false)}
+          onCreated={() => {
+            setToast('Кейс создан и отправлен в TG');
+            setTimeout(() => setToast(''), 3000);
+          }}
+        />
+      )}
     </AuthGuard>
   );
 }
