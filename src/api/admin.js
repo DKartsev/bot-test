@@ -8,7 +8,6 @@ const { createStore } = require('../data/store');
 const store = createStore();
 const { tenantCtx } = require('../tenancy/tenantCtx');
 const { authMiddleware, auditLog } = require('../utils/security');
-const ExcelJS = require('exceljs');
 const { liveBus } = require('../live/bus');
 const { runSync, getStatus, getLastDiff } = require('../sync/engine');
 const { recomputeAll, getSnapshot, suggestActions, applyAutoActions } = require('../feedback/engine');
@@ -330,53 +329,6 @@ router.get('/qa/export', authMiddleware(['admin']), (req, res) => {
   res.json(all);
 });
 
-router.get('/export/xlsx', authMiddleware(['admin', 'editor']), async (req, res) => {
-  try {
-    const all = store.getAll();
-    const approved = all.filter((i) => i.status === 'approved');
-    const pending = all.filter((i) => i.status === 'pending');
-    const wb = new ExcelJS.Workbook();
-    const s1 = wb.addWorksheet('Approved');
-    s1.columns = [
-      { header: 'id', key: 'id', width: 36 },
-      { header: 'Question', key: 'Question', width: 50 },
-      { header: 'Answer', key: 'Answer', width: 50 },
-      { header: 'lang', key: 'lang', width: 10 },
-      { header: 'createdAt', key: 'createdAt', width: 24 },
-      { header: 'updatedAt', key: 'updatedAt', width: 24 }
-    ];
-    approved.forEach((i) => s1.addRow(i));
-    const s2 = wb.addWorksheet('Pending');
-    s2.columns = [
-      { header: 'id', key: 'id', width: 36 },
-      { header: 'Question', key: 'Question', width: 50 },
-      { header: 'Answer', key: 'Answer', width: 50 },
-      { header: 'source', key: 'source', width: 15 },
-      { header: 'createdAt', key: 'createdAt', width: 24 }
-    ];
-    pending.forEach((i) => s2.addRow(i));
-    const s3 = wb.addWorksheet('Stats');
-    const pendingTotal = pending.length;
-    const itemsTotal = approved.length;
-    const openaiShare = all.length ? pending.filter((p) => p.source === 'openai').length / all.length : 0;
-    s3.addRow(['pendingTotal', pendingTotal]);
-    s3.addRow(['itemsTotal', itemsTotal]);
-    s3.addRow(['openaiShare', openaiShare]);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="export.xlsx"');
-    await wb.xlsx.write(res);
-    res.end();
-    auditLog(req, {
-      action: 'export.xlsx',
-      ok: true,
-      details: { approved: approved.length, pending: pending.length }
-    });
-  } catch (err) {
-    req.log.error({ err }, 'Export xlsx failed');
-    auditLog(req, { action: 'export.xlsx', ok: false, details: { error: err.message } });
-    res.status(500).json({ error: 'Export failed' });
-  }
-});
 
 router.get('/export/csv', authMiddleware(['admin', 'editor']), (req, res) => {
   try {
