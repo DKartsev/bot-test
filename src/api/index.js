@@ -14,7 +14,6 @@ const { startAlertScheduler } = require('../alerts/engine');
 const adminRouter = require('./admin');
 const feedbackRouter = require('./feedback');
 const webhooksRouter = require('./webhooks');
-const { initMatrix } = require('../integrations/matrix');
 const { ipAllowlistMiddleware, rateLimiter, authMiddleware } = require('../utils/security');
 const { startScheduler } = require('../sync/engine');
 const { createStore } = require('../data/store');
@@ -224,15 +223,5 @@ if (process.env.RAG_ENABLED === '1') {
   })();
 }
 
-if (process.env.MATRIX_ENABLED === '1') {
-  (async () => {
-    try {
-      const matrix = initMatrix();
-      await matrix.start();
-    } catch (err) {
-      logger.error({ err }, 'Failed to start Matrix bot');
-    }
-  })();
-}
 
 module.exports = app;
