@@ -3,21 +3,66 @@ import ffmpeg from 'fluent-ffmpeg';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { z } from 'zod';
 import logger from '../utils/logger';
 import supabase from '../utils/supabaseClient';
 
 export default async function videoProcessor(job: Job) {
-  const url: string | undefined = job.data?.url;
-  if (!url) throw new Error('Missing video URL');
+  const schema = z.object({
+    messageId: z.number(),
+    mediaUrl: z.string().url(),
+    mediaType: z.enum(['video', 'photo', 'document']).optional(),
+  });
+
+  const { messageId, mediaUrl, mediaType } = schema.parse(job.data);
+
+  if (mediaType && mediaType !== 'video') {
+    try {
+      const payload = {
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'input_text', text: 'Describe the image and extract any text.' },
+              { type: 'input_image', image_url: mediaUrl },
+            ],
+          },
+        ],
+      };
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      }).then((r) => r.json());
+
+      const summary = response.choices?.[0]?.message?.content?.[0]?.text || '';
+      const { error } = await supabase
+        .from('messages')
+        .update({ vision_summary: summary, content: summary })
+        .eq('id', messageId);
+      if (error) throw error;
+
+      logger.info({ jobId: job.id }, 'Image processed');
+      return;
+    } catch (err) {
+      logger.error({ err, jobId: job.id }, 'Image processing failed');
+      throw err;
+    }
+  }
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'frames-'));
 
   try {
     await new Promise<void>((resolve, reject) => {
-      ffmpeg(url)
+      ffmpeg(mediaUrl)
         .output(path.join(tempDir, 'frame-%04d.png'))
         .outputOptions(['-vf', 'fps=1/2'])
-        .on('end', resolve)
+        .on('end', () => resolve())
         .on('error', reject)
         .run();
     });
@@ -57,12 +102,11 @@ export default async function videoProcessor(job: Job) {
     }
 
     const summary = summaries.join('\n');
-    if (job.data?.messageId) {
-      await supabase
-        .from('messages')
-        .update({ vision_summary: summary })
-        .eq('id', job.data.messageId);
-    }
+    const { error } = await supabase
+      .from('messages')
+      .update({ vision_summary: summary, content: summary })
+      .eq('id', messageId);
+    if (error) throw error;
 
     logger.info({ jobId: job.id }, 'Video processed');
   } catch (err) {
