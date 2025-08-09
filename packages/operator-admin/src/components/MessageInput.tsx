@@ -8,22 +8,34 @@ import SavedRepliesDrawer from './SavedRepliesDrawer';
 
 interface MessageInputProps {
   conversationId: string;
+  assigneeName?: string | null;
 }
 
-export default function MessageInput({ conversationId }: MessageInputProps) {
+export default function MessageInput({
+  conversationId,
+  assigneeName,
+}: MessageInputProps) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const operatorName =
+    typeof window !== 'undefined' ? localStorage.getItem('operatorName') : null;
+
   const handleSend = async () => {
     if (!text.trim() || sending) return;
+    if (!operatorName || assigneeName !== operatorName) {
+      setToast('Диалог не закреплён за вами');
+      setTimeout(() => setToast(''), 2000);
+      return;
+    }
     setSending(true);
     try {
       const res = await api(`/admin/conversations/${conversationId}/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, author_name: operatorName }),
       });
       if (!res.ok) throw new Error('Network error');
       const data = await res.json();
@@ -49,12 +61,22 @@ export default function MessageInput({ conversationId }: MessageInputProps) {
     if (!file || sending) return;
     setSending(true);
     try {
+      if (!operatorName || assigneeName !== operatorName) {
+        setToast('Диалог не закреплён за вами');
+        setTimeout(() => setToast(''), 2000);
+        return;
+      }
       const form = new FormData();
       form.append('file', file);
-      const res = await api(`/admin/conversations/${conversationId}/attachments`, {
-        method: 'POST',
-        body: form,
-      });
+      const res = await api(
+        `/admin/conversations/${conversationId}/attachments?author_name=${encodeURIComponent(
+          operatorName
+        )}`,
+        {
+          method: 'POST',
+          body: form,
+        }
+      );
       if (!res.ok) throw new Error('Network error');
       const data = await res.json();
       const message = data?.data || data;

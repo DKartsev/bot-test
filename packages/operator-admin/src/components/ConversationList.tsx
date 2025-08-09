@@ -13,6 +13,7 @@ interface Conversation {
   updated_at: string;
   last_message_preview?: string;
   category?: { name: string; color?: string } | null;
+  assignee_name?: string | null;
 }
 
 interface ConversationListProps {
@@ -22,6 +23,7 @@ interface ConversationListProps {
   categoryId?: string;
   onLoadMore?: () => void;
   stream?: EventSource | null;
+  mine?: boolean;
 }
 
 export default function ConversationList({
@@ -31,6 +33,7 @@ export default function ConversationList({
   categoryId,
   onLoadMore,
   stream,
+  mine,
 }: ConversationListProps) {
   const [items, setItems] = useState<Conversation[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -45,6 +48,11 @@ export default function ConversationList({
     if (search) params.append('search', search);
     if (categoryId && categoryId !== 'all')
       params.append('category_id', categoryId);
+    if (mine) {
+      const name =
+        typeof window !== 'undefined' ? localStorage.getItem('operatorName') : null;
+      if (name) params.append('assignee_name', name);
+    }
     params.append('limit', '20');
     if (cur) params.append('cursor', cur);
     return params.toString();
@@ -78,7 +86,7 @@ export default function ConversationList({
     setHasMore(true);
     load(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, handoff, search, categoryId]);
+  }, [status, handoff, search, categoryId, mine]);
 
   const handleLoadMore = () => {
     if (!loading) {
@@ -105,6 +113,7 @@ export default function ConversationList({
     stream.addEventListener('user_msg', refresh);
     stream.addEventListener('handoff', refresh);
     stream.addEventListener('op_reply', refresh);
+    stream.addEventListener('assigned', refresh);
     stream.addEventListener('open', stopPoll);
     stream.addEventListener('error', onError);
 
@@ -112,12 +121,13 @@ export default function ConversationList({
       stream.removeEventListener('user_msg', refresh);
       stream.removeEventListener('handoff', refresh);
       stream.removeEventListener('op_reply', refresh);
+      stream.removeEventListener('assigned', refresh);
       stream.removeEventListener('open', stopPoll);
       stream.removeEventListener('error', onError);
       stopPoll();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stream, status, handoff, search, categoryId]);
+  }, [stream, status, handoff, search, categoryId, mine]);
 
   return (
     <div>
@@ -128,6 +138,7 @@ export default function ConversationList({
             <th className="p-2 border-b">Категория</th>
             <th className="p-2 border-b">Статус</th>
             <th className="p-2 border-b">Handoff</th>
+            <th className="p-2 border-b">Оператор</th>
             <th className="p-2 border-b">Обновлено</th>
             <th className="p-2 border-b">Последнее сообщение</th>
           </tr>
@@ -150,6 +161,7 @@ export default function ConversationList({
               </td>
               <td className="p-2 border-b">{conv.status}</td>
               <td className="p-2 border-b">{conv.handoff}</td>
+              <td className="p-2 border-b">{conv.assignee_name || ''}</td>
               <td className="p-2 border-b">{new Date(conv.updated_at).toLocaleString()}</td>
               <td className="p-2 border-b">{conv.last_message_preview}</td>
             </tr>

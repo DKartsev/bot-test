@@ -26,11 +26,14 @@ export default async function adminStreamRoutes(server: FastifyInstance) {
         send('op_reply', p);
       const mediaUpd = (p: { message_id: number; kind: 'transcript' | 'vision' }) =>
         send('media_upd', p);
+      const assigned = (p: { conversation_id: number; assignee_name: string }) =>
+        send('assigned', p);
 
       liveBus.on('handoff', handoff);
       liveBus.on('new_user_msg', newUser);
       liveBus.on('operator_reply', opReply);
       liveBus.on('media_updated', mediaUpd);
+      liveBus.on('assigned', assigned);
 
       request.raw.on('close', () => {
         clearInterval(ping);
@@ -38,6 +41,7 @@ export default async function adminStreamRoutes(server: FastifyInstance) {
         liveBus.off('new_user_msg', newUser);
         liveBus.off('operator_reply', opReply);
         liveBus.off('media_updated', mediaUpd);
+        liveBus.off('assigned', assigned);
       });
     }
   );

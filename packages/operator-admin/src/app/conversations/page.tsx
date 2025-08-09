@@ -12,6 +12,7 @@ interface Filters {
   handoff?: string;
   search?: string;
   categoryId?: string;
+  mine?: boolean;
 }
 
 export default function ConversationsPage() {
@@ -20,6 +21,7 @@ export default function ConversationsPage() {
     handoff: 'human',
     search: '',
     categoryId: 'all',
+    mine: false,
   });
   const [stream, setStream] = useState<EventSource | null>(null);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
@@ -78,8 +80,9 @@ export default function ConversationsPage() {
           status={filters.status}
           handoff={filters.handoff}
           search={filters.search}
-           categoryId={filters.categoryId}
-           categories={categories}
+          categoryId={filters.categoryId}
+          categories={categories}
+          mine={filters.mine}
           onChange={handleChange}
         />
         <ConversationList
@@ -87,6 +90,7 @@ export default function ConversationsPage() {
           handoff={filters.handoff}
           search={filters.search}
           categoryId={filters.categoryId}
+          mine={filters.mine}
           stream={stream}
         />
       </div>
