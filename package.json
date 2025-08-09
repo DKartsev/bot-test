@@ -13,7 +13,8 @@
     "coverage": "cross-env NODE_ENV=test jest --coverage",
     "load:ask": "node test/load/autocannon.ask.js",
     "docker:build": "docker build -t my-support-bot:latest .",
-    "docker:run": "docker run --rm -p 3000:3000 --env-file .env -v $PWD/data:/app/data -v $PWD/logs:/app/logs -v $PWD/feedback:/app/feedback my-support-bot:latest"
+    "docker:run": "docker run --rm -p 3000:3000 --env-file .env -v $PWD/data:/app/data -v $PWD/logs:/app/logs -v $PWD/feedback:/app/feedback my-support-bot:latest",
+    "metrics:print": "curl -s localhost:${PORT:-3000}${PROM_METRICS_PATH:-/metrics/prom}"
   },
   "dependencies": {
     "accept-language-parser": "^1.5.0",
@@ -34,7 +35,11 @@
     "node-cron": "^3.0.3",
     "openai": "^5.12.2",
     "pino": "^9.8.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "rotating-file-stream": "^3.0.3",
+    "prom-client": "^15.1.1",
+    "pino-loki": "^2.1.0",
+    "pino-elasticsearch": "^8.1.0"
   },
   "devDependencies": {
     "autocannon": "^7.12.0",

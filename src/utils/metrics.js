@@ -23,6 +23,16 @@ const timings = {
 const langCounters = {};
 const feedbackLangCounters = {};
 
+let promHooks = {};
+
+const requestEvents = [];
+const errorEvents = [];
+const openaiEvents = [];
+
+function setPromHooks(hooks = {}) {
+  promHooks = hooks;
+}
+
 function recordRequest(durationMs, source, lang) {
   counters.totalRequests += 1;
   timings.totalDurationMs += durationMs;
@@ -34,11 +44,15 @@ function recordRequest(durationMs, source, lang) {
     counters.localHits += 1;
   } else if (source === 'openai') {
     counters.openaiHits += 1;
+    openaiEvents.push(Date.now());
+    if (promHooks.incOpenAI) promHooks.incOpenAI();
   } else if (source === 'none') {
     counters.noMatch += 1;
   }
   const key = lang || 'unknown';
   langCounters[key] = (langCounters[key] || 0) + 1;
+  requestEvents.push(Date.now());
+  if (promHooks.incRequests) promHooks.incRequests({ source, lang: key });
 }
 
 function recordNoMatch(question) {
@@ -51,6 +65,17 @@ function recordNoMatch(question) {
 
 function recordOpenaiCached() {
   counters.openaiCached += 1;
+}
+
+function recordError(route) {
+  errorEvents.push(Date.now());
+  if (promHooks.incErrors) promHooks.incErrors({ route });
+}
+
+function recordOpenAI() {
+  counters.openaiHits += 1;
+  openaiEvents.push(Date.now());
+  if (promHooks.incOpenAI) promHooks.incOpenAI();
 }
 
 function recordFeedback({ positive, negative, neutral, lang, source }) {
@@ -95,10 +120,29 @@ function snapshot() {
   };
 }
 
+function prune(arr, cutoff) {
+  while (arr.length && arr[0] < cutoff) arr.shift();
+  return arr.length;
+}
+
+function getMovingWindowStats(windowSec) {
+  const cutoff = Date.now() - windowSec * 1000;
+  const total = prune(requestEvents, cutoff);
+  const errors = prune(errorEvents, cutoff);
+  const openai = prune(openaiEvents, cutoff);
+  const errorRate = total ? errors / total : 0;
+  const openaiRate = total ? openai / total : 0;
+  return { total, errors, openai, errorRate, openaiRate };
+}
+
 module.exports = {
+  setPromHooks,
   recordRequest,
   recordNoMatch,
   recordOpenaiCached,
   recordFeedback,
+  recordError,
+  recordOpenAI,
+  getMovingWindowStats,
   snapshot
 };
