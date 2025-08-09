@@ -1,25 +1,21 @@
 'use client';
 
-import { useParams } from 'next/navigation';
-import { ChatWindow } from '../../components/ChatWindow';
-import { useMessages } from '../../hooks/useMessages';
+import { useParams, useRouter } from 'next/navigation';
+import AuthGuard from '../../../components/AuthGuard';
+import { Button } from '@shadcn/ui/button';
 
 export default function ConversationPage() {
   const params = useParams();
+  const router = useRouter();
   const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
-  const { messages, isLoading, error, sendMessage } = useMessages(id);
-
-  if (isLoading) {
-    return <p>Загрузка...</p>;
-  }
-
-  if (error) {
-    return <p className="text-red-500">Ошибка загрузки</p>;
-  }
 
   return (
-    <div className="h-full">
-      <ChatWindow messages={messages || []} onSend={sendMessage} />
-    </div>
+    <AuthGuard>
+      <div className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Диалог {id}</h1>
+        <Button onClick={() => router.back()}>Назад</Button>
+      </div>
+    </AuthGuard>
   );
 }
+
