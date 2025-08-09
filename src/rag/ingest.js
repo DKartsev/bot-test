@@ -7,6 +7,7 @@ const Turndown = require('turndown');
 const { randomUUID } = require('crypto');
 const { chunkText } = require('./chunker');
 const { logger } = require('../utils/logger');
+const dlp = require('../security/dlp');
 
 const DATA_DIR = process.env.RAG_INDEX_PATH || path.join(__dirname, '..', '..', 'data', 'rag');
 const SOURCES_FILE = path.join(DATA_DIR, 'sources.json');
@@ -50,7 +51,19 @@ function appendChunks(chunks, sourceId) {
 
 async function ingestText(text, meta = {}) {
   ensureDir();
-  const raw = text.toString();
+  let raw = text.toString();
+  if (process.env.DLP_SCAN_INGEST === '1') {
+    const out = dlp.sanitizeOut({ text: raw, route: '/rag/ingest', direction: 'ingest' });
+    if (out.blocked && process.env.DLP_REDACT_INGEST !== '1') {
+      const err = new Error('Sensitive data detected in source');
+      err.detections = out.detections;
+      throw err;
+    }
+    raw = out.text;
+    if (out.detections.length && meta) {
+      meta.dlp = { redacted: true, reasons: out.detections.map((d) => d.key) };
+    }
+  }
   const hash = sha1(raw);
   const now = new Date().toISOString();
   const source = {
@@ -75,7 +88,7 @@ async function ingestText(text, meta = {}) {
 
 async function ingestFile(filePath, meta = {}) {
   ensureDir();
-  const buf = fs.readFileSync(filePath);
+  let buf = fs.readFileSync(filePath);
   const mime = meta.mime || '';
   const ext = path.extname(meta.originalName || '').toLowerCase();
   let type = 'txt';
