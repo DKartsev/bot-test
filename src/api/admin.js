@@ -26,6 +26,15 @@ const {
   status: ragStatus,
   rebuildAll: rebuildRag
 } = require('../rag/index');
+const { checkQuotas } = require('../tenancy/quotas');
+const { addUsage } = require('../tenancy/orgStore');
+
+const quotaErrors = {
+  quota_requests: 'Monthly request quota exceeded',
+  quota_tokens: 'Monthly OpenAI tokens quota exceeded',
+  quota_rag: 'RAG storage quota exceeded',
+  org_not_found: 'Organization not found'
+};
 
 const router = express.Router();
 router.use(tenantCtx());
@@ -542,6 +551,13 @@ router.post('/rag/upload', authMiddleware(['admin', 'editor']), upload.single('f
     auditLog(req, { action: 'rag.upload', ok: false, details: { error: 'No file' } });
     return res.status(400).json({ error: 'No file' });
   }
+  const sizeMB = req.file.size / (1024 * 1024);
+  const quota = checkQuotas({ type: 'ragStorageMB', cost: sizeMB }, req);
+  if (!quota.ok) {
+    const msg = quotaErrors[quota.reason] || 'Quota exceeded';
+    auditLog(req, { action: 'rag.upload', ok: false, details: { error: msg } });
+    return res.status(429).json({ error: msg });
+  }
   try {
     const { source, chunks } = await ingestFile(req.file.path, {
       originalName: req.file.originalname,
@@ -549,6 +565,7 @@ router.post('/rag/upload', authMiddleware(['admin', 'editor']), upload.single('f
     });
     const enriched = chunks.map((c) => ({ ...c, sourceId: source.id }));
     await upsertChunks(enriched, req.tenant);
+    addUsage(req.tenant.orgId, { ragMB: sizeMB });
     auditLog(req, { action: 'rag.upload', ok: true, details: { id: source.id, chunks: enriched.length } });
     liveBus.emit('rag.uploaded', { id: source.id, title: source.title, chunks: enriched.length });
     res.json({ ok: true, source, added: enriched.length });
@@ -565,10 +582,18 @@ router.post('/rag/text', authMiddleware(['admin', 'editor']), async (req, res) =
     auditLog(req, { action: 'rag.text', ok: false, details: { error: 'Missing title or text' } });
     return res.status(400).json({ error: 'Missing title or text' });
   }
+  const sizeMB = Buffer.byteLength(text, 'utf8') / (1024 * 1024);
+  const quota = checkQuotas({ type: 'ragStorageMB', cost: sizeMB }, req);
+  if (!quota.ok) {
+    const msg = quotaErrors[quota.reason] || 'Quota exceeded';
+    auditLog(req, { action: 'rag.text', ok: false, details: { error: msg } });
+    return res.status(429).json({ error: msg });
+  }
   try {
     const { source, chunks } = await ingestText(text, { title, lang, type: 'txt' });
     const enriched = chunks.map((c) => ({ ...c, sourceId: source.id }));
     await upsertChunks(enriched, req.tenant);
+    addUsage(req.tenant.orgId, { ragMB: sizeMB });
     auditLog(req, { action: 'rag.text', ok: true, details: { id: source.id, chunks: enriched.length } });
     res.json({ ok: true, source, added: enriched.length });
   } catch (err) {

@@ -9,7 +9,7 @@ const { getAnswer } = require('../support/support');
 const { logger, withRequest } = require('../utils/logger');
 const metrics = require('../utils/metrics');
 const { tenantCtx, withTenantLogger } = require('../tenancy/tenantCtx');
-const { tenantRateLimiter } = require('../tenancy/quotas');
+const { tenantRateLimiter, checkQuotas } = require('../tenancy/quotas');
 const { initObservabilityHooks, renderPromMetrics } = require('../utils/observability');
 const { startAlertScheduler } = require('../alerts/engine');
 const adminRouter = require('./admin');
@@ -28,6 +28,13 @@ const { initRagIndex } = require('../rag/index');
 const { embed, initEmbedder } = require('../semantic/embedder');
 const dlp = require('../security/dlp');
 const adminSecurityRouter = require('./admin-security');
+
+const quotaErrors = {
+  quota_requests: 'Monthly request quota exceeded',
+  quota_tokens: 'Monthly OpenAI tokens quota exceeded',
+  quota_rag: 'RAG storage quota exceeded',
+  org_not_found: 'Organization not found'
+};
 
 const app = express();
 app.set('trust proxy', 1);
@@ -85,6 +92,10 @@ app.post('/ask', cors(), tenantCtx(), tenantRateLimiter(), async (req, res) => {
   req.log = withTenantLogger(req, req.log);
   const log = req.log;
   log.info({ question, lang }, 'incoming question');
+  const quota = checkQuotas({ type: 'request', cost: 1 }, req);
+  if (!quota.ok) {
+    return res.status(429).json({ error: quotaErrors[quota.reason] || 'Quota exceeded' });
+  }
   const scan = dlp.scanIn({ text: question || '', route: '/ask' });
   if (scan.blocked) {
     return res
@@ -103,6 +114,7 @@ app.post('/ask', cors(), tenantCtx(), tenantRateLimiter(), async (req, res) => {
     }
     const durationMs = Date.now() - req.start;
     metrics.recordRequest(durationMs, result.source, result.lang, req.tenant);
+    orgStore.addUsage(req.tenant.orgId, { requestsMonth: 1 });
     if (result.source === 'openai') {
       metrics.recordNoMatch(question);
       if (result.pendingId) {

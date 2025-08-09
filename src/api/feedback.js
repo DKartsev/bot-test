@@ -1,6 +1,15 @@
 const express = require('express');
 const { ingestLine } = require('../feedback/engine');
 const metrics = require('../utils/metrics');
+const { checkQuotas } = require('../tenancy/quotas');
+const { addUsage } = require('../tenancy/orgStore');
+
+const quotaErrors = {
+  quota_requests: 'Monthly request quota exceeded',
+  quota_tokens: 'Monthly OpenAI tokens quota exceeded',
+  quota_rag: 'RAG storage quota exceeded',
+  org_not_found: 'Organization not found'
+};
 
 const router = express.Router();
 
@@ -41,6 +50,10 @@ router.post('/', async (req, res) => {
   const normalizedTags = Array.isArray(tags)
     ? tags.map((t) => String(t).trim()).filter(Boolean)
     : undefined;
+  const quota = checkQuotas({ type: 'request', cost: 1 }, req);
+  if (!quota.ok) {
+    return res.status(429).json({ error: quotaErrors[quota.reason] || 'Quota exceeded' });
+  }
   const lineObj = {
     ts: new Date().toISOString(),
     responseId,
@@ -59,6 +72,7 @@ router.post('/', async (req, res) => {
   try {
     await ingestLine(lineObj);
     metrics.recordFeedback({ positive, negative, neutral, lang, source });
+    addUsage(req.tenant.orgId, { requestsMonth: 1 });
     res.json({ ok: true });
   } catch (err) {
     req.log.error({ err }, 'Failed to handle feedback');
