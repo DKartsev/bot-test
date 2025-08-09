@@ -3,7 +3,7 @@ const path = require('path');
 const { HierarchicalNSW } = require('hnswlib-node');
 const { embed, initEmbedder } = require('./embedder');
 const { logger } = require('../utils/logger');
-const store = require('../data/store');
+const { createStore } = require('../data/store');
 
 const INDEX_PATH = process.env.SEM_INDEX_PATH || path.join(__dirname, '..', '..', 'data', 'semantic');
 const INDEX_FILE = path.join(INDEX_PATH, 'index.bin');
@@ -25,12 +25,13 @@ function metaPath() {
   return META_FILE;
 }
 
-async function rebuildAll() {
+async function rebuildAll(basePath) {
   if (rebuilding) return status();
   rebuilding = true;
   try {
     await initEmbedder();
     ensureDir();
+    const store = createStore(basePath);
     const items = store.getApproved();
     if (items.length === 0) {
       index = null;
@@ -81,14 +82,14 @@ async function rebuildAll() {
   }
 }
 
-async function initSemantic(storeInst = store) {
+async function initSemantic(basePath) {
   ensureDir();
   if (
     process.env.SEM_REBUILD_ON_START === '1' ||
     !fs.existsSync(INDEX_FILE) ||
     !fs.existsSync(metaPath())
   ) {
-    await rebuildAll();
+    await rebuildAll(basePath);
   } else {
     try {
       const meta = JSON.parse(fs.readFileSync(metaPath(), 'utf8'));
@@ -100,19 +101,20 @@ async function initSemantic(storeInst = store) {
       logger.info({ size: meta.size, dim }, 'Semantic index loaded');
     } catch (err) {
       logger.error({ err }, 'Failed to load semantic index, rebuilding');
-      await rebuildAll();
+      await rebuildAll(basePath);
     }
   }
-  storeInst.onUpdated(() => scheduleRebuild());
+  const storeInst = createStore(basePath);
+  storeInst.onUpdated(() => scheduleRebuild(basePath));
   return status();
 }
 
-function scheduleRebuild() {
+function scheduleRebuild(basePath) {
   if (rebuildTimer) return;
   rebuildTimer = setTimeout(async () => {
     rebuildTimer = null;
     try {
-      await rebuildAll();
+      await rebuildAll(basePath);
     } catch (err) {
       logger.error({ err }, 'Scheduled semantic rebuild failed');
     }

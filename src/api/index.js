@@ -19,7 +19,8 @@ const webhooksRouter = require('./webhooks');
 const { initMatrix } = require('../integrations/matrix');
 const { ipAllowlistMiddleware, rateLimiter } = require('../utils/security');
 const { startScheduler } = require('../sync/engine');
-const store = require('../data/store');
+const { createStore } = require('../data/store');
+const store = createStore();
 const { initVersioning } = require('../versioning/engine');
 const { startFeedbackAggregator } = require('../feedback/engine');
 const { initSemantic } = require('../semantic/index');
@@ -187,7 +188,7 @@ startAlertScheduler(store, metrics);
 if (process.env.SEM_ENABLED === '1') {
   (async () => {
     try {
-      const info = await initSemantic(store);
+      const info = await initSemantic();
       logger.info(
         {
           provider: info.provider,

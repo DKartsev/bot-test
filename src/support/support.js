@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const { fuzzySearch } = require('../search/fuzzySearch');
 const { fallbackQuery } = require('../llm/fallback');
 const { logger } = require('../utils/logger');
-const store = require('../data/store');
+const { createStore } = require('../data/store');
 const metrics = require('../utils/metrics');
 const { detectLang } = require('../i18n/detect');
 const {
@@ -38,9 +38,7 @@ const RAG_MIN_SIM = Number(process.env.RAG_MIN_SIM || '0.62');
 
 async function getAnswer(question, opts = {}) {
   const { lang: explicitLang, vars, acceptLanguageHeader, tenant } = opts || {};
-  if (tenant && tenant.basePath) {
-    store.setBasePath(tenant.basePath);
-  }
+  const store = createStore(tenant?.basePath);
   const lang = detectLang({
     explicitLang,
     acceptLanguageHeader,
