@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import { Telegraf } from 'telegraf';
 import { createClient } from '@supabase/supabase-js';
+import { generateResponse } from '../../packages/support-gateway/src/services/ragService';
 
 const BOT_TOKEN = process.env.BOT_TOKEN!;
 const SUPABASE_URL = process.env.SUPABASE_URL!;
@@ -15,15 +16,26 @@ bot.on('text', async (ctx) => {
   const userId = ctx.from.id.toString();
   const text = ctx.message.text;
 
-  // сохраняем сообщение
+  const conversationId = await getOrCreateConversation(userId);
+
+  // сохраняем сообщение пользователя
   await supabase.from('messages').insert({
-    conversation_id: await getOrCreateConversation(userId),
+    conversation_id: conversationId,
     sender: 'user',
     content: text
   });
 
-  // заглушка (в будущем RAG)
-  await ctx.reply('Спасибо за сообщение! Скоро свяжется оператор или я отвечу сам 🙌');
+  // генерируем ответ через RAG-сервис
+  const reply = await generateResponse(text);
+
+  // сохраняем ответ ассистента
+  await supabase.from('messages').insert({
+    conversation_id: conversationId,
+    sender: 'assistant',
+    content: reply
+  });
+
+  await ctx.reply(reply);
 });
 
 // Telegram webhook
