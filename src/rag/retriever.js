@@ -4,7 +4,8 @@ function retrieve(query, opts = {}) {
   const topK = opts.topK || Number(process.env.RAG_TOPK || '6');
   const diversify = opts.diversify === undefined ? process.env.RAG_DIVERSIFY_BY_SOURCE === '1' : opts.diversify;
   const maxChars = Number(process.env.RAG_MAX_CONTEXT_CHARS || '9000');
-  return searchChunks(query, topK).then((items) => {
+  const tenant = opts.tenant;
+  return searchChunks(query, topK, tenant).then((items) => {
     if (diversify) {
       const perSource = {};
       const limited = [];

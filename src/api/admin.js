@@ -514,7 +514,7 @@ router.get('/feedback/item/:id', authMiddleware(['admin', 'editor']), (req, res)
 
 router.post('/semantic/rebuild', authMiddleware(['admin', 'editor']), async (req, res) => {
   try {
-    const summary = await rebuildSemantic();
+    const summary = await rebuildSemantic(req.tenant);
     auditLog(req, { action: 'sem.rebuild', ok: true, details: summary });
     res.json(summary);
   } catch (err) {
@@ -526,7 +526,7 @@ router.post('/semantic/rebuild', authMiddleware(['admin', 'editor']), async (req
 
 router.get('/semantic/status', authMiddleware(['admin', 'editor']), (req, res) => {
   try {
-    const st = semanticStatus();
+    const st = semanticStatus(req.tenant);
     auditLog(req, { action: 'sem.status', ok: true });
     res.json(st);
   } catch (err) {
@@ -548,7 +548,7 @@ router.post('/rag/upload', authMiddleware(['admin', 'editor']), upload.single('f
       mime: req.file.mimetype
     });
     const enriched = chunks.map((c) => ({ ...c, sourceId: source.id }));
-    await upsertChunks(enriched);
+    await upsertChunks(enriched, req.tenant);
     auditLog(req, { action: 'rag.upload', ok: true, details: { id: source.id, chunks: enriched.length } });
     liveBus.emit('rag.uploaded', { id: source.id, title: source.title, chunks: enriched.length });
     res.json({ ok: true, source, added: enriched.length });
@@ -568,7 +568,7 @@ router.post('/rag/text', authMiddleware(['admin', 'editor']), async (req, res) =
   try {
     const { source, chunks } = await ingestText(text, { title, lang, type: 'txt' });
     const enriched = chunks.map((c) => ({ ...c, sourceId: source.id }));
-    await upsertChunks(enriched);
+    await upsertChunks(enriched, req.tenant);
     auditLog(req, { action: 'rag.text', ok: true, details: { id: source.id, chunks: enriched.length } });
     res.json({ ok: true, source, added: enriched.length });
   } catch (err) {
@@ -580,7 +580,8 @@ router.post('/rag/text', authMiddleware(['admin', 'editor']), async (req, res) =
 
 router.get('/rag/sources', authMiddleware(['admin', 'editor']), (req, res) => {
   try {
-    const file = path.join(process.env.RAG_INDEX_PATH || path.join(__dirname, '..', '..', 'data', 'rag'), 'sources.json');
+    const base = process.env.RAG_INDEX_PATH || path.join(__dirname, '..', '..', 'data', 'tenants');
+    const file = path.join(base, req.tenant.orgId, req.tenant.projectId, 'rag', 'sources.json');
     const list = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : [];
     auditLog(req, { action: 'rag.sources', ok: true, details: { count: list.length } });
     res.json(list);
@@ -593,7 +594,7 @@ router.get('/rag/sources', authMiddleware(['admin', 'editor']), (req, res) => {
 
 router.delete('/rag/source/:id', authMiddleware(['admin', 'editor']), async (req, res) => {
   try {
-    await removeSource(req.params.id);
+    await removeSource(req.params.id, req.tenant);
     auditLog(req, { action: 'rag.delete', ok: true, details: { id: req.params.id } });
     res.json({ ok: true });
   } catch (err) {
@@ -605,7 +606,7 @@ router.delete('/rag/source/:id', authMiddleware(['admin', 'editor']), async (req
 
 router.post('/rag/reindex', authMiddleware(['admin', 'editor']), async (req, res) => {
   try {
-    const result = await rebuildRag();
+    const result = await rebuildRag(req.tenant);
     auditLog(req, { action: 'rag.reindex', ok: true, details: result });
     res.json(result);
   } catch (err) {
@@ -618,7 +619,7 @@ router.post('/rag/reindex', authMiddleware(['admin', 'editor']), async (req, res
 router.get('/rag/search', authMiddleware(['admin', 'editor']), async (req, res) => {
   const q = req.query.q || '';
   try {
-    const items = await searchChunks(q, Number(req.query.k));
+    const items = await searchChunks(q, Number(req.query.k), req.tenant);
     auditLog(req, { action: 'rag.search', ok: true, details: { q, count: items.length } });
     res.json(items);
   } catch (err) {
@@ -630,7 +631,7 @@ router.get('/rag/search', authMiddleware(['admin', 'editor']), async (req, res) 
 
 router.get('/rag/status', authMiddleware(['admin', 'editor']), (req, res) => {
   try {
-    const st = ragStatus();
+    const st = ragStatus(req.tenant);
     auditLog(req, { action: 'rag.status', ok: true });
     res.json(st);
   } catch (err) {

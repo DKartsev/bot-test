@@ -188,7 +188,7 @@ startAlertScheduler(store, metrics);
 if (process.env.SEM_ENABLED === '1') {
   (async () => {
     try {
-      const info = await initSemantic();
+      const info = await initSemantic({ tenantId: orgStore.TENANT_DEFAULT_ID, projectId: 'root' });
       logger.info(
         {
           provider: info.provider,
@@ -207,7 +207,7 @@ if (process.env.RAG_ENABLED === '1') {
   (async () => {
     try {
       await initEmbedder();
-      const info = await initRagIndex({ embed });
+      const info = await initRagIndex({ embed, tenantId: orgStore.TENANT_DEFAULT_ID, projectId: 'root' });
       logger.info({ size: info.size, dim: info.dim }, 'RAG index initialized');
     } catch (err) {
       logger.error({ err }, 'Failed to initialize RAG index');

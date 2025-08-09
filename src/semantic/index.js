@@ -5,40 +5,69 @@ const { embed, initEmbedder } = require('./embedder');
 const { logger } = require('../utils/logger');
 const { createStore } = require('../data/store');
 
-const INDEX_PATH = process.env.SEM_INDEX_PATH || path.join(__dirname, '..', '..', 'data', 'semantic');
-const INDEX_FILE = path.join(INDEX_PATH, 'index.bin');
-const META_FILE = path.join(INDEX_PATH, 'meta.json');
 const TOPK = Number(process.env.SEM_TOPK || '5');
+const DATA_BASE = process.env.SEM_INDEX_PATH || path.join(__dirname, '..', '..', 'data', 'tenants');
 
-let index = null;
-let idToIdx = new Map();
-let idxToId = [];
-let dim = 0;
-let rebuilding = false;
-let rebuildTimer = null;
-
-function ensureDir() {
-  fs.mkdirSync(INDEX_PATH, { recursive: true });
+function makeKey(tenant = {}) {
+  const t = tenant.orgId || tenant.tenantId || 'default';
+  const p = tenant.projectId || 'root';
+  return `${t}:${p}`;
 }
 
-function metaPath() {
-  return META_FILE;
+function resolvePaths(tenant = {}) {
+  const tenantId = tenant.orgId || tenant.tenantId || 'default';
+  const projectId = tenant.projectId || 'root';
+  const root = tenant.basePath || DATA_BASE;
+  const tenantBase = path.join(root, tenantId, projectId);
+  const dir = path.join(tenantBase, 'semantic');
+  return {
+    tenantBase,
+    dir,
+    indexFile: path.join(dir, 'index.bin'),
+    metaFile: path.join(dir, 'meta.json')
+  };
 }
 
-async function rebuildAll(basePath) {
-  if (rebuilding) return status();
-  rebuilding = true;
+const states = new Map();
+
+function getState(tenant = {}) {
+  const key = makeKey(tenant);
+  if (!states.has(key)) {
+    const paths = resolvePaths(tenant);
+    states.set(key, {
+      index: null,
+      idToIdx: new Map(),
+      idxToId: [],
+      dim: 0,
+      rebuilding: false,
+      rebuildTimer: null,
+      paths
+    });
+  }
+  const st = states.get(key);
+  if (!st.paths) st.paths = resolvePaths(tenant);
+  return st;
+}
+
+async function rebuildAll(tenant = {}) {
+  const st = getState(tenant);
+  if (st.rebuilding) return status(tenant);
+  st.rebuilding = true;
+  const { tenantBase, dir, indexFile, metaFile } = st.paths;
   try {
     await initEmbedder();
-    ensureDir();
-    const store = createStore(basePath);
+    fs.mkdirSync(dir, { recursive: true });
+    const store = createStore(tenantBase);
     const items = store.getApproved();
     if (items.length === 0) {
-      index = null;
-      idToIdx = new Map();
-      idxToId = [];
-      dim = 0;
-      fs.writeFileSync(metaPath(), JSON.stringify({ dim: 0, size: 0, updatedAt: new Date().toISOString(), version: 1, ids: [] }, null, 2));
+      st.index = null;
+      st.idToIdx = new Map();
+      st.idxToId = [];
+      st.dim = 0;
+      fs.writeFileSync(
+        metaFile,
+        JSON.stringify({ dim: 0, size: 0, updatedAt: new Date().toISOString(), version: 1, ids: [] }, null, 2)
+      );
       return { count: 0, dim: 0 };
     }
     const texts = items.map((item) => {
@@ -51,97 +80,103 @@ async function rebuildAll(basePath) {
       return arr.join('\n');
     });
     const vectors = await embed(texts);
-    dim = vectors[0].length;
-    index = new HierarchicalNSW('cosine', dim);
-    index.initIndex(vectors.length);
-    idxToId = [];
-    idToIdx = new Map();
+    st.dim = vectors[0].length;
+    st.index = new HierarchicalNSW('cosine', st.dim);
+    st.index.initIndex(vectors.length);
+    st.idxToId = [];
+    st.idToIdx = new Map();
     vectors.forEach((vec, i) => {
-      index.addPoint(vec, i);
+      st.index.addPoint(vec, i);
       const id = items[i].id;
-      idxToId[i] = id;
-      idToIdx.set(id, i);
+      st.idxToId[i] = id;
+      st.idToIdx.set(id, i);
     });
-    index.writeIndexSync(INDEX_FILE);
+    st.index.writeIndexSync(indexFile);
     const meta = {
-      dim,
+      dim: st.dim,
       size: vectors.length,
       updatedAt: new Date().toISOString(),
       version: 1,
       approvedCount: items.length,
-      ids: idxToId
+      ids: st.idxToId
     };
-    fs.writeFileSync(metaPath(), JSON.stringify(meta, null, 2));
-    logger.info({ size: vectors.length, dim }, 'Semantic index rebuilt');
-    return { count: vectors.length, dim };
+    fs.writeFileSync(metaFile, JSON.stringify(meta, null, 2));
+    logger.info({ size: vectors.length, dim: st.dim }, 'Semantic index rebuilt');
+    return { count: vectors.length, dim: st.dim };
   } catch (err) {
     logger.error({ err }, 'Semantic rebuild failed');
     throw err;
   } finally {
-    rebuilding = false;
+    st.rebuilding = false;
   }
 }
 
-async function initSemantic(basePath) {
-  ensureDir();
+async function initSemantic(tenant = {}) {
+  const st = getState(tenant);
+  const { tenantBase, dir, indexFile, metaFile } = st.paths;
+  fs.mkdirSync(dir, { recursive: true });
   if (
     process.env.SEM_REBUILD_ON_START === '1' ||
-    !fs.existsSync(INDEX_FILE) ||
-    !fs.existsSync(metaPath())
+    !fs.existsSync(indexFile) ||
+    !fs.existsSync(metaFile)
   ) {
-    await rebuildAll(basePath);
+    await rebuildAll(tenant);
   } else {
     try {
-      const meta = JSON.parse(fs.readFileSync(metaPath(), 'utf8'));
-      idxToId = meta.ids || [];
-      idToIdx = new Map(idxToId.map((id, i) => [id, i]));
-      dim = meta.dim;
-      index = new HierarchicalNSW('cosine', dim);
-      index.readIndexSync(INDEX_FILE, meta.size);
-      logger.info({ size: meta.size, dim }, 'Semantic index loaded');
+      const meta = JSON.parse(fs.readFileSync(metaFile, 'utf8'));
+      st.idxToId = meta.ids || [];
+      st.idToIdx = new Map(st.idxToId.map((id, i) => [id, i]));
+      st.dim = meta.dim;
+      st.index = new HierarchicalNSW('cosine', st.dim);
+      st.index.readIndexSync(indexFile, meta.size);
+      logger.info({ size: meta.size, dim: st.dim }, 'Semantic index loaded');
     } catch (err) {
       logger.error({ err }, 'Failed to load semantic index, rebuilding');
-      await rebuildAll(basePath);
+      await rebuildAll(tenant);
     }
   }
-  const storeInst = createStore(basePath);
-  storeInst.onUpdated(() => scheduleRebuild(basePath));
-  return status();
+  const storeInst = createStore(tenantBase);
+  storeInst.onUpdated(() => scheduleRebuild(tenant));
+  return status(tenant);
 }
 
-function scheduleRebuild(basePath) {
-  if (rebuildTimer) return;
-  rebuildTimer = setTimeout(async () => {
-    rebuildTimer = null;
+function scheduleRebuild(tenant = {}) {
+  const st = getState(tenant);
+  if (st.rebuildTimer) return;
+  st.rebuildTimer = setTimeout(async () => {
+    st.rebuildTimer = null;
     try {
-      await rebuildAll(basePath);
+      await rebuildAll(tenant);
     } catch (err) {
       logger.error({ err }, 'Scheduled semantic rebuild failed');
     }
   }, 1000);
 }
 
-async function searchSemantic(query, k = TOPK) {
-  if (!index || idxToId.length === 0) return [];
+async function searchSemantic(query, k = TOPK, tenant = {}) {
+  const st = getState(tenant);
+  if (!st.index || st.idxToId.length === 0) return [];
   const [vec] = await embed([query]);
   if (!vec) return [];
-  const result = index.searchKnn(vec, Math.min(k, idxToId.length));
+  const result = st.index.searchKnn(vec, Math.min(k, st.idxToId.length));
   const neighbors = result.neighbors || result[0] || [];
   const distances = result.distances || result[1] || [];
   const out = [];
   for (let i = 0; i < neighbors.length; i++) {
-    const id = idxToId[neighbors[i]];
+    const id = st.idxToId[neighbors[i]];
     const sim = 1 - distances[i];
     out.push({ id, sim });
   }
   return out;
 }
 
-function status() {
+function status(tenant = {}) {
+  const st = getState(tenant);
+  const { metaFile } = st.paths;
   let updatedAt = null;
   try {
-    if (fs.existsSync(metaPath())) {
-      updatedAt = JSON.parse(fs.readFileSync(metaPath(), 'utf8')).updatedAt;
+    if (fs.existsSync(metaFile)) {
+      updatedAt = JSON.parse(fs.readFileSync(metaFile, 'utf8')).updatedAt;
     }
   } catch (err) {
     logger.error({ err }, 'Failed to read semantic meta');
@@ -149,8 +184,8 @@ function status() {
   return {
     enabled: process.env.SEM_ENABLED === '1',
     provider: process.env.SEM_PROVIDER || 'local_xenova',
-    size: idxToId.length,
-    dim,
+    size: st.idxToId.length,
+    dim: st.dim,
     updatedAt
   };
 }

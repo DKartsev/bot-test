@@ -121,7 +121,7 @@ async function getAnswer(question, opts = {}) {
     }
 
     if (SEM_ENABLED) {
-      const semTop = await searchSemantic(question, TOPK);
+      const semTop = await searchSemantic(question, TOPK, tenant);
       const ranked = hybridRank({ query: question, fuzzyResults: fuzzyTop, semResults: semTop });
       const candidate = ranked[0];
       if (candidate) {
@@ -223,7 +223,7 @@ async function getAnswer(question, opts = {}) {
     let retrieval = null;
     if (RAG_ENABLED) {
       try {
-        retrieval = await retrieve(question);
+        retrieval = await retrieve(question, { tenant });
         const topSim = retrieval.items[0]?.sim || 0;
         if (retrieval.contextText && topSim >= RAG_MIN_SIM) {
           const ragAns = await answerWithRag({
