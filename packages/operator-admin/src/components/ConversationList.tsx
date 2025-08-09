@@ -18,6 +18,7 @@ interface ConversationListProps {
   handoff?: string;
   search?: string;
   onLoadMore?: () => void;
+  stream?: EventSource | null;
 }
 
 export default function ConversationList({
@@ -25,6 +26,7 @@ export default function ConversationList({
   handoff,
   search,
   onLoadMore,
+  stream,
 }: ConversationListProps) {
   const [items, setItems] = useState<Conversation[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -75,6 +77,39 @@ export default function ConversationList({
       load();
     }
   };
+
+  useEffect(() => {
+    if (!stream) return;
+    const refresh = () => load(true);
+    let poller: ReturnType<typeof setInterval> | null = null;
+    const onError = () => {
+      if (stream.readyState === EventSource.CLOSED && !poller) {
+        poller = setInterval(() => load(true), 60000);
+      }
+    };
+    const stopPoll = () => {
+      if (poller) {
+        clearInterval(poller);
+        poller = null;
+      }
+    };
+
+    stream.addEventListener('user_msg', refresh);
+    stream.addEventListener('handoff', refresh);
+    stream.addEventListener('op_reply', refresh);
+    stream.addEventListener('open', stopPoll);
+    stream.addEventListener('error', onError);
+
+    return () => {
+      stream.removeEventListener('user_msg', refresh);
+      stream.removeEventListener('handoff', refresh);
+      stream.removeEventListener('op_reply', refresh);
+      stream.removeEventListener('open', stopPoll);
+      stream.removeEventListener('error', onError);
+      stopPoll();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream, status, handoff, search]);
 
   return (
     <div>
