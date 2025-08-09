@@ -8,6 +8,7 @@
     "test": "echo \"No tests yet\""
   },
   "dependencies": {
+    "@fastify/multipart": "^9.0.3",
     "@supabase/supabase-js": "^2.39.1",
     "bullmq": "^5.12.1",
     "dotenv": "^16.4.5",

@@ -127,6 +127,80 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
     reply.send(message);
   });
 
+  server.post('/conversations/:id/attachments', async (request, reply) => {
+    const paramsSchema = z.object({ id: z.string() });
+    const { id } = paramsSchema.parse(request.params);
+
+    const file = await (request as any).file();
+    if (!file) {
+      reply.code(400).send({ error: 'file_required' });
+      return;
+    }
+
+    const buffer = await file.toBuffer();
+    const mime = file.mimetype;
+    let method: 'sendPhoto' | 'sendVideo' | 'sendDocument';
+    let mediaType: 'photo' | 'video' | 'document';
+    if (mime.startsWith('image/')) {
+      method = 'sendPhoto';
+      mediaType = 'photo';
+    } else if (mime.startsWith('video/')) {
+      method = 'sendVideo';
+      mediaType = 'video';
+    } else {
+      method = 'sendDocument';
+      mediaType = 'document';
+    }
+
+    const { data: conv, error: convErr } = await supabase
+      .from('conversations')
+      .select('user_telegram_id')
+      .eq('id', id)
+      .single();
+
+    if (convErr || !conv) {
+      reply.code(404).send({ error: 'conversation_not_found' });
+      return;
+    }
+
+    let tgMessage: any;
+    try {
+      tgMessage = await (bot.telegram as any)[method](conv.user_telegram_id, {
+        source: buffer,
+        filename: file.filename,
+      });
+    } catch (err) {
+      reply.code(500).send({ error: 'telegram_error' });
+      return;
+    }
+
+    const { data: message, error: msgErr } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: id,
+        sender: 'operator',
+        media_urls: [`tg://${tgMessage.message_id}`],
+        media_types: [mediaType],
+        content: null,
+      })
+      .select(
+        'id, sender, content, media_urls, media_types, transcript, vision_summary, created_at'
+      )
+      .single();
+
+    if (msgErr || !message) {
+      reply.code(500).send({ error: msgErr?.message });
+      return;
+    }
+
+    liveBus.emit('operator_reply', {
+      conversation_id: Number(id),
+      message_id: message.id,
+    });
+
+    reply.send(message);
+  });
+
   server.get('/conversations/:id', async (request, reply) => {
     const paramsSchema = z.object({ id: z.string() });
     const { id } = paramsSchema.parse(request.params);

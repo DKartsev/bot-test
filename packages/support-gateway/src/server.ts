@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import { config } from 'dotenv';
 import { z } from 'zod';
+import multipart from '@fastify/multipart';
 import logger from './utils/logger';
 import bot from './bot';
 import { generateResponse } from './services/ragService';
@@ -19,6 +20,7 @@ const envSchema = z.object({
 async function buildServer() {
   const server = Fastify({ logger: logger as any });
 
+  await server.register(multipart);
   await server.register(verifyOperatorAuth);
   await server.register(adminRoutes, { prefix: '/admin' });
   await server.register(adminNotesRoutes, { prefix: '/admin' });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@shadcn/ui/button';
 import { Input } from '@shadcn/ui/input';
 import { api } from '../lib/api';
@@ -13,6 +13,8 @@ interface MessageInputProps {
 export default function MessageInput({ conversationId }: MessageInputProps) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [toast, setToast] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = async () => {
     if (!text.trim() || sending) return;
@@ -42,9 +44,43 @@ export default function MessageInput({ conversationId }: MessageInputProps) {
     }
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || sending) return;
+    setSending(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await api(`/admin/conversations/${conversationId}/attachments`, {
+        method: 'POST',
+        body: form,
+      });
+      if (!res.ok) throw new Error('Network error');
+      const data = await res.json();
+      const message = data?.data || data;
+      window.dispatchEvent(new CustomEvent('op_reply', { detail: message }));
+      setToast('Отправлено');
+      setTimeout(() => setToast(''), 2000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSending(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
-    <div className="flex space-x-2">
+    <div className="flex space-x-2 items-center">
       <SavedRepliesDrawer onInsert={(t) => setText((prev) => prev + t)} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={sending}>
+        📎
+      </Button>
       <Input
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -55,6 +91,7 @@ export default function MessageInput({ conversationId }: MessageInputProps) {
       <Button onClick={handleSend} disabled={sending}>
         Отправить
       </Button>
+      {toast && <span className="text-sm text-green-600">{toast}</span>}
     </div>
   );
 }
