@@ -1,10 +1,5 @@
-import ChatList from './components/ChatList';
+import { redirect } from 'next/navigation';
 
 export default function HomePage() {
-  return (
-    <main className="p-4">
-      <h1 className="text-2xl font-bold mb-4">💬 Чаты поддержки</h1>
-      <ChatList />
-    </main>
-  );
+  redirect('/conversations');
 }
