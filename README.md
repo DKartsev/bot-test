@@ -1,168 +1,190 @@
 # Backend + Admin Monorepo
 
-TypeScript **backend** (Node/Express) and **admin** app (Next.js) in a single repository.
-Docker uses a **multi‑stage** pipeline that caches dependencies for backend and admin **separately**
-and ships a **slim runtime** with only production code and dependencies.
+TypeScript **backend** (Node/Express, ESM) and **admin** (Next.js) in one repo.
+Docker uses a **multi-stage** pipeline with separate dependency caches and a **slim runtime**.
+This branch also implements the audit recommendations: unified ESM, strict TypeScript, security
+hardening, validation, unified error handling, async IO, and comprehensive tests.
 
 ## Highlights
-- ✅ Separate dependency caches for **backend** and **admin** → faster Docker builds
-- ✅ Explicit TypeScript build via `tsconfig.build.json` (no TS at runtime)
-- ✅ Next.js **static export** for admin → served as `/admin` by backend or any static host
-- ✅ Slim runtime image: prod deps only, small attack surface
-- ✅ Clean images thanks to `.dockerignore` (excludes `dist`, `admin-out`, and other artifacts)
+- **ESM everywhere**: `"type": "module"`, TS `module=ESNext`, `moduleResolution=NodeNext`.
+- **Strict TypeScript**: high type coverage, no `any` in critical code paths.
+- **Security**: dotenv-safe, Helmet, CORS allowlist, rate limiting, AES-256-GCM encryption,
+  parameterized SQL (no string-built queries), secret scanning.
+- **Validation**: Zod schemas + middleware.
+- **Errors**: single `AppError` + centralized `errorHandler` middleware.
+- **Async FS**: `fs/promises` only in request code paths.
+- **Tests**: Vitest + coverage gates; Supertest for HTTP.
+- **Admin**: Next build + static export to `admin/admin-out`.
 
-## Repo Structure
+## Structure
+```
 
-├─ backend/                # Node/Express TypeScript backend
-│  ├─ src/
-│  ├─ dist/                # build output (generated)
-│  ├─ package.json
-│  └─ tsconfig.build.json
-├─ admin/                  # Next.js admin UI
-│  ├─ pages/ | app/
-│  ├─ public/
-│  ├─ admin-out/           # static export output (generated)
-│  ├─ next.config.js
-│  └─ package.json
-├─ Dockerfile              # multi-stage build
-├─ .dockerignore
-├─ .nvmrc
-└─ README.md
+. ├─ backend/ │  ├─ src/ │  │  ├─ middleware/ │  │  ├─ validation/ │  │  ├─ errors/ │  │  └─ crypto/ │  ├─ dist/                   # build output (generated) │  ├─ package.json │  ├─ tsconfig.json │  └─ tsconfig.build.json ├─ admin/ │  ├─ pages/ | app/ │  ├─ public/ │  ├─ admin-out/              # static export (generated) │  ├─ next.config.js │  └─ package.json ├─ Dockerfile ├─ .dockerignore ├─ .nvmrc ├─ .npmrc ├─ MIGRATION\_GUIDE.md ├─ SECURITY.md └─ README.md
 
-## Requirements
-- Node **20** (see `.nvmrc`)
-- npm **>=10 <12**
+````
 
-Optional but recommended:
-- Docker 24+
-- GitHub Actions (or any CI) with Node 20
+## Getting Started
+- **Node**: 20 (see `.nvmrc`), **npm**: >=10 <12.
+- Copy `.env.example` → `.env` and fill all variables.
+- Install deps per package: `npm --prefix backend ci && npm --prefix admin ci`.
+- Build:
+```bash
+npm run build:backend
+npm run build:admin && npm run export:admin
+````
 
-## Scripts (root)
-```json
-{
-  "scripts": {
-    "build": "npm run build:backend && npm run build:admin",
-    "build:backend": "npm --prefix backend run build",
-    "build:admin": "npm --prefix admin run build",
-    "export:admin": "npm --prefix admin run export",
-    "build:docker": "npm run build && npm run export:admin"
-  }
-}
-Backend (TypeScript)
+- Run (dev): use your preferred dev scripts (e.g. `tsx`/`nodemon` in backend, `next dev` in admin).
+- Run (Docker):
 
-backend/package.json:
-{
-  "scripts": {
-    "clean": "rimraf dist",
-    "build": "npm run clean && tsc -p tsconfig.build.json",
-    "start": "node dist/server.js"
-  },
-  "devDependencies": { "typescript": "5.9.2" }
-}
-backend/tsconfig.build.json:
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "sourceMap": false,
-    "declaration": false,
-    "noEmit": false
-  },
-  "include": ["src/**/*"]
-}
-Admin (Next.js static export)
-
-admin/package.json:
-{
-  "scripts": {
-    "clean": "rimraf .next admin-out",
-    "build": "npm run clean && next build",
-    "export": "next export -o admin-out"
-  }
-}
-admin/next.config.js:
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  output: 'export',
-  images: { unoptimized: true }
-};
-module.exports = nextConfig;
-Docker
-
-Multi-stage Dockerfile with separate dep caches and a slim runtime.
-
-Build locally:
+```bash
 docker build --file Dockerfile --target runtime -t app:latest .
-Run:
-docker run --rm -p 3000:3000 \
-  -e NODE_ENV=production \
-  -e ADMIN_STATIC_DIR=/app/admin/admin-out \
-  app:latest
-Backend listens on :3000. Admin static export will be available under /admin if backend is configured to serve it.
+docker run --rm -p 3000:3000 -e NODE_ENV=production -e ADMIN_STATIC_DIR=/app/admin/admin-out app:latest
+```
 
-Serving the admin bundle from backend
+## Security
 
-In your backend server (Express):
-import express from 'express';
-import path from 'path';
+- Do not commit secrets. `dotenv-safe` enforces presence and schema of required env vars.
+- Use HTTPS in production; enable Helmet and sane CORS.
+- Use parameterized DB queries or a vetted ORM.
+- Encrypt sensitive values at rest with AES-256-GCM; rotate keys.
+- Run `gitleaks` (secret scan) and `npm audit` in CI.
 
-const app = express();
-const adminDir = process.env.ADMIN_STATIC_DIR || path.join(__dirname, '../admin-out');
-app.use('/admin', express.static(adminDir, { fallthrough: true }));
+## Validation
 
-// ...other routes
-app.listen(3000, () => console.log('Server running on :3000'));
-CI Recommendations
+Define Zod schemas in `backend/src/validation` and apply via `validate()` middleware. Return 400 with `VALIDATION_ERROR` on invalid input.
 
-Use Node 20 in CI to avoid lockfile drift
+## Error Handling
 
-Cache Docker layers if available
+Throw `new AppError(code, message, status)` for expected failures. The global `errorHandler` formats API errors and hides stack traces in production.
 
-GitHub Actions snippet:
-- uses: actions/setup-node@v4
-  with:
-    node-version: '20'
-    cache: 'npm'
+## Tests
 
-- name: Build Docker image
-  run: |
-    docker build --file Dockerfile --target runtime -t app:latest .
-Lockfile Sync (fixing npm ci errors)
+Use Vitest. Coverage gates are defined in `vitest.config.ts`. Example:
 
-If you hit npm ci errors like “Missing: typescript@5.9.2 from lock file”:
+```bash
+npm --prefix backend run test -- --run
+```
+
+## Lockfile Sync
+
+```bash
 rm -rf backend/node_modules backend/package-lock.json
 rm -rf admin/node_modules admin/package-lock.json
-npm --prefix backend install --package-lock-only
-npm --prefix admin   install --package-lock-only
-npm --prefix backend ci
-npm --prefix admin   ci
+npm --prefix backend install --package-lock-only && npm --prefix backend ci
+npm --prefix admin install --package-lock-only && npm --prefix admin ci
+```
+
 Commit refreshed lockfiles.
 
-.dockerignore (recommended)
-node_modules
-**/node_modules
-npm-debug.log*
-.DS_Store
-.env
-.env.*
+## Admin Static Export
 
-# build caches and artifacts
-dist
-admin-out
-.next
-.turbo
-.cache
-coverage
-build
-Troubleshooting
+```bash
+npm --prefix admin run build && npm --prefix admin run export
+```
 
-npm ci fails in Docker → lockfile mismatch. Regenerate per package as above.
+Serve from backend at `/admin` (see `ADMIN_STATIC_DIR`).
 
-Admin images missing after export → ensure images.unoptimized: true in next.config.js when using static export.
+## Conventions
 
-Runtime container larger than expected → verify runtime stage installs with --omit=dev and only copies built artifacts.
+- Conventional Commits recommended.
+- Lint/format before PR.
 
-License
+````
 
-MIT (or your preferred license)
+---
+
+## 3) `MIGRATION_GUIDE.md`
+```markdown
+# Migration Guide (Audit → Hardened Architecture)
+
+## Phase 0 — Safety
+- Create a fresh branch, enable CI checks, and back up current env values.
+
+## Phase 1 — Module System (ESM)
+- Set `"type": "module"` in `backend/package.json` and `admin/package.json`.
+- TS: `module=ESNext`, `moduleResolution=NodeNext`. Fix imports/exports.
+
+## Phase 2 — Strict TypeScript
+- Enable `strict`, `noImplicitAny`, `exactOptionalPropertyTypes`.
+- Convert critical JS files to TS first (auth, persistence, payment flows).
+- Target type-coverage ≥ 90%.
+
+## Phase 3 — Security Hardening
+- Add `dotenv-safe`, Helmet, CORS allowlist, rate limiting, body size limits.
+- Parameterize SQL; replace string-built queries. Add tests to prevent regressions.
+- Introduce AES-256-GCM encryption utility for at-rest secrets.
+
+## Phase 4 — Validation & Errors
+- Add Zod schemas for requests/responses.
+- Add `validate()` middleware and central `errorHandler` + `AppError`.
+
+## Phase 5 — Async IO
+- Replace `fs.*Sync` with `fs/promises` in request paths.
+
+## Phase 6 — Tests & Coverage
+- Add Vitest + Supertest; coverage gates (≥85% statements/lines, ≥80% branches).
+- Create unit & integration suites for critical paths.
+
+## Phase 7 — Deduplicate Code
+- Run `jscpd`; move shared logic into `backend/src/shared` (or a shared package).
+
+## Phase 8 — Docker & CI
+- Keep multi-stage Docker with separate dep caches; slim runtime.
+- CI: Node 20, `npm ci`, tests, audit, gitleaks.
+
+## Phase 9 — Rollout
+- Staging deploy; run smoke tests; rotate keys; then production deploy.
+````
+
+---
+
+## 4) `SECURITY.md`
+
+```markdown
+# Security Policy
+
+## Secrets & Config
+- Use `.env` with `dotenv-safe`; never commit secrets.
+- Keep `ENCRYPTION_KEY_BASE64` as a 32-byte key (base64). Rotate quarterly.
+
+## Transport & Headers
+- HTTPS-only in production. Enable Helmet. Configure CORS allowlist.
+- Limit request size and rate.
+
+## Storage & SQL
+- Encrypt sensitive fields at rest (AES-256-GCM).
+- Use parameterized queries / ORM; forbid string-concatenated SQL.
+
+## Scanning & Updates
+- Run `gitleaks` and `npm audit` (or OSV) in CI.
+- Patch high/critical vulnerabilities promptly.
+
+## Incident Response
+- Revoke/rotate keys on leak.
+- Keep audit logs for auth and data access events.
+```
+
+---
+
+## 5) `.env.example`
+
+```dotenv
+# Runtime
+NODE_ENV=development
+PORT=3000
+CORS_ORIGIN=http://localhost:3000
+
+# Admin static export mount
+ADMIN_STATIC_DIR=/app/admin/admin-out
+
+# Encryption (32-byte base64 key)
+ENCRYPTION_KEY_BASE64=
+
+# Database
+DATABASE_URL=
+
+# External services (examples)
+API_KEY_THIRD_PARTY=
+TELEGRAM_BOT_TOKEN=
+```
+
