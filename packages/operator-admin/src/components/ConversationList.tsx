@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@shadcn/ui/button';
 import CategoryBadge from './CategoryBadge';
+import { api } from '../lib/api';
 
 interface Conversation {
   id: string;
@@ -61,7 +62,9 @@ export default function ConversationList({
   const load = async (initial = false) => {
     setLoading(true);
     try {
-      const res = await fetch(`/admin/conversations?${buildQuery(initial ? undefined : cursor || undefined)}`);
+      const res = await api(
+        `/admin/conversations?${buildQuery(initial ? undefined : cursor || undefined)}`
+      );
       if (!res.ok) throw new Error('Network error');
       const data = await res.json();
       const list: Conversation[] = Array.isArray(data)
