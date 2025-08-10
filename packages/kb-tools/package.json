@@ -1,6 +1,8 @@
 {
   "name": "kb-tools",
-  // ...
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
   "scripts": {
     "index:kb": "ts-node scripts/index-all.ts"
   },
