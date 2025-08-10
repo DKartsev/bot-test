@@ -1,12 +1,21 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const { createStore } = require('../data/store');
-const store = createStore();
+let store;
 const { logger } = require('../utils/logger');
 
-const logPath = path.join(__dirname, '..', '..', 'logs', 'feedback.jsonl');
-const metricsPath = path.join(__dirname, '..', '..', 'feedback', 'metrics.json');
+function getStore() {
+  if (!store) {
+    const { createStore } = require('../data/store');
+    store = createStore();
+  }
+  return store;
+}
+
+const logPath = process.env.FEEDBACK_LOG_PATH ||
+  path.join(__dirname, '..', '..', 'logs', 'feedback.jsonl');
+const metricsPath = process.env.FEEDBACK_METRICS_PATH ||
+  path.join(__dirname, '..', '..', 'feedback', 'metrics.json');
 
 function wilsonLowerBound(pos, total, z = 1.96) {
   if (!total) return 0;
@@ -18,13 +27,62 @@ function wilsonLowerBound(pos, total, z = 1.96) {
   return numer / denom;
 }
 
+async function classifySentiment(text = '') {
+  const content = String(text || '').toLowerCase();
+  if (!content.trim()) {
+    return { positive: false, negative: false, neutral: true };
+  }
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (apiKey) {
+    try {
+      const OpenAI = require('openai');
+      const client = new OpenAI({ apiKey });
+      const completion = await client.chat.completions.create({
+        model: process.env.SENTIMENT_OPENAI_MODEL || 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Classify the sentiment of the following text as positive, negative or neutral. Reply with one word.'
+          },
+          { role: 'user', content }
+        ],
+        max_tokens: 1,
+        temperature: 0
+      });
+      const resp = completion.choices[0]?.message?.content?.toLowerCase() || '';
+      return {
+        positive: resp.includes('positive'),
+        negative: resp.includes('negative'),
+        neutral: resp.includes('neutral') || (!resp.includes('positive') && !resp.includes('negative'))
+      };
+    } catch (err) {
+      logger.warn({ err }, 'OpenAI sentiment classification failed');
+    }
+  }
+  const positives = ['good', 'great', 'excellent', 'love', 'awesome', 'fantastic', 'amazing', 'like'];
+  const negatives = ['bad', 'terrible', 'awful', 'hate', 'horrible', 'poor', 'dislike', 'worst'];
+  let score = 0;
+  for (const w of positives) if (content.includes(w)) score += 1;
+  for (const w of negatives) if (content.includes(w)) score -= 1;
+  if (score > 0) return { positive: true, negative: false, neutral: false };
+  if (score < 0) return { positive: false, negative: true, neutral: false };
+  return { positive: false, negative: false, neutral: true };
+}
+
 async function ingestLine(obj) {
+  const sentiment = await classifySentiment(obj.comment || obj.text || '');
+  obj.positive = sentiment.positive;
+  obj.negative = sentiment.negative;
+  obj.neutral = sentiment.neutral;
   await fs.promises.mkdir(path.dirname(logPath), { recursive: true });
   await fs.promises.appendFile(logPath, JSON.stringify(obj) + '\n');
+  return obj;
 }
 
 async function recomputeAll() {
   const items = {};
+  const totals = { total: 0, pos: 0, neg: 0, neu: 0 };
   await fs.promises.mkdir(path.dirname(metricsPath), { recursive: true });
   if (fs.existsSync(logPath)) {
     const rl = readline.createInterface({
@@ -48,9 +106,19 @@ async function recomputeAll() {
             lastTs: null
           };
         rec.total += 1;
-        if (obj.positive) rec.pos += 1;
-        if (obj.negative) rec.neg += 1;
-        if (obj.neutral) rec.neu += 1;
+        totals.total += 1;
+        if (obj.positive) {
+          rec.pos += 1;
+          totals.pos += 1;
+        }
+        if (obj.negative) {
+          rec.neg += 1;
+          totals.neg += 1;
+        }
+        if (obj.neutral) {
+          rec.neu += 1;
+          totals.neu += 1;
+        }
         if (obj.source) {
           rec.bySource[obj.source] = (rec.bySource[obj.source] || 0) + 1;
         }
@@ -68,7 +136,7 @@ async function recomputeAll() {
     rec.posRatio = rec.pos / Math.max(1, rec.total);
     rec.wilson = wilsonLowerBound(rec.pos, rec.total);
   }
-  const snapshot = { items, updatedAt: new Date().toISOString() };
+  const snapshot = { items, totals, updatedAt: new Date().toISOString() };
   const tmp = metricsPath + '.tmp';
   await fs.promises.writeFile(tmp, JSON.stringify(snapshot, null, 2));
   await fs.promises.rename(tmp, metricsPath);
@@ -92,7 +160,7 @@ function suggestActions() {
   const promoteRatio = parseFloat(process.env.FEEDBACK_PROMOTE_RATIO || '0.8');
   const flagMin = parseInt(process.env.FEEDBACK_FLAG_MIN || '5', 10);
   const flagRatio = parseFloat(process.env.FEEDBACK_FLAG_RATIO || '0.3');
-  const all = store.getAll();
+  const all = getStore().getAll();
   for (const item of all) {
     const stats = snapshot.items[item.id];
     if (!stats) continue;
@@ -160,6 +228,7 @@ function startFeedbackAggregator(storeInstance) {
 }
 
 module.exports = {
+  classifySentiment,
   ingestLine,
   recomputeAll,
   getSnapshot,
