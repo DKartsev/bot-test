@@ -2,10 +2,11 @@
   "name": "admin",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "clean": "rimraf .next admin-out",
+    "clean": "rimraf .next admin-out out",
     "build": "npm run clean && next build",
-    "export": "cp -r out admin-out"
+    "export": "npm run build && mv out admin-out"
   },
   "dependencies": {
     "next": "14.2.3",
