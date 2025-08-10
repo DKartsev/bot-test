@@ -1,19 +1,12 @@
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { greet } from '@app/shared';
+import 'dotenv-safe/config.js';
+import { createApp } from './app.js';
+import { loadEnv } from './config/env.js';
+import { PgUserRepo } from './modules/users/infra/PgUserRepo.js';
+import { Pool } from 'pg';
 
-const app = express();
-const port = process.env.PORT || 3000;
+const env = loadEnv();
+const pool = new Pool({ connectionString: env.DATABASE_URL });
+const app = createApp({ userRepo: new PgUserRepo(pool) });
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const adminDir = process.env.ADMIN_STATIC_DIR || path.join(__dirname, '../admin-out');
-app.use('/admin', express.static(adminDir, { fallthrough: true }));
-
-app.get('/health', (_req, res) => {
-  res.send('ok');
-});
-
-app.listen(port, () => {
-  console.log(greet(`Server running on ${port}`));
-});
+const port = env.PORT ?? 3000;
+app.listen(port, () => console.log(`API on :${port}`));
