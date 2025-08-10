@@ -1,3 +1,113 @@
+```markdown
+# Backend + Admin Monorepo
+
+TypeScript **backend** (Node/Express, ESM), **admin** (Next.js), and reusable **@app/shared** package.
+Docker uses a **multi-stage** pipeline with separate dependency caches and a **slim runtime**.
+This branch implements: unified ESM, strict TypeScript, shared package, security,
+validation, unified error handling, async IO, tests, CI, and Docker.
+
+## Highlights
+- **Workspaces**: `packages/{shared,backend,admin}` with engine gates.
+- **@app/shared**: distributable ESM lib with explicit exports and types.
+- **ESM everywhere**: `"type": "module"`, TS `module=ESNext`, `moduleResolution=NodeNext`.
+- **Strict TypeScript**: project refs; path aliases for `@app/shared` in TS (rewritten via `tsc-alias`).
+- **Admin**: Next builds and **transpiles** `@app/shared`; static export to `admin/admin-out`.
+- **Security**: dotenv-safe, Helmet, CORS, rate limit, AES-256-GCM; SQL safety.
+- **Tests**: Vitest + coverage gates; Supertest for HTTP; shared unit tests.
+
+## Structure
+```
+
+.
+├─ packages/
+│  ├─ shared/               # @app/shared (ESM lib)
+│  │  ├─ src/
+│  │  │  └─ greet/
+│  │  ├─ dist/              # build output (generated)
+│  │  └─ package.json
+│  ├─ backend/              # Node/Express API (TS, ESM)
+│  │  ├─ src/
+│  │  ├─ dist/              # build output (generated)
+│  │  └─ package.json
+│  └─ admin/                # Next.js admin UI
+│     ├─ app/ | pages/
+│     ├─ public/
+│     ├─ admin-out/         # static export (generated)
+│     ├─ next.config.js
+│     └─ package.json
+├─ tsconfig.base.json
+├─ Dockerfile
+├─ .dockerignore
+├─ .nvmrc
+├─ .npmrc
+└─ README.md
+
+````
+
+## TypeScript & Paths
+The repo uses project references and a base config. For author-time DX, TS resolves `@app/shared` to source via
+`tsconfig.base.json` paths, and **tsc-alias** rewrites paths at build time to runtime-safe imports.
+
+## @app/shared
+- Public API is re-exported from `src/index.ts` (e.g., a `greet` utility).
+- Build once and consume from backend/admin:
+```bash
+npm run build -w packages/shared
+````
+
+```ts
+import { greet } from '@app/shared';
+```
+
+## Admin (Next.js)
+
+`packages/admin/next.config.js` includes:
+
+```js
+module.exports = {
+  output: 'export',
+  basePath: '/admin', // adjust if served at root
+  images: { unoptimized: true },
+  experimental: { externalDir: true },
+  transpilePackages: ['@app/shared']
+};
+```
+
+Run:
+
+```bash
+npm run build -w packages/admin && npm run export -w packages/admin
+```
+
+## Backend build
+
+Backend uses `tsc` + `tsc-alias` to fix path aliases at runtime:
+
+```bash
+npm run build -w packages/backend
+```
+
+## CI (summary)
+
+* Build shared → test shared → lint/test backend → build backend → build+export admin.
+
+## Docker
+
+Multi-stage image builds shared+backend/admin and ships a slim runtime. Admin is served from `/admin`.
+
+## Security
+
+* Do not commit secrets; use `dotenv-safe`.
+* Only parameterized SQL or safe ORM APIs.
+
+## Tests
+
+* Shared and backend include Vitest with coverage gates.
+
+````
+
+
+```markdown
 # Backend + Admin Monorepo
 
 TypeScript **backend** (Node/Express, ESM) and **admin** (Next.js) in one repo.
@@ -17,7 +127,7 @@ hardening, validation, unified error handling, async IO, and comprehensive tests
 - **Admin**: Next build + static export to `admin/admin-out`.
 
 ## Structure
-```
+````
 
 . ├─ backend/ │  ├─ src/ │  │  ├─ middleware/ │  │  ├─ validation/ │  │  ├─ errors/ │  │  └─ crypto/ │  ├─ dist/                   # build output (generated) │  ├─ package.json │  ├─ tsconfig.json │  └─ tsconfig.build.json ├─ admin/ │  ├─ pages/ | app/ │  ├─ public/ │  ├─ admin-out/              # static export (generated) │  ├─ next.config.js │  └─ package.json ├─ Dockerfile ├─ .dockerignore ├─ .nvmrc ├─ .npmrc ├─ MIGRATION\_GUIDE.md ├─ SECURITY.md └─ README.md
 
@@ -33,8 +143,8 @@ npm run build:backend
 npm run build:admin && npm run export:admin
 ````
 
-- Run (dev): use your preferred dev scripts (e.g. `tsx`/`nodemon` in backend, `next dev` in admin).
-- Run (Docker):
+* Run (dev): use your preferred dev scripts (e.g. `tsx`/`nodemon` in backend, `next dev` in admin).
+* Run (Docker):
 
 ```bash
 docker build --file Dockerfile --target runtime -t app:latest .
@@ -43,11 +153,11 @@ docker run --rm -p 3000:3000 -e NODE_ENV=production -e ADMIN_STATIC_DIR=/app/adm
 
 ## Security
 
-- Do not commit secrets. `dotenv-safe` enforces presence and schema of required env vars.
-- Use HTTPS in production; enable Helmet and sane CORS.
-- Use parameterized DB queries or a vetted ORM.
-- Encrypt sensitive values at rest with AES-256-GCM; rotate keys.
-- Run `gitleaks` (secret scan) and `npm audit` in CI.
+* Do not commit secrets. `dotenv-safe` enforces presence and schema of required env vars.
+* Use HTTPS in production; enable Helmet and sane CORS.
+* Use parameterized DB queries or a vetted ORM.
+* Encrypt sensitive values at rest with AES-256-GCM; rotate keys.
+* Run `gitleaks` (secret scan) and `npm audit` in CI.
 
 ## Validation
 
@@ -86,8 +196,8 @@ Serve from backend at `/admin` (see `ADMIN_STATIC_DIR`).
 
 ## Conventions
 
-- Conventional Commits recommended.
-- Lint/format before PR.
+* Conventional Commits recommended.
+* Lint/format before PR.
 
 ````
 
@@ -187,4 +297,3 @@ DATABASE_URL=
 API_KEY_THIRD_PARTY=
 TELEGRAM_BOT_TOKEN=
 ```
-
