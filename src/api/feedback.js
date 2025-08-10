@@ -30,21 +30,10 @@ router.post('/', async (req, res) => {
     req.log.warn({ body: req.body }, 'invalid feedback');
     return res.status(400).json({ error: 'Invalid payload' });
   }
-  let positive = false;
-  let negative = false;
-  let neutral = false;
   let helpfulRaw = helpful;
-  if (typeof helpful === 'boolean') {
-    positive = helpful === true;
-    negative = helpful === false;
-  } else if (typeof helpful === 'number') {
-    if (helpful >= 4) positive = true;
-    else if (helpful <= 2) negative = true;
-    else neutral = true;
-  } else {
+  if (typeof helpful !== 'boolean' && typeof helpful !== 'number') {
     return res.status(400).json({ error: 'Invalid helpful value' });
   }
-  if (!positive && !negative) neutral = true;
   const trimmedComment =
     typeof comment === 'string' ? comment.trim().slice(0, maxComment) : undefined;
   const normalizedTags = Array.isArray(tags)
@@ -63,15 +52,12 @@ router.post('/', async (req, res) => {
     method,
     lang,
     helpfulRaw,
-    positive,
-    negative,
-    neutral,
     tags: normalizedTags,
     comment: trimmedComment
   };
   try {
-    await ingestLine(lineObj);
-    metrics.recordFeedback({ positive, negative, neutral, lang, source });
+    const classified = await ingestLine(lineObj);
+    metrics.recordFeedback(classified);
     addUsage(req.tenant.orgId, { requestsMonth: 1 });
     res.json({ ok: true });
   } catch (err) {
