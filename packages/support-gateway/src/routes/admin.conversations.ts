@@ -5,8 +5,6 @@ import bot from '../bot';
 import { liveBus } from '../lib/liveBus';
 
 export default async function adminConversationsRoutes(server: FastifyInstance) {
-  server.addHook('preHandler', server.verifyOperatorAuth);
-
   server.get('/me', async (_req, reply) => {
     reply.send({ ok: true });
   });

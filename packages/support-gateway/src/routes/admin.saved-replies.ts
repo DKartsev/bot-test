@@ -3,8 +3,6 @@ import { z } from 'zod';
 import supabase from '../db';
 
 export default async function adminSavedRepliesRoutes(server: FastifyInstance) {
-  server.addHook('preHandler', server.verifyOperatorAuth);
-
   server.get('/saved-replies', async (request, reply) => {
     const querySchema = z.object({
       search: z.string().optional(),

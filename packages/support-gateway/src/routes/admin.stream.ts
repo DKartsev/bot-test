@@ -2,10 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { liveBus } from '../lib/liveBus';
 
 export default async function adminStreamRoutes(server: FastifyInstance) {
-  server.get(
-    '/admin/stream',
-    { preHandler: server.verifyOperatorAuth },
-    async (request, reply) => {
+  server.get('/stream', async (request, reply) => {
       reply.headers({
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -43,6 +40,5 @@ export default async function adminStreamRoutes(server: FastifyInstance) {
         liveBus.off('media_updated', mediaUpd);
         liveBus.off('assigned', assigned);
       });
-    }
-  );
+    });
 }

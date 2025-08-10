@@ -4,8 +4,6 @@ import supabase from '../db';
 import bot from '../bot';
 
 export default async function adminCasesRoutes(server: FastifyInstance) {
-  server.addHook('preHandler', server.verifyOperatorAuth);
-
   server.post('/conversations/:id/cases', async (request, reply) => {
     const paramsSchema = z.object({ id: z.string() });
     const bodySchema = z.object({

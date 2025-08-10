@@ -3,8 +3,6 @@ import { z } from 'zod';
 import supabase from '../db';
 
 export default async function adminNotesRoutes(server: FastifyInstance) {
-  server.addHook('preHandler', server.verifyOperatorAuth);
-
   server.get('/conversations/:id/notes', async (request, reply) => {
     const paramsSchema = z.object({ id: z.string() });
     const { id } = paramsSchema.parse(request.params);

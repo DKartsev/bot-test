@@ -79,7 +79,7 @@ Metrics `dlpDetections*` and `dlpBlocked*` expose counters for Prometheus.
 3. Operators from the allowlist can use commands in the room:
    `/pending`, `/approve <id>`, `/reject <id> [reason]`, `/find <query>`, `/add`, `/edit <id>`.
 
-Matrix commands call the internal admin API via `OPERATOR_API_TOKEN` and all actions are audit logged.
+Matrix commands call the internal admin API via tokens from `ADMIN_TOKENS` and all actions are audit logged.
 Telegram remains enabled via Telegraf and Slack support has been removed.
 
 ## Deploy
