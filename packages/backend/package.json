@@ -7,7 +7,8 @@
     "build": "rimraf dist && tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
     "start": "node dist/server.js",
     "lint": "echo \"lint\"",
-    "test": "echo \"test\""
+    "test": "echo \"test\"",
+    "db:migrate": "tsx ../../node_modules/knex/bin/cli.js migrate:latest"
   },
   "dependencies": {
     "@app/shared": "file:../shared",
@@ -16,6 +17,8 @@
     "express": "^4.19.2",
     "express-rate-limit": "^8.0.1",
     "helmet": "^8.1.0",
+    "ioredis": "^5.7.0",
+    "knex": "^3.1.0",
     "pg": "^8.16.3",
     "pino": "^9.8.0",
     "pino-http": "^10.5.0",
@@ -35,6 +38,7 @@
     "@types/swagger-ui-express": "^4.1.8",
     "rimraf": "^5.0.0",
     "tsc-alias": "^1.8.10",
+    "tsx": "^4.20.3",
     "typescript": "5.9.2"
   }
 }
