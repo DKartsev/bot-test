@@ -4,8 +4,10 @@
   "type": "module",
   "scripts": {
     "clean": "rimraf dist",
-    "build": "npm run clean && tsc -p tsconfig.build.json",
-    "start": "node dist/server.js"
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "lint": "echo \"lint\"",
+    "test": "echo \"test\""
   },
   "dependencies": {
     "express": "^4.19.2"
