@@ -7,7 +7,7 @@ export const logger = pino({ level: process.env.LOG_LEVEL || 'info', redact: ['r
 
 export function applyObservability(app: Express) {
   // @ts-expect-error pino-http CJS
-  app.use(pinoHttp({ logger }));
+  app.use(pinoHttp({ logger, genReqId: req => (req.id as string) }));
   client.collectDefaultMetrics();
   app.get('/metrics', async (_req, res) => {
     res.set('Content-Type', client.register.contentType);

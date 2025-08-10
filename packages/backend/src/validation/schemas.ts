@@ -1,4 +1,3 @@
-// @ts-expect-error zod types
 import * as z from 'zod';
 export const CreateUserSchema = z.object({
   body: z.object({
