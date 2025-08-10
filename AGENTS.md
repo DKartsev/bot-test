@@ -1,157 +1,168 @@
-/**
- * agents/agents.js
- *
- * Готовые промты для Codex, используемые для автоматизации генерации кода
- * в монорепозитории Telegram Support Bot для Rapira.
- * Операторская панель реализована как Next.js приложение `operator-admin`
- * и взаимодействует только через API `support-gateway`.
- * Устаревшие панели на EJS и статичных HTML/CSS удалены.
- */
+version: 1
+name: monorepo-backend-admin
+summary: |
+  Operational playbook for Code Agents. Monorepo contains a TypeScript backend (Node/Express)
+  and a Next.js admin app that is built and statically exported. Docker uses a multi-stage
+  build with separate dependency caches for backend and admin, and a slim runtime image.
 
-module.exports = {
-  /**
-   * Агент для генерации и доработки кода support-gateway:
-   * Fastify + Telegraf, RAG-пайплайн, сохранение сообщений и хенд-офф.
-   */
-  botAgent: {
-    name: 'botAgent',
-    description: 'Генерировать поддержку поддержки Telegram-бота (support-gateway)',
-    prompt: `
-Ты — агент генерации кода для пакета support-gateway в проекте Telegram Support Bot Rapira.
-Твоя задача — создать или доработать файлы: package.json, tsconfig.json, index.ts, setupSupabase.ts,
-handlers для Telegraf и Fastify, RAG-логика с pgvector, функции getOrCreateConversation,
-сохранение и извлечение сообщений, маршруты webhook Telegram и API для админ-панели.
-Код должен быть на TypeScript, использовать zod для валидации, pino для логов.
-Добавь обработку ошибок и конфигурацию через переменные окружения.
-`  },
+repo:
+  packages:
+    backend:
+      path: backend
+      language: typescript
+      build: "npm --prefix backend run build"
+      start: "npm --prefix backend run start"
+      lockfile: backend/package-lock.json
+      tsconfig: backend/tsconfig.build.json
+    admin:
+      path: admin
+      framework: nextjs
+      build: "npm --prefix admin run build"
+      export: "npm --prefix admin run export"
+      outDir: admin/admin-out
+      lockfile: admin/package-lock.json
 
-  /**
-   * Агент для реализации KB-инструментов:
-   * chunkMarkdown, indexKB, scripts/index-all.ts.
-   */
-  indexAgent: {
-    name: 'indexAgent',
-    description: 'Реализовать и документация для пакета kb-tools',
-    prompt: `
-Ты — агент для пакета kb-tools. Тебе нужно:
-1) Написать функцию chunkMarkdown в utils.ts: разбивка Markdown на чанки по ~500 токенов.
-2) Создать indexKB в index.ts: чтение чанков, генерация эмбеддингов через OpenAIEmbeddings
-   и вставка в Supabase (таблица kb_chunks).
-3) Создать скрипт scripts/index-all.ts для массовой индексации всех .md из папки kb_articles.
-4) Обработать ошибки и логировать процесс.
-`  },
+runtime:
+  node: "20"
+  npm: ">=10 <12"
+  env:
+    NODE_ENV: production
+    ADMIN_STATIC_DIR: /app/admin/admin-out
 
-  /**
-   * Агент для начального скелета support-gateway:
-   * структура папок, базовые конфиги, шаблоны.
-   */
-  scaffoldGatewayAgent: {
-    name: 'scaffoldGatewayAgent',
-    description: 'Скеболовая структура и конфигурация для support-gateway',
-    prompt: `
-Ты — агент для создания каркаса пакета support-gateway.
-Cоздай:
-- package.json с необходимыми зависимостями (fastify, telegraf, @supabase/supabase-js, dotenv, zod, pino).
-- tsconfig.json для TypeScript.
-- структура src/{bot.ts, server.ts, db.ts, handlers/*.ts, services/*.ts}.
-- README.md внутри пакета с инструкцией запуска и переменными окружения.
-`  },
+workflows:
+  - id: sync-lockfiles
+    name: Sync lockfiles (fix npm ci mismatches)
+    description: Align package.json with package-lock.json for each package.
+    triggers: [manual, on-deps-change, on-ci-failure]
+    steps:
+      - run: rm -rf backend/node_modules backend/package-lock.json
+      - run: rm -rf admin/node_modules admin/package-lock.json
+      - run: npm --prefix backend install --package-lock-only
+      - run: npm --prefix admin install --package-lock-only
+      - run: npm --prefix backend ci
+      - run: npm --prefix admin ci
+      - commit:
+          message: "chore(lock): refresh backend/admin lockfiles"
+          include:
+            - backend/package-lock.json
+            - admin/package-lock.json
+    success_criteria:
+      - file_exists: backend/package-lock.json
+      - file_exists: admin/package-lock.json
+      - cmd: "npm --prefix backend ci && npm --prefix admin ci"
 
-  /**
-   * Агент для начального скелета админ-панели operator-admin:
-   * Next.js, Supabase Auth, базовые страницы.
-   */
-  scaffoldAdminAgent: {
-    name: 'scaffoldAdminAgent',
-    description: 'Скелет и базовые компоненты для operator-admin',
-    prompt: `
-Ты — агент для пакета operator-admin (Next.js + TypeScript).
-Cоздай:
-- next.config.js с настройками публичного пути и env.
-- Страницу /login с Supabase Auth UIF.
-- Страницу /conversations: список чатов, вызов API /conversations.
-- Страницу /conversations/[id]: отображение сообщений, форма ответа.
-- Компоненты UI с shadcn/ui: Card, Button, Input.
-- Хуки для вызова API через fetch или SWR.
-`  },
+  - id: build-backend
+    name: Build backend (TypeScript)
+    steps:
+      - ensure_file: backend/tsconfig.build.json
+      - run: npm --prefix backend run build
+    outputs:
+      - path: backend/dist
+    success_criteria:
+      - dir_exists: backend/dist
 
-  /**
-   * Агент для скелета воркера worker:
-   * BullMQ, Redis, задачи ffmpeg и Whisper.
-   */
-  scaffoldWorkerAgent: {
-    name: 'scaffoldWorkerAgent',
-    description: 'Скелет и задачи для worker (BullMQ)',
-    prompt: `
-Ты — агент для пакета worker.
-Cоздай:
-- package.json с bullmq, ioredis, fluent-ffmpeg, @openai/whisper.
-- Файл queue.ts: инициализация очередей для видео и аудио.
-- Файл jobs/videoProcessor.ts: извлечение кадров через ffmpeg, вызов Vision API.
-- Файл jobs/audioProcessor.ts: загрузка аудио, транскрипция через Whisper.
-- Логи и обработка ошибок, ретраи в очередях.
-`  },
+  - id: build-admin-export
+    name: Build and export admin (Next.js static export)
+    steps:
+      - ensure_file: admin/next.config.js
+      - run: npm --prefix admin run build
+      - run: npm --prefix admin run export
+    outputs:
+      - path: admin/admin-out
+    success_criteria:
+      - dir_exists: admin/admin-out
+      - file_exists: admin/admin-out/index.html
 
-  /**
-   * Агент для генерации SQL-миграций Supabase
-   */
-  migrationAgent: {
-    name: 'migrationAgent',
-    description: 'Создание SQL-миграций для Supabase',
-    prompt: `
-Ты — агент для инфраструктурных миграций Supabase.
-Сгенерируй файл 001_create_support_schema.sql с таблицами conversations, messages,
-kb_articles, kb_chunks, assignments_log, включая расширение vector и необходимые индексы.
-`  },
+  - id: docker-build-runtime
+    name: Docker multi-stage build (slim runtime)
+    steps:
+      - run: docker build --file Dockerfile --target runtime -t app:latest .
+    success_criteria:
+      - cmd: docker image inspect app:latest
 
-  /**
-   * Агент для CI/CD и девопс конфигов
-   */
-  devopsAgent: {
-    name: 'devopsAgent',
-    description: 'Render и Docker конфигурации, CI/Scripts',
-    prompt: `
-Ты — агент DevOps.
-Cоздай render.yaml для трёх сервисов: support-gateway, operator-admin, worker.
-Добавь Dockerfile для каждого приложения и docker-compose.yml для локального старта.
-Добавь GitHub Actions workflow, который запускает линтинг, сборку и тесты.
-`  },
+  - id: serve-admin-from-backend
+    name: Ensure backend serves admin static bundle
+    steps:
+      - verify_env: ADMIN_STATIC_DIR
+      - code_check:
+          path: backend/src
+          must_include: "express.static"
+    success_criteria:
+      - http: {url: "http://localhost:3000/admin", status: 200}
 
-  /**
-   * Агент для генерации и обновления README.md
-   */
-  readmeAgent: {
-    name: 'readmeAgent',
-    description: 'Генерация основного README.md проекта',
-    prompt: `
-Ты — агент документации.
-Обнови README.md в корне репозитория:
-- Опиши проект, архитектуру, установки, скрипты, env, структуру папок, примеры команд.
-- Добавь разделы Codex Agents и Contacts.
-`  },
+agents:
+  - id: DepsAgent
+    role: Dependency & Lockfile Agent
+    goals:
+      - Keep lockfiles in sync to satisfy `npm ci` in Docker builds.
+      - Pin TypeScript to 5.9.2 in all packages that require it.
+    actions:
+      - workflow: sync-lockfiles
+    acceptance:
+      - `npm ci` succeeds in local and CI for backend/admin.
 
-  /**
-   * Агент для создания тестов
-   */
-  testAgent: {
-    name: 'testAgent',
-    description: 'Сценарии тестирования для Jest/Playwright',
-    prompt: `
-Ты — агент тестирования.
-Сгенерируй:
-- Jest конфигурацию и примеры unit-тестов для функций chunkMarkdown и getOrCreateConversation.
-- Playwright скрипты для e2e: проверка API /conversations, отправка webhook и ответ бота.
-`  },
+  - id: BackendAgent
+    role: Backend Build Agent
+    goals:
+      - Compile TypeScript with explicit tsconfig (tsconfig.build.json).
+      - Produce `backend/dist` and a reliable `start` command.
+    actions:
+      - workflow: build-backend
+    acceptance:
+      - `node backend/dist/server.js` starts without TS runtime deps.
 
-  /**
-   * Агент для генерации .env.example
-   */
-  envAgent: {
-    name: 'envAgent',
-    description: 'Файл .env.example с описанием переменных окружения',
-    prompt: `
-Ты — агент переменных окружения.
-Сгенерируй файл .env.example с комментариями для всех переменных:
-BOT_TOKEN, SUPABASE_URL, SUPABASE_KEY, OPENAI_API_KEY, REDIS_URL, PORT.
-`  }
-};
+  - id: AdminAgent
+    role: Next.js Admin Agent
+    goals:
+      - Build and static-export Next admin into `admin/admin-out`.
+      - Ensure `next.config.js` has `output: 'export'` and `images.unoptimized: true`.
+    actions:
+      - workflow: build-admin-export
+    acceptance:
+      - `admin/admin-out` contains static HTML and assets.
+
+  - id: DockerAgent
+    role: Docker/Infra Agent
+    goals:
+      - Build multi-stage image using separate dep caches for backend/admin and a slim runtime.
+      - Copy only artifacts into runtime; install only prod deps.
+    actions:
+      - workflow: docker-build-runtime
+    acceptance:
+      - Image size minimized; container starts and serves `/admin`.
+
+  - id: CIAgent
+    role: CI Agent
+    goals:
+      - Use Node 20 to avoid lockfile drift.
+      - Cache Docker layers where available.
+    checklist:
+      - uses: actions/setup-node@v4 with node-version: '20'
+      - run: docker build --target runtime
+
+  - id: QAAagent
+    role: QA Agent
+    goals:
+      - Verify `/admin` is reachable from backend.
+      - Validate basic API routes return 200.
+    acceptance:
+      - Both `/admin` and main API endpoints respond 200 in staging.
+
+policies:
+  coding:
+    - No devDependencies in runtime image.
+    - No writes to `admin/admin-out` at runtime.
+    - No `npm install` during container start.
+  security:
+    - Never commit secrets; rely on env variables.
+    - Enforce engine-strict via `.npmrc`.
+
+files_of_interest:
+  - .nvmrc
+  - .npmrc
+  - .dockerignore
+  - Dockerfile
+  - backend/package.json
+  - backend/tsconfig.build.json
+  - admin/package.json
+  - admin/next.config.js
