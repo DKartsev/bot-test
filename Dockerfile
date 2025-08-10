@@ -1,37 +1,49 @@
-# ---------- builder ----------
-FROM node:20-alpine AS builder
+# ---------- Backend deps cache ----------
+FROM node:20-bookworm-slim AS backend_deps
+WORKDIR /app/backend
+COPY backend/package*.json ./
+RUN npm ci --include=dev
+
+# ---------- Admin deps cache ----------
+FROM node:20-bookworm-slim AS admin_deps
+WORKDIR /app/admin
+COPY admin/package*.json ./
+RUN npm ci --include=dev
+
+# ---------- Backend build ----------
+FROM node:20-bookworm-slim AS backend_build
 WORKDIR /app
+# bring deps layer
+COPY --from=backend_deps /app/backend/node_modules ./backend/node_modules
+# copy sources
+COPY backend ./backend
+# explicit TS build using provided config
+RUN npm --prefix backend run build
 
-# 1) только манифесты для кеша
-COPY package.json package-lock.json ./
-# если админка лежит в packages/operator-admin
-RUN mkdir -p packages/operator-admin
-COPY packages/operator-admin/package.json packages/operator-admin/package-lock.json ./packages/operator-admin/
+# ---------- Admin build+export ----------
+FROM node:20-bookworm-slim AS admin_build
+WORKDIR /app
+# bring deps layer
+COPY --from=admin_deps /app/admin/node_modules ./admin/node_modules
+# copy sources
+COPY admin ./admin
+# build then static export to admin-out
+RUN npm --prefix admin run build && npm --prefix admin run export
 
-# 2) установка зависимостей
-RUN apk add --no-cache python3 make g++ git
-RUN npm ci
-RUN npm ci --prefix packages/operator-admin
-
-# 3) копируем исходники и собираем
-COPY . .
-# скрипт сборки бэка (tsc / vite / whatever)
-RUN npm run build
-# скрипт сборки админки и экспорт статики (добавь их в package.json)
-RUN npm run build:admin && npm run export:admin
-
-# ---------- runtime ----------
-FROM node:20-alpine AS runtime
+# ---------- Runtime (slim) ----------
+FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-# только нужное
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/admin-out ./admin-out
-COPY package.json package-lock.json ./
+# install prod deps only
+COPY backend/package*.json ./backend/
+RUN npm --prefix backend ci --omit=dev
 
-# прод-зависимости (если нужно)
-RUN npm ci --omit=dev
+# copy build artifacts
+COPY --from=backend_build /app/backend/dist ./backend/dist
+COPY --from=admin_build   /app/admin/admin-out ./admin/admin-out
 
+# expose and start backend; backend should serve /app/admin/admin-out if desired
+ENV ADMIN_STATIC_DIR=/app/admin/admin-out
 EXPOSE 3000
-CMD ["node","dist/index.js"]
+CMD ["npm", "--prefix", "backend", "run", "start"]

@@ -1,3 +1,6 @@
 node_modules/
 .env
-dist/
+**/dist/
+**/.next/
+admin/out/
+admin/admin-out/
