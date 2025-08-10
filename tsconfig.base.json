@@ -11,6 +11,9 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "baseUrl": ".",
-    "paths": { "@shared/*": ["packages/shared/src/*"] }
+    "paths": {
+      "@shared": ["packages/shared/src/index.ts"],
+      "@shared/*": ["packages/shared/src/*"]
+    }
   }
 }

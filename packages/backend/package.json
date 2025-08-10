@@ -4,18 +4,20 @@
   "type": "module",
   "scripts": {
     "clean": "rimraf dist",
-    "build": "npm run clean && tsc -p tsconfig.json",
+    "build": "rimraf dist && tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
     "start": "node dist/server.js",
     "lint": "echo \"lint\"",
     "test": "echo \"test\""
   },
   "dependencies": {
+    "@app/shared": "file:../shared",
     "express": "^4.19.2"
   },
   "devDependencies": {
     "typescript": "5.9.2",
     "@types/express": "^4.17.21",
     "@types/node": "^20.11.30",
-    "rimraf": "^5.0.0"
+    "rimraf": "^5.0.0",
+    "tsc-alias": "^1.8.10"
   }
 }

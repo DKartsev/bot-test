@@ -1,13 +1,25 @@
 {
-  "name": "shared",
-  "version": "1.0.0",
+  "name": "@app/shared",
+  "private": false,
   "type": "module",
+  "version": "0.0.0",
   "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
   "scripts": {
-    "build": "tsc -b"
+    "clean": "rimraf dist",
+    "build": "npm run clean && tsc -p tsconfig.json && tsc-alias -p tsconfig.json"
   },
   "devDependencies": {
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "tsc-alias": "^1.8.10",
+    "rimraf": "^5.0.0"
   }
 }
