@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import AuthGuard from '../../components/AuthGuard';
+import RecommendedQuestions from '../components/RecommendedQuestions';
 import { api } from '../../lib/api';
 import { Button } from '@shadcn/ui/button';
 import { Input } from '@shadcn/ui/input';
@@ -78,6 +79,7 @@ export default function AskBotPage() {
             </div>
           ))}
         </div>
+        <RecommendedQuestions />
         <div className="flex space-x-2">
           <Input
             value={text}
