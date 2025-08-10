@@ -1,127 +1,168 @@
-# My Support Bot
+# Backend + Admin Monorepo
 
-Node.js service that answers user questions via RAG + OpenAI and exposes admin APIs.
+TypeScript **backend** (Node/Express) and **admin** app (Next.js) in a single repository.
+Docker uses a **multi‑stage** pipeline that caches dependencies for backend and admin **separately**
+and ships a **slim runtime** with only production code and dependencies.
+
+## Highlights
+- ✅ Separate dependency caches for **backend** and **admin** → faster Docker builds
+- ✅ Explicit TypeScript build via `tsconfig.build.json` (no TS at runtime)
+- ✅ Next.js **static export** for admin → served as `/admin` by backend or any static host
+- ✅ Slim runtime image: prod deps only, small attack surface
+- ✅ Clean images thanks to `.dockerignore` (excludes `dist`, `admin-out`, and other artifacts)
+
+## Repo Structure
+
+├─ backend/                # Node/Express TypeScript backend
+│  ├─ src/
+│  ├─ dist/                # build output (generated)
+│  ├─ package.json
+│  └─ tsconfig.build.json
+├─ admin/                  # Next.js admin UI
+│  ├─ pages/ | app/
+│  ├─ public/
+│  ├─ admin-out/           # static export output (generated)
+│  ├─ next.config.js
+│  └─ package.json
+├─ Dockerfile              # multi-stage build
+├─ .dockerignore
+├─ .nvmrc
+└─ README.md
 
 ## Requirements
-- Node.js 20+
-- npm
-- Docker (optional)
+- Node **20** (see `.nvmrc`)
+- npm **>=10 <12**
 
-## Local Run
-```bash
-npm install
-npm run start
-```
+Optional but recommended:
+- Docker 24+
+- GitHub Actions (or any CI) with Node 20
 
-## Docker
-```bash
-docker-compose up --build
-```
+## Scripts (root)
+```json
+{
+  "scripts": {
+    "build": "npm run build:backend && npm run build:admin",
+    "build:backend": "npm --prefix backend run build",
+    "build:admin": "npm --prefix admin run build",
+    "export:admin": "npm --prefix admin run export",
+    "build:docker": "npm run build && npm run export:admin"
+  }
+}
+Backend (TypeScript)
 
-## Environment Variables
-See [`.env.example`](./.env.example) for all configuration options.
-Create a `.env` file based on this before running locally or in Docker.
+backend/package.json:
+{
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "start": "node dist/server.js"
+  },
+  "devDependencies": { "typescript": "5.9.2" }
+}
+backend/tsconfig.build.json:
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "sourceMap": false,
+    "declaration": false,
+    "noEmit": false
+  },
+  "include": ["src/**/*"]
+}
+Admin (Next.js static export)
 
-### Multi-tenancy
+admin/package.json:
+{
+  "scripts": {
+    "clean": "rimraf .next admin-out",
+    "build": "npm run clean && next build",
+    "export": "next export -o admin-out"
+  }
+}
+admin/next.config.js:
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'export',
+  images: { unoptimized: true }
+};
+module.exports = nextConfig;
+Docker
 
-Requests to `/ask` and `/feedback` must include a tenant API key in the `X-API-Key` header. Admin endpoints accept an optional `X-Tenant-Id` header to operate on a specific tenant (defaults to `TENANT_DEFAULT_ID`). Data for each tenant is stored under `data/tenants/<id>`.
+Multi-stage Dockerfile with separate dep caches and a slim runtime.
 
-## Retrieval-Augmented Generation (RAG)
+Build locally:
+docker build --file Dockerfile --target runtime -t app:latest .
+Run:
+docker run --rm -p 3000:3000 \
+  -e NODE_ENV=production \
+  -e ADMIN_STATIC_DIR=/app/admin/admin-out \
+  app:latest
+Backend listens on :3000. Admin static export will be available under /admin if backend is configured to serve it.
 
-When `RAG_ENABLED=1` the bot can search uploaded documents and cite them in answers.
+Serving the admin bundle from backend
 
-### Uploading sources
-- `POST /admin/rag/upload` (multipart form, field `file`) – PDF, HTML, Markdown or plain text.
-- `POST /admin/rag/text` – JSON `{ title, text }` for raw snippets.
+In your backend server (Express):
+import express from 'express';
+import path from 'path';
 
-Both endpoints require admin or editor auth. Uploaded content is chunked and indexed in
-`./data/rag`. Current sources can be listed with `GET /admin/rag/sources` and removed with
-`DELETE /admin/rag/source/:id`.
+const app = express();
+const adminDir = process.env.ADMIN_STATIC_DIR || path.join(__dirname, '../admin-out');
+app.use('/admin', express.static(adminDir, { fallthrough: true }));
 
-### Query flow
-During `/ask` the bot first tries exact/hybrid matches. If confidence is low it queries the
-RAG index. When top similarity exceeds `RAG_MIN_SIM` the answer is synthesized from the
-retrieved chunks and returns `source:"rag"` with `citations` in `[1]`, `[2]` format. Otherwise
-the system falls back to the generic OpenAI model.
+// ...other routes
+app.listen(3000, () => console.log('Server running on :3000'));
+CI Recommendations
 
-### Tuning
-Chunk size, overlap, top-k and other parameters can be adjusted via `RAG_*` variables in
-`.env.example`.
+Use Node 20 in CI to avoid lockfile drift
 
-## Data Loss Prevention (DLP)
+Cache Docker layers if available
 
-All questions, answers and ingested documents are scanned for PII, secrets and profanity
-according to `data/security/policies.yaml`. Matches can be redacted or blocked based on
-severity and environment toggles. Detections are logged to `logs/dlp.jsonl` (values hashed
-with SHA-256 when `DLP_HASH_SENSITIVE_IN_LOGS=1`).
+GitHub Actions snippet:
+- uses: actions/setup-node@v4
+  with:
+    node-version: '20'
+    cache: 'npm'
 
-Configure via `DLP_*` variables in `.env.example`: enable/observe mode, redaction style,
-allow lists and blocking behaviour. Policies can be hot-reloaded with the admin API.
+- name: Build Docker image
+  run: |
+    docker build --file Dockerfile --target runtime -t app:latest .
+Lockfile Sync (fixing npm ci errors)
 
-### Admin security API
+If you hit npm ci errors like “Missing: typescript@5.9.2 from lock file”:
+rm -rf backend/node_modules backend/package-lock.json
+rm -rf admin/node_modules admin/package-lock.json
+npm --prefix backend install --package-lock-only
+npm --prefix admin   install --package-lock-only
+npm --prefix backend ci
+npm --prefix admin   ci
+Commit refreshed lockfiles.
 
-- `GET /admin/security/policy`
-- `POST /admin/security/policy/reload`
-- `GET /admin/security/detections?n=200`
-- `POST /admin/security/test`
+.dockerignore (recommended)
+node_modules
+**/node_modules
+npm-debug.log*
+.DS_Store
+.env
+.env.*
 
-Metrics `dlpDetections*` and `dlpBlocked*` expose counters for Prometheus.
+# build caches and artifacts
+dist
+admin-out
+.next
+.turbo
+.cache
+coverage
+build
+Troubleshooting
 
-## Self-hosted messenger (Matrix)
+npm ci fails in Docker → lockfile mismatch. Regenerate per package as above.
 
-1. Run a Synapse homeserver and create a bot user. Obtain its access token and invite the bot to a room.
-2. Set the Matrix variables in `.env`:
-   - `MATRIX_HOMESERVER_URL`
-   - `MATRIX_ACCESS_TOKEN`
-   - `MATRIX_BOT_USER_ID`
-   - `MATRIX_ROOM_ID`
-   - `MATRIX_ALLOWED_MXIDS`
-3. Operators from the allowlist can use commands in the room:
-   `/pending`, `/approve <id>`, `/reject <id> [reason]`, `/find <query>`, `/add`, `/edit <id>`.
+Admin images missing after export → ensure images.unoptimized: true in next.config.js when using static export.
 
-Matrix commands call the internal admin API via tokens from `ADMIN_TOKENS` and all actions are audit logged.
-Telegram remains enabled via Telegraf and Slack support has been removed.
+Runtime container larger than expected → verify runtime stage installs with --omit=dev and only copies built artifacts.
 
-## Deploy
-### Render
-Connect the repository and Render will pick up [`render.yaml`](./render.yaml).
-It provisions persistent disks for `/app/data`, `/app/logs` and `/app/feedback` and
-uses `/healthz` for health checks.
+License
 
-### Heroku
-```bash
-heroku config:set $(cat .env | xargs)
-heroku container:push web
-heroku container:release web
-```
-`Procfile` defines the startup command.
-
-## Scripts
-- `npm test` – run unit tests
-- `npm run coverage` – coverage report
-- `npm run load:ask` – simple load test for `/ask`
-- `npm run metrics:print` – dump Prometheus metrics
-
-## Logs
-Logs are written to `logs/app.log` with rotation controlled by `OBS_ROTATE_*` variables.
-Set `LOG_LEVEL` to control verbosity (default `info`).
-Set `LOKI_ENABLED=1` or `ELASTIC_ENABLED=1` to ship logs to Loki or Elasticsearch.
-
-## Prometheus
-If `PROM_ENABLED` is `1`, scrape metrics from `${PROM_METRICS_PATH}` (default `/metrics/prom`).
-Includes default Node metrics and custom counters for requests, errors, OpenAI usage and pending items.
-
-## Alerts (Telegram)
-Enable by setting `TELEGRAM_ALERTS_ENABLED=1` plus `TG_BOT_TOKEN` and `TG_CHAT_ID`.
-Alerts fire when error rate, OpenAI rate or pending backlog exceed thresholds and are rate limited.
-
-## Dashboards
-Grafana dashboards can chart request rate, error rate, share of OpenAI answers and pending backlog using the exported metrics.
-
-## Operator Panel
-The operator interface is implemented as a separate Next.js app in `packages/operator-admin`.
-It consumes the JSON and SSE APIs exposed by `support-gateway` under the `/admin/*` routes
-for live questions, moderation, and Q&A management.
-
-## License
-MIT
+MIT (or your preferred license)
