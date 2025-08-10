@@ -1,8 +1,17 @@
+# Files to create
+
+Below are updated files. Copy each block into its own file at the repo root (or indicated path).
+
+---
+
+## 1) `AGENTS.yaml`
+
+```yaml
 version: 3
 name: monorepo-backend-admin
 summary: |
   Monorepo with three packages: packages/backend (Node/Express, TypeScript, ESM),
-  packages/admin (Next.js, static export), and packages/shared (cross‑package utilities).
+  packages/admin (Next.js, static export), and packages/shared (reusable ESM lib published as @app/shared).
   Multi-stage Docker caches backend/admin deps separately and ships a slim, non-root runtime.
   This AGENTS file encodes the ideal structure goals and phased workflows.
 
@@ -14,8 +23,10 @@ repo:
     shared:
       path: packages/shared
       language: typescript
-      build: "tsc -b packages/shared"
+      moduleSystem: esm
+      build: "npm run build -w packages/shared"
       lockfile: packages/shared/package-lock.json
+      name: "@app/shared"
     backend:
       path: packages/backend
       language: typescript
@@ -47,7 +58,7 @@ policies:
     - Strict TypeScript across packages; avoid `any` in critical paths.
     - Hexagonal architecture in backend (domain/app/infra/http separation; DI of adapters).
     - No synchronous fs calls in request paths; use fs/promises.
-    - Shared utilities live in packages/shared; no duplication across backend/admin.
+    - Reuse via @app/shared; avoid duplicate code across packages.
   security:
     - Secrets via `.env` + `dotenv-safe`; never commit secrets.
     - Helmet, CORS allowlist, rate limiting; request size limits.
@@ -63,7 +74,7 @@ workflows:
     steps:
       - run: mkdir -p packages/backend packages/admin packages/shared
       - run: |
-          node -e "const fs=require('fs');const f='package.json';let p={private:true,workspaces:['packages/*'],engines:{node:'>=20 <23',npm:'>=10 <12'},scripts:{build:'npm run build -w packages/backend && npm run build -w packages/admin',lint:'npm run lint -w packages/backend && npm run lint -w packages/admin',test:'npm run test -w packages/backend'}};fs.existsSync(f)?console.log('root package.json exists'):fs.writeFileSync(f,JSON.stringify(p,null,2))"
+          node -e "const fs=require('fs');const f='package.json';let p={private:true,workspaces:['packages/*'],engines:{node:'>=20 <23',npm:'>=10 <12'},scripts:{build:'npm run build -w packages/shared && npm run build -w packages/backend && npm run build -w packages/admin',lint:'npm run lint -w packages/backend && npm run lint -w packages/admin',test:'npm run test -w packages/backend'}};fs.existsSync(f)?console.log('root package.json exists'):fs.writeFileSync(f,JSON.stringify(p,null,2))"
       - run: echo "20" > .nvmrc
       - run: printf "engine-strict=true
 fund=false
@@ -93,7 +104,7 @@ indent_size = 2
     steps:
       - run: |
           cat > tsconfig.base.json <<'JSON' 
-          {"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"NodeNext","strict":true,"noImplicitAny":true,"exactOptionalPropertyTypes":true,"noUncheckedIndexedAccess":true,"resolveJsonModule":true,"esModuleInterop":true,"skipLibCheck":true,"baseUrl":".","paths":{"@shared/*":["packages/shared/src/*"]}}}
+          {"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"NodeNext","strict":true,"noImplicitAny":true,"exactOptionalPropertyTypes":true,"noUncheckedIndexedAccess":true,"resolveJsonModule":true,"esModuleInterop":true,"skipLibCheck":true,"baseUrl":".","paths":{"@app/shared":["packages/shared/src/index.ts"],"@app/shared/*":["packages/shared/src/*"]}}}
           JSON
       - run: |
           mkdir -p packages/shared/src && cat > packages/shared/tsconfig.json <<'JSON'
@@ -113,17 +124,62 @@ indent_size = 2
   - id: enforce_esm
     name: Enforce ESM only
     steps:
-      - run: node -e "['packages/backend','packages/admin'].forEach(p=>{const f=p+'/package.json';const j=require('fs').existsSync(f)?JSON.parse(require('fs').readFileSync(f,'utf8')):{};j.type='module';require('fs').writeFileSync(f,JSON.stringify(j,null,2));})"
+      - run: node -e "['packages/shared','packages/backend','packages/admin'].forEach(p=>{const f=p+'/package.json';const fs=require('fs');if(fs.existsSync(f)){const j=JSON.parse(fs.readFileSync(f,'utf8'));j.type='module';fs.writeFileSync(f,JSON.stringify(j,null,2));}})"
       - run: grep -R "require(\|module.exports" -n packages/backend || true
     success_criteria:
       - cmd: test -z "$(grep -R "require(\|module.exports" -n packages/backend || true)" 
+
+  - id: shared_package
+    name: Ensure @app/shared is a distributable ESM lib
+    steps:
+      - code_mod:
+          description: Set package.json fields
+          files: [packages/shared/package.json]
+          changes:
+            - set_json: { path: "name", value: "@app/shared" }
+            - set_json: { path: "private", value: false }
+            - set_json: { path: "type", value: "module" }
+            - set_json: { path: "main", value: "dist/index.js" }
+            - set_json: { path: "module", value: "dist/index.js" }
+            - set_json: { path: "types", value: "dist/index.d.ts" }
+            - set_json: { path: "exports.__.import", value: "./dist/index.js" }
+            - set_json: { path: "exports.__.types", value: "./dist/index.d.ts" }
+            - set_json: { path: "files[0]", value: "dist" }
+      - file_write:
+          path: packages/shared/src/index.ts
+          contents: |
+            export * from './greet/index.js';
+      - ensure_dep:
+          where: packages/shared
+          dev: ["typescript@5.9.2","tsc-alias@^1.8.10","rimraf@^5.0.0"]
+      - code_mod:
+          files: [packages/shared/package.json]
+          changes:
+            - set_json: { path: "scripts.clean", value: "rimraf dist" }
+            - set_json: { path: "scripts.build", value: "npm run clean && tsc -p tsconfig.json && tsc-alias -p tsconfig.json" }
+    success_criteria:
+      - cmd: npm run build -w packages/shared
+      - file_exists: packages/shared/dist/index.js
+
+  - id: tsc_alias_setup
+    name: tsc-alias runtime-safe path rewriting
+    steps:
+      - ensure_dep:
+          where: packages/backend
+          dev: ["tsc-alias@^1.8.10","rimraf@^5.0.0"]
+      - code_mod:
+          files: [packages/backend/package.json]
+          changes:
+            - set_json: { path: "scripts.build", value: "rimraf dist && tsc -p tsconfig.json && tsc-alias -p tsconfig.json" }
+    success_criteria:
+      - cmd: npm run build -w packages/backend
 
   - id: shared_dedupe
     name: Deduplicate to packages/shared
     steps:
       - run: npm i -D jscpd
       - run: npx jscpd --threshold 2 --reporters console --pattern "**/*.{ts,tsx,js,jsx}" --ignore "**/dist/**,**/.next/**,**/admin-out/**"
-      - note: Move repeated helpers to packages/shared/src and refactor imports to @shared/*.
+      - note: Move repeated helpers to packages/shared/src and refactor imports to @app/shared.
     success_criteria:
       - cmd: npx jscpd --threshold 2 --silent --pattern "**/*.{ts,tsx,js,jsx}" --ignore "**/dist/**,**/.next/**,**/admin-out/**" || true
 
@@ -219,9 +275,9 @@ indent_size = 2
   - id: crypto_shared
     name: AES-256-GCM in shared
     steps:
-      - code_gen:
+      - file_write:
           path: packages/shared/src/crypto/encryption.ts
-          template: |
+          contents: |
             import { randomBytes, createCipheriv, createDecipheriv } from 'crypto';
             const ALGO='aes-256-gcm';
             const key = Buffer.from(process.env.ENCRYPTION_KEY_BASE64 || '', 'base64');
@@ -230,14 +286,20 @@ indent_size = 2
     success_criteria:
       - note: Round-trip tests pass; changing key fails decryption.
 
-  - id: admin_static_export
-    name: Next.js static export
+  - id: admin_transpile_shared
+    name: Next.js config for @app/shared + static export
     steps:
-      - code_gen:
+      - file_write:
           path: packages/admin/next.config.js
-          template: |
+          contents: |
             /** @type {import('next').NextConfig} */
-            const nextConfig = { output: 'export', images: { unoptimized: true } };
+            const nextConfig = {
+              output: 'export',
+              basePath: '/admin',
+              images: { unoptimized: true },
+              experimental: { externalDir: true },
+              transpilePackages: ['@app/shared']
+            };
             module.exports = nextConfig;
       - run: npm run build -w packages/admin && npm run export -w packages/admin
     success_criteria:
@@ -256,15 +318,40 @@ indent_size = 2
     success_criteria:
       - note: Coverage meets thresholds.
 
+  - id: tests_shared
+    name: Unit tests for @app/shared utilities
+    steps:
+      - ensure_dep:
+          where: packages/shared
+          dev: ["vitest","@vitest/coverage-v8","ts-node","rimraf"]
+      - file_write:
+          path: packages/shared/vitest.config.ts
+          contents: |
+            import { defineConfig } from 'vitest/config';
+            export default defineConfig({ test: { coverage: { provider: 'v8', statements: 85, branches: 80, functions: 85, lines: 85 } } });
+      - file_write:
+          path: packages/shared/src/greet/index.test.ts
+          contents: |
+            import { describe, it, expect } from 'vitest';
+            import { greet } from './index.js';
+            describe('greet', () => { it('greets a name', () => { expect(greet('World')).toBe('Hello, World!'); }); });
+      - code_mod:
+          files: [packages/shared/package.json]
+          changes:
+            - set_json: { path: "scripts.test", value: "vitest --run" }
+      - run: npm run test -w packages/shared
+    success_criteria:
+      - cmd: npm run test -w packages/shared
+
   - id: lint_prettier
     name: Lint/format & boundaries
     steps:
-      - run: npm -w packages/backend i -D eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-import eslint-config-prettier prettier
+      - run: npm -w packages/backend i -D eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-import eslint-plugin-n eslint-config-prettier prettier
       - run: npm -w packages/admin   i -D eslint-config-next prettier
       - file_write:
           path: packages/backend/.eslintrc.cjs
           contents: |
-            module.exports = { parser:'@typescript-eslint/parser', plugins:['@typescript-eslint','import'], extends:['eslint:recommended','plugin:@typescript-eslint/recommended','plugin:import/recommended','prettier'], rules:{'import/no-cycle':'error','node/no-sync':'error'}, settings:{'import/resolver':{typescript:{project:'./tsconfig.json'}}} };
+            module.exports = { parser:'@typescript-eslint/parser', plugins:['@typescript-eslint','import','n'], extends:['eslint:recommended','plugin:@typescript-eslint/recommended','plugin:import/recommended','plugin:n/recommended','prettier'], rules:{'import/no-cycle':'error','n/no-sync':'error'}, settings:{'import/resolver':{typescript:{project:'./tsconfig.json'}}} };
     success_criteria:
       - cmd: npm run lint -w packages/backend || true
 
@@ -284,7 +371,9 @@ indent_size = 2
                   - uses: actions/setup-node@v4
                     with: { node-version: '20', cache: 'npm' }
                   - run: npm ci -w packages/shared -w packages/backend -w packages/admin
+                  - run: npm run build -w packages/shared
                   - run: npm run lint -w packages/backend
+                  - run: npm run test -w packages/shared
                   - run: npm run test -w packages/backend
                   - run: npm run build -w packages/backend
                   - run: npm run build -w packages/admin && npm run export -w packages/admin
@@ -313,14 +402,14 @@ indent_size = 2
             COPY --from=backend_deps /app/packages/backend/node_modules ./packages/backend/node_modules
             COPY packages/shared ./packages/shared
             COPY packages/backend ./packages/backend
-            RUN npm run build -w packages/backend
+            RUN npm run build -w packages/shared && npm run build -w packages/backend
             
             FROM node:20-bookworm-slim AS admin_build
             WORKDIR /app
             COPY --from=admin_deps /app/packages/admin/node_modules ./packages/admin/node_modules
             COPY packages/shared ./packages/shared
             COPY packages/admin ./packages/admin
-            RUN npm run build -w packages/admin && npm run export -w packages/admin
+            RUN npm run build -w packages/shared && npm run build -w packages/admin && npm run export -w packages/admin
             
             FROM node:20-bookworm-slim AS runtime
             WORKDIR /app
@@ -340,12 +429,15 @@ indent_size = 2
   - id: lockfile_sync
     name: Sync lockfiles per package
     steps:
+      - run: rm -rf packages/shared/node_modules packages/shared/package-lock.json
       - run: rm -rf packages/backend/node_modules packages/backend/package-lock.json
       - run: rm -rf packages/admin/node_modules packages/admin/package-lock.json
+      - run: npm --prefix packages/shared install --package-lock-only
       - run: npm --prefix packages/backend install --package-lock-only
       - run: npm --prefix packages/admin   install --package-lock-only
-      - run: npm --prefix packages/backend ci && npm --prefix packages/admin ci
+      - run: npm --prefix packages/shared ci && npm --prefix packages/backend ci && npm --prefix packages/admin ci
     success_criteria:
+      - file_exists: packages/shared/package-lock.json
       - file_exists: packages/backend/package-lock.json
       - file_exists: packages/admin/package-lock.json
 
@@ -356,13 +448,35 @@ indent_size = 2
     success_criteria:
       - http: { url: "http://localhost:3000/admin", status: 200 }
 
+  - id: observability
+    name: Observability (logs, metrics)
+    steps:
+      - ensure_dep:
+          where: packages/backend
+          deps: ["pino","pino-http","prom-client"]
+      - file_write:
+          path: packages/backend/src/http/bootstrap/observability.ts
+          contents: |
+            import pino from 'pino';
+            import pinoHttp from 'pino-http';
+            import type { Express } from 'express';
+            import client from 'prom-client';
+            export const logger = pino({ level: process.env.LOG_LEVEL || 'info', redact: ['req.headers.authorization'] });
+            export function applyObservability(app: Express){
+              app.use(pinoHttp({ logger }));
+              client.collectDefaultMetrics();
+              app.get('/metrics', async (_req, res) => { res.set('Content-Type', client.register.contentType); res.end(await client.register.metrics()); });
+            }
+    success_criteria:
+      - http: { url: "http://localhost:3000/metrics", status: 200 }
+
   - id: migration_rollout
     name: Migration guide & PR strategy
     steps:
       - file_write:
           path: MIGRATION_GUIDE.md
           contents: |
-            # Phases: structure → ESM → strict TS → security → shared → tests → CI → Docker → cleanups
+            # Phases: structure → ESM → strict TS → security → shared → tests → CI → Docker → observability → cleanups
             - Create small PRs per phase; CI must pass each PR before merging.
     success_criteria:
       - file_exists: MIGRATION_GUIDE.md
@@ -373,8 +487,8 @@ agents:
     actions: [ { workflow: monorepo_setup }, { workflow: ts_project_refs }, { workflow: enforce_esm } ]
 
   - id: SharedAgent
-    role: Shared Utilities & Deduplication
-    actions: [ { workflow: shared_dedupe }, { workflow: crypto_shared } ]
+    role: Shared Package & Deduplication
+    actions: [ { workflow: shared_package }, { workflow: tsc_alias_setup }, { workflow: shared_dedupe }, { workflow: tests_shared } ]
 
   - id: ArchAgent
     role: Backend Architecture (Hexagonal)
@@ -390,11 +504,13 @@ agents:
 
   - id: SecurityAgent
     role: Security Hardening
-    actions: [ { workflow: security_hardening }, { workflow: sql_safety } ]
+    actions:
+      - { workflow: security_hardening }
+      - { workflow: sql_safety }
 
   - id: AdminAgent
     role: Next.js Admin Export
-    actions: [ { workflow: admin_static_export } ]
+    actions: [ { workflow: admin_transpile_shared } ]
 
   - id: TestAgent
     role: Testing & Coverage
@@ -411,3 +527,10 @@ agents:
   - id: DockerAgent
     role: Docker Build & Runtime
     actions: [ { workflow: docker_multistage }, { workflow: runtime_serve_admin } ]
+
+  - id: ObservabilityAgent
+    role: Logs & Metrics
+    actions: [ { workflow: observability } ]
+```
+
+---
