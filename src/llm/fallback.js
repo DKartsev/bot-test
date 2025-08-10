@@ -4,10 +4,21 @@ const { logger } = require('../utils/logger');
 
 dotenv.config();
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const apiKey = process.env.OPENAI_API_KEY;
+let client = null;
+
+if (apiKey) {
+  client = new OpenAI({ apiKey });
+} else {
+  logger.warn('OPENAI_API_KEY is not set; OpenAI fallback disabled');
+}
 
 async function fallbackQuery(question, lang) {
   if (!question) {
+    return '';
+  }
+  if (!client) {
+    logger.error('OpenAI client not initialized');
     return '';
   }
   try {
