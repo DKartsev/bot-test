@@ -9,3 +9,5 @@ yarn-error.log*
 coverage
 test
 data/versions/*.tmp
+dist
+admin-out
