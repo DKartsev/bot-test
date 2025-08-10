@@ -6,6 +6,7 @@ import { env } from '../config/environment';
 import { logger, withRequest } from '../utils/logger';
 import { handleError, asyncHandler } from '../utils/errorHandler';
 import conversationsRouter from './routes/conversations';
+import recommendationsRouter from './routes/recommendations';
 import { authMiddleware, ipAllowlistMiddleware } from '../utils/security';
 
 const app = express();
@@ -62,6 +63,7 @@ app.get('/healthz', (req, res) => {
 // Admin routes with security
 app.use('/admin', adminCors, ipAllowlistMiddleware(), rateLimiter, authMiddleware(['admin', 'editor']));
 app.use('/admin/conversations', conversationsRouter);
+app.use('/admin/recommendations', recommendationsRouter);
 
 // Global error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
