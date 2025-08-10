@@ -1,26 +1,37 @@
-# syntax=docker/dockerfile:1
-
+# ---------- builder ----------
 FROM node:20-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
+
+# 1) только манифесты для кеша
+COPY package.json package-lock.json ./
+# если админка лежит в packages/operator-admin
+RUN mkdir -p packages/operator-admin
+COPY packages/operator-admin/package.json packages/operator-admin/package-lock.json ./packages/operator-admin/
+
+# 2) установка зависимостей
 RUN apk add --no-cache python3 make g++ git
 RUN npm ci
-COPY . .
-RUN npm run build
-RUN npm --prefix packages/operator-admin ci
-RUN npm --prefix packages/operator-admin run build
-RUN npm --prefix packages/operator-admin run export
+RUN npm ci --prefix packages/operator-admin
 
-FROM node:20-alpine AS runner
-RUN apk add --no-cache tini \
-  && (addgroup -g 10001 -S node || true) \
-  && (adduser -S -G node -u 10001 node || true)
+# 3) копируем исходники и собираем
+COPY . .
+# скрипт сборки бэка (tsc / vite / whatever)
+RUN npm run build
+# скрипт сборки админки и экспорт статики (добавь их в package.json)
+RUN npm run build:admin && npm run export:admin
+
+# ---------- runtime ----------
+FROM node:20-alpine AS runtime
 WORKDIR /app
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/packages/operator-admin/out ./admin-out
 ENV NODE_ENV=production
+
+# только нужное
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/admin-out ./admin-out
+COPY package.json package-lock.json ./
+
+# прод-зависимости (если нужно)
+RUN npm ci --omit=dev
+
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD wget -qO- http://localhost:3000/health || exit 1
-USER node
-ENTRYPOINT ["tini","--"]
 CMD ["node","dist/index.js"]
