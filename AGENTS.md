@@ -1,536 +1,527 @@
-# Files to create
+version: 1
+name: app-monorepo-hardening
+description: >
+  End-to-end workflows to drive the repo toward an "ideal" production structure:
+  monorepo workspaces (backend/admin/shared), strict TypeScript (NodeNext),
+  ESM-only, hexagonal backend, security hardening, validation & errors,
+  observability, OpenAPI docs, CI, Docker, migrations, and release hygiene.
 
-Below are updated files. Copy each block into its own file at the repo root (or indicated path).
+defaults:
+  node_version: "20"
+  npm_version: ">=10 <12"
+  packages_root: "packages"
+  backend_dir: "packages/backend"
+  admin_dir: "packages/admin"
+  shared_dir: "packages/shared"
+  admin_base_path: "/admin"
+  cors_origin: "http://localhost:3000"
+  rate_limit_window_ms: 900000          # 15m
+  rate_limit_max: 100
+  port: 3000
+  db_tool: "pg"                          # pg | prisma | knex
+  redis_enabled: false
 
----
-
-## 1) `AGENTS.yaml`
-
-```yaml
-version: 3
-name: monorepo-backend-admin
-summary: |
-  Monorepo with three packages: packages/backend (Node/Express, TypeScript, ESM),
-  packages/admin (Next.js, static export), and packages/shared (reusable ESM lib published as @app/shared).
-  Multi-stage Docker caches backend/admin deps separately and ships a slim, non-root runtime.
-  This AGENTS file encodes the ideal structure goals and phased workflows.
-
-workspaces:
-  enabled: true
-
-repo:
-  packages:
-    shared:
-      path: packages/shared
-      language: typescript
-      moduleSystem: esm
-      build: "npm run build -w packages/shared"
-      lockfile: packages/shared/package-lock.json
-      name: "@app/shared"
-    backend:
-      path: packages/backend
-      language: typescript
-      moduleSystem: esm
-      build: "npm run build -w packages/backend"
-      start: "npm run start -w packages/backend"
-      test: "npm run test -w packages/backend"
-      lockfile: packages/backend/package-lock.json
-    admin:
-      path: packages/admin
-      framework: nextjs
-      moduleSystem: esm
-      build: "npm run build -w packages/admin"
-      export: "npm run export -w packages/admin"
-      outDir: packages/admin/admin-out
-      lockfile: packages/admin/package-lock.json
-
-runtime:
-  node: "20"
-  npm: ">=10 <12"
-  env:
-    NODE_ENV: production
-    ADMIN_STATIC_DIR: /app/packages/admin/admin-out
-  user: node
-
-policies:
-  coding:
-    - Single module system: ESM only ("type": "module"; TS module ESNext / NodeNext).
-    - Strict TypeScript across packages; avoid `any` in critical paths.
-    - Hexagonal architecture in backend (domain/app/infra/http separation; DI of adapters).
-    - No synchronous fs calls in request paths; use fs/promises.
-    - Reuse via @app/shared; avoid duplicate code across packages.
-  security:
-    - Secrets via `.env` + `dotenv-safe`; never commit secrets.
-    - Helmet, CORS allowlist, rate limiting; request size limits.
-    - Parameterized SQL or safe ORM APIs; forbid string-concatenated SQL.
-    - AES‑256‑GCM for at‑rest sensitive values; rotate keys.
-  testing:
-    - Vitest with coverage gates; Supertest for HTTP; unit + integration layers.
+order:
+  - lockfile_sync
+  - shared_package
+  - tsc_alias_setup
+  - admin_transpile_shared
+  - hex_arch_backend
+  - security_hardening
+  - validation_errors
+  - observability
+  - openapi_docs
+  - graceful_shutdown
+  - readiness_liveness
+  - request_id_ctx
+  - db_migrations_prisma_or_knex
+  - tx_error_map
+  - redis_idempotency
+  - pagination_contract
+  - response_validation
+  - ci_pipeline
+  - docker_polish
+  - changesets_release
 
 workflows:
-  - id: monorepo_setup
-    name: Monorepo & workspaces
-    description: Create packages/* layout and root workspaces config.
-    steps:
-      - run: mkdir -p packages/backend packages/admin packages/shared
-      - run: |
-          node -e "const fs=require('fs');const f='package.json';let p={private:true,workspaces:['packages/*'],engines:{node:'>=20 <23',npm:'>=10 <12'},scripts:{build:'npm run build -w packages/shared && npm run build -w packages/backend && npm run build -w packages/admin',lint:'npm run lint -w packages/backend && npm run lint -w packages/admin',test:'npm run test -w packages/backend'}};fs.existsSync(f)?console.log('root package.json exists'):fs.writeFileSync(f,JSON.stringify(p,null,2))"
-      - run: echo "20" > .nvmrc
-      - run: printf "engine-strict=true
-fund=false
-audit=false
-" > .npmrc
-      - run: printf "node_modules
-**/node_modules
-dist
-.next
-admin-out
-.env
-.env.*
-" > .gitignore
-      - run: printf "root = true
-[*]
-end_of_line = lf
-insert_final_newline = true
-charset = utf-8
-indent_style = space
-indent_size = 2
-" > .editorconfig
-    success_criteria:
-      - cmd: node -e "console.log(require('./package.json').workspaces?.length>0?'ok':'fail')"
 
-  - id: ts_project_refs
-    name: TypeScript base config + project references
-    steps:
-      - run: |
-          cat > tsconfig.base.json <<'JSON' 
-          {"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"NodeNext","strict":true,"noImplicitAny":true,"exactOptionalPropertyTypes":true,"noUncheckedIndexedAccess":true,"resolveJsonModule":true,"esModuleInterop":true,"skipLibCheck":true,"baseUrl":".","paths":{"@app/shared":["packages/shared/src/index.ts"],"@app/shared/*":["packages/shared/src/*"]}}}
-          JSON
-      - run: |
-          mkdir -p packages/shared/src && cat > packages/shared/tsconfig.json <<'JSON'
-          {"extends":"../../tsconfig.base.json","compilerOptions":{"outDir":"dist"},"include":["src"],"references":[]}
-          JSON
-      - run: |
-          mkdir -p packages/backend/src && cat > packages/backend/tsconfig.json <<'JSON'
-          {"extends":"../../tsconfig.base.json","compilerOptions":{"outDir":"dist","rootDir":"src"},"include":["src"],"references":[{"path":"../shared"}]}
-          JSON
-      - run: |
-          mkdir -p packages/admin && cat > packages/admin/tsconfig.json <<'JSON'
-          {"extends":"../../tsconfig.base.json"}
-          JSON
-    success_criteria:
-      - cmd: npx -y typescript -b packages/shared packages/backend
+  lockfile_sync:
+    goal: Ensure each workspace has a fresh, committed package-lock.json.
+    run:
+      - rm -rf node_modules package-lock.json
+      - rm -rf ${backend_dir}/node_modules ${backend_dir}/package-lock.json
+      - rm -rf ${admin_dir}/node_modules   ${admin_dir}/package-lock.json
+      - rm -rf ${shared_dir}/node_modules  ${shared_dir}/package-lock.json
+      - npm --prefix ${backend_dir} install --package-lock-only
+      - npm --prefix ${admin_dir}   install --package-lock-only
+      - npm --prefix ${shared_dir}  install --package-lock-only
+      - git add ${backend_dir}/package-lock.json ${admin_dir}/package-lock.json ${shared_dir}/package-lock.json
+      - git commit -m "chore(lock): sync backend/admin/shared lockfiles" || true
+    accept:
+      - test -f ${backend_dir}/package-lock.json
+      - test -f ${admin_dir}/package-lock.json
+      - test -f ${shared_dir}/package-lock.json
 
-  - id: enforce_esm
-    name: Enforce ESM only
-    steps:
-      - run: node -e "['packages/shared','packages/backend','packages/admin'].forEach(p=>{const f=p+'/package.json';const fs=require('fs');if(fs.existsSync(f)){const j=JSON.parse(fs.readFileSync(f,'utf8'));j.type='module';fs.writeFileSync(f,JSON.stringify(j,null,2));}})"
-      - run: grep -R "require(\|module.exports" -n packages/backend || true
-    success_criteria:
-      - cmd: test -z "$(grep -R "require(\|module.exports" -n packages/backend || true)" 
+  shared_package:
+    goal: Make @app/shared a distributable ESM lib with explicit exports.
+    files:
+      - path: ${shared_dir}/package.json
+        merge_json:
+          name: "@app/shared"
+          private: false
+          type: "module"
+          main: "dist/index.js"
+          module: "dist/index.js"
+          types: "dist/index.d.ts"
+          exports:
+            ".": { import: "./dist/index.js", types: "./dist/index.d.ts" }
+          files: ["dist"]
+          scripts:
+            clean: "rimraf dist"
+            build: "npm run clean && tsc -p tsconfig.json && tsc-alias -p tsconfig.json"
+          devDependencies:
+            typescript: "5.9.2"
+            tsc-alias: "^1.8.10"
+      - path: ${shared_dir}/src/index.ts
+        ensure_contains: "export * from './greet/index.js';"
+    run:
+      - npm run build -w ${shared_dir}
+    accept:
+      - test -f ${shared_dir}/dist/index.js
 
-  - id: shared_package
-    name: Ensure @app/shared is a distributable ESM lib
-    steps:
-      - code_mod:
-          description: Set package.json fields
-          files: [packages/shared/package.json]
-          changes:
-            - set_json: { path: "name", value: "@app/shared" }
-            - set_json: { path: "private", value: false }
-            - set_json: { path: "type", value: "module" }
-            - set_json: { path: "main", value: "dist/index.js" }
-            - set_json: { path: "module", value: "dist/index.js" }
-            - set_json: { path: "types", value: "dist/index.d.ts" }
-            - set_json: { path: "exports.__.import", value: "./dist/index.js" }
-            - set_json: { path: "exports.__.types", value: "./dist/index.d.ts" }
-            - set_json: { path: "files[0]", value: "dist" }
-      - file_write:
-          path: packages/shared/src/index.ts
-          contents: |
-            export * from './greet/index.js';
-      - ensure_dep:
-          where: packages/shared
-          dev: ["typescript@5.9.2","tsc-alias@^1.8.10","rimraf@^5.0.0"]
-      - code_mod:
-          files: [packages/shared/package.json]
-          changes:
-            - set_json: { path: "scripts.clean", value: "rimraf dist" }
-            - set_json: { path: "scripts.build", value: "npm run clean && tsc -p tsconfig.json && tsc-alias -p tsconfig.json" }
-    success_criteria:
-      - cmd: npm run build -w packages/shared
-      - file_exists: packages/shared/dist/index.js
+  tsc_alias_setup:
+    goal: Ensure runtime-safe path aliases across backend/shared.
+    files:
+      - path: ${backend_dir}/package.json
+        merge_json:
+          scripts:
+            build: "rimraf dist && tsc -p tsconfig.json && tsc-alias -p tsconfig.json"
+        ensure_dev_deps:
+          tsc-alias: "^1.8.10"
+      - path: tsconfig.base.json
+        merge_json:
+          compilerOptions:
+            moduleResolution: "NodeNext"
+            module: "ESNext"
+            target: "ES2022"
+            strict: true
+            esModuleInterop: true
+            resolveJsonModule: true
+            baseUrl: "."
+            paths:
+              "@app/shared/*": ["packages/shared/src/*"]
+    run:
+      - npm run build -w ${shared_dir}
+      - npm run build -w ${backend_dir}
+    accept:
+      - node -e "require('fs').accessSync('${backend_dir}/dist');"
 
-  - id: tsc_alias_setup
-    name: tsc-alias runtime-safe path rewriting
-    steps:
-      - ensure_dep:
-          where: packages/backend
-          dev: ["tsc-alias@^1.8.10","rimraf@^5.0.0"]
-      - code_mod:
-          files: [packages/backend/package.json]
-          changes:
-            - set_json: { path: "scripts.build", value: "rimraf dist && tsc -p tsconfig.json && tsc-alias -p tsconfig.json" }
-    success_criteria:
-      - cmd: npm run build -w packages/backend
+  admin_transpile_shared:
+    goal: Make Next.js build/export transpile @app/shared and serve under basePath.
+    files:
+      - path: ${admin_dir}/next.config.js
+        ensure_js: |
+          /** @type {import('next').NextConfig} */
+          const nextConfig = {
+            output: 'export',
+            basePath: '${admin_base_path}',
+            images: { unoptimized: true },
+            experimental: { externalDir: true },
+            transpilePackages: ['@app/shared']
+          };
+          module.exports = nextConfig;
+      - path: ${admin_dir}/package.json
+        merge_json:
+          scripts:
+            clean: "rimraf .next admin-out"
+            build: "npm run clean && next build"
+            export: "next export -o admin-out"
+    run:
+      - npm run build -w ${admin_dir}
+      - npm run export -w ${admin_dir}
+    accept:
+      - test -d ${admin_dir}/admin-out
 
-  - id: shared_dedupe
-    name: Deduplicate to packages/shared
-    steps:
-      - run: npm i -D jscpd
-      - run: npx jscpd --threshold 2 --reporters console --pattern "**/*.{ts,tsx,js,jsx}" --ignore "**/dist/**,**/.next/**,**/admin-out/**"
-      - note: Move repeated helpers to packages/shared/src and refactor imports to @app/shared.
-    success_criteria:
-      - cmd: npx jscpd --threshold 2 --silent --pattern "**/*.{ts,tsx,js,jsx}" --ignore "**/dist/**,**/.next/**,**/admin-out/**" || true
+  hex_arch_backend:
+    goal: Enforce hexagonal layout and DI boundaries in backend.
+    checks:
+      - "! grep -R \"require(\\|module.exports\" ${backend_dir}/src || true"
+      - "! grep -R \"from 'pg'\" ${backend_dir}/src/http || true"
+    accept:
+      - test -f ${backend_dir}/src/app.ts
+      - test -f ${backend_dir}/src/server.ts
+      - test -d ${backend_dir}/src/modules
 
-  - id: hex_arch_backend
-    name: Backend hexagonal structure
-    steps:
-      - note: Restructure packages/backend/src into app.ts, server.ts, config/, http/, modules/*/{domain,app,infra,http}, shared/.
-      - note: Services depend on domain interfaces; adapters live in infra; controllers call services only.
-    success_criteria:
-      - code_check:
-          path: packages/backend/src
-          must_not_include: "controllers importing db client directly"
+  security_hardening:
+    goal: Helmet, CORS, rate limit, dotenv-safe; expanded .env.example.
+    files:
+      - path: .env.example
+        ensure_lines:
+          - "NODE_ENV=development"
+          - "PORT=${port}"
+          - "CORS_ORIGIN=${cors_origin}"
+          - "ENCRYPTION_KEY_BASE64="
+          - "DATABASE_URL="
+          - "REDIS_URL="
+      - path: ${backend_dir}/src/http/bootstrap/security.ts
+        ensure_js: |
+          import helmet from 'helmet';
+          import cors from 'cors';
+          import rateLimit from 'express-rate-limit';
+          import type { Express } from 'express';
+          export function applySecurity(app: Express) {
+            app.use(helmet());
+            app.use(cors({ origin: (process.env.CORS_ORIGIN ?? '').split(',').filter(Boolean) }));
+            app.use(rateLimit({ windowMs: ${rate_limit_window_ms}, max: ${rate_limit_max}, standardHeaders: true, legacyHeaders: false }));
+          }
+    run:
+      - npm i -w ${backend_dir} dotenv-safe helmet cors express-rate-limit
+    accept:
+      - grep -R "dotenv-safe/config" ${backend_dir}/src/server.ts
 
-  - id: error_model
-    name: Unified AppError + global error handler
-    steps:
-      - code_gen:
-          path: packages/backend/src/http/errors/AppError.ts
-          template: |
-            export class AppError extends Error { code: string; status: number; meta?: unknown; constructor(code: string, message: string, status = 400, meta?: unknown){ super(message); this.code=code; this.status=status; this.meta=meta; } }
-      - code_gen:
-          path: packages/backend/src/http/middleware/errorHandler.ts
-          template: |
-            import type { NextFunction, Request, Response } from 'express';
-            import { AppError } from '../errors/AppError.js';
-            export function errorHandler(err: unknown,_req:Request,res:Response,_next:NextFunction){
-              if (err instanceof AppError) return res.status(err.status).json({ error: err.code, message: err.message, meta: err.meta });
-              return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  validation_errors:
+    goal: Zod request/env validation and unified AppError + errorHandler.
+    files:
+      - path: ${backend_dir}/src/http/errors/AppError.ts
+        ensure_ts: |
+          export class AppError extends Error {
+            code: string; status: number; meta?: unknown;
+            constructor(code: string, message: string, status = 400, meta?: unknown) {
+              super(message); this.code = code; this.status = status; this.meta = meta;
             }
-    success_criteria:
-      - note: Throwing AppError in a handler returns structured JSON and correct status.
+          }
+      - path: ${backend_dir}/src/http/middleware/errorHandler.ts
+        ensure_ts: |
+          import type { NextFunction, Request, Response } from 'express';
+          import { AppError } from '../errors/AppError.js';
+          export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
+            if (err instanceof AppError) return res.status(err.status).json({ error: err.code, message: err.message, meta: err.meta });
+            return res.status(500).json({ error: 'INTERNAL_ERROR' });
+          }
+      - path: ${backend_dir}/src/http/middleware/validate.ts
+        ensure_ts: |
+          import type { Request, Response, NextFunction } from 'express';
+          import type { ZodSchema } from 'zod';
+          export const validate = (schema: ZodSchema) => (req: Request, res: Response, next: NextFunction) => {
+            const parsed = schema.safeParse({ body: req.body, params: req.params, query: req.query });
+            if (!parsed.success) return res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.issues });
+            // @ts-expect-error attach parsed if needed
+            req.validated = parsed.data; next();
+          }
+      - path: ${backend_dir}/src/config/env.ts
+        ensure_ts: |
+          import { z } from 'zod';
+          export const EnvSchema = z.object({
+            NODE_ENV: z.enum(['development','test','production']),
+            PORT: z.coerce.number().int().positive().default(${port}),
+            CORS_ORIGIN: z.string().default('${cors_origin}'),
+            ENCRYPTION_KEY_BASE64: z.string().min(1),
+            DATABASE_URL: z.string().min(1),
+            REDIS_URL: z.string().optional()
+          });
+          export type Env = z.infer<typeof EnvSchema>;
+          export const loadEnv = (): Env => EnvSchema.parse(process.env);
+    run:
+      - npm i -w ${backend_dir} zod zod-validation-error
+    accept:
+      - grep -R "VALIDATION_ERROR" ${backend_dir}/src
 
-  - id: validation_env
-    name: Zod validation + env schema
-    steps:
-      - run: npm -w packages/backend i zod zod-validation-error
-      - code_gen:
-          path: packages/backend/src/http/middleware/validate.ts
-          template: |
-            import type { Request, Response, NextFunction } from 'express';
-            import type { ZodSchema } from 'zod';
-            export const validate = (schema: ZodSchema) => (req: Request, res: Response, next: NextFunction) => {
-              const parsed = schema.safeParse({ body: req.body, params: req.params, query: req.query });
-              if (!parsed.success) return res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.issues });
-              // @ts-expect-error attach parsed if needed
-              req.validated = parsed.data; next(); };
-      - code_gen:
-          path: packages/backend/src/config/env.ts
-          template: |
-            import { z } from 'zod';
-            export const EnvSchema = z.object({ NODE_ENV: z.enum(['development','test','production']), PORT: z.coerce.number().int().positive().default(3000), CORS_ORIGIN: z.string().default('http://localhost:3000'), ENCRYPTION_KEY_BASE64: z.string().min(1), DATABASE_URL: z.string().min(1) });
-            export type Env = z.infer<typeof EnvSchema>;
-            export const loadEnv = (): Env => EnvSchema.parse(process.env);
-    success_criteria:
-      - note: Invalid env halts startup with descriptive error; invalid input returns 400 VALIDATION_ERROR.
+  observability:
+    goal: Request logging (pino), metrics (/metrics via prom-client).
+    files:
+      - path: ${backend_dir}/src/http/bootstrap/observability.ts
+        ensure_ts: |
+          import pino from 'pino';
+          import pinoHttp from 'pino-http';
+          import type { Express } from 'express';
+          import client from 'prom-client';
+          export const logger = pino({ level: process.env.LOG_LEVEL || 'info', redact: ['req.headers.authorization'] });
+          export function applyObservability(app: Express) {
+            app.use(pinoHttp({ logger }));
+            client.collectDefaultMetrics();
+            app.get('/metrics', async (_req, res) => {
+              res.set('Content-Type', client.register.contentType);
+              res.end(await client.register.metrics());
+            });
+          }
+    run:
+      - npm i -w ${backend_dir} pino pino-http prom-client
+    accept:
+      - grep -R "/metrics" ${backend_dir}/src
 
-  - id: security_hardening
-    name: Security hardening (dotenv-safe, Helmet, CORS, rate limit)
-    steps:
-      - run: npm -w packages/backend i dotenv-safe helmet cors express-rate-limit
-      - note: Add `import 'dotenv-safe/config'` at the very top of packages/backend/src/server.ts.
-      - code_gen:
-          path: packages/backend/src/http/bootstrap/security.ts
-          template: |
-            import helmet from 'helmet';
-            import cors from 'cors';
-            import rateLimit from 'express-rate-limit';
-            import type { Express } from 'express';
-            export function applySecurity(app: Express){
-              app.use(helmet());
-              app.use(cors({ origin: (process.env.CORS_ORIGIN ?? '').split(',').filter(Boolean) }));
-              app.use(rateLimit({ windowMs: 15*60*1000, max: 100 }));
-            }
-      - file_write:
-          path: .env.example
-          contents: |
-            NODE_ENV=development
-            PORT=3000
-            CORS_ORIGIN=http://localhost:3000
-            ENCRYPTION_KEY_BASE64=
-            DATABASE_URL=
-    success_criteria:
-      - note: Helmet headers observed; CORS restricted; rate limiting enforced.
+  openapi_docs:
+    goal: Generate OpenAPI from zod & serve Swagger UI at /docs.
+    files:
+      - path: ${backend_dir}/src/http/bootstrap/docs.ts
+        ensure_ts: |
+          import type { Express } from 'express';
+          import swaggerUi from 'swagger-ui-express';
+          import { generateOpenApi } from '../../validation/openapi.js';
+          export function applyDocs(app: Express) {
+            const doc = generateOpenApi();
+            app.get('/openapi.json', (_req, res) => res.json(doc));
+            app.use('/docs', swaggerUi.serve, swaggerUi.setup(doc));
+          }
+      - path: ${backend_dir}/src/validation/openapi.ts
+        ensure_ts: |
+          import { OpenAPIRegistry, OpenAPIGenerator } from 'zod-to-openapi';
+          import { CreateUserSchema } from './schemas.js';
+          export const registry = new OpenAPIRegistry();
+          registry.registerPath({
+            method: 'post',
+            path: '/api/users',
+            request: { body: { content: { 'application/json': { schema: CreateUserSchema.shape.body } } } },
+            responses: { 201: { description: 'Created' }, 400: { description: 'Validation error' } },
+          });
+          export function generateOpenApi() {
+            const generator = new OpenAPIGenerator(registry.definitions, '3.0.0');
+            return generator.generateDocument({ info: { title: 'API', version: '1.0.0' }, servers: [{ url: '/' }] });
+          }
+    run:
+      - npm i -w ${backend_dir} zod-to-openapi swagger-ui-express
+    accept:
+      - curl -sSf http://localhost:${port}/openapi.json || true
 
-  - id: sql_safety
-    name: SQL injection prevention
-    steps:
-      - note: Replace concatenated SQL with parameterized queries (pg: $1,$2; Prisma: $queryRaw tagged template).
-      - run: grep -R "\${.*}" -n packages/backend/src || true
-    success_criteria:
-      - cmd: test -z "$(grep -R "SELECT .*\${" -n packages/backend/src || true)"
+  graceful_shutdown:
+    goal: Close HTTP and DB gracefully on SIGTERM/SIGINT.
+    files:
+      - path: ${backend_dir}/src/server.ts
+        ensure_contains: "process.on('SIGTERM'"
+        patch: |
+          const server = app.listen(port, () => console.log(`API on :${port}`));
+          const shutdown = async () => {
+            console.log('graceful shutdown...');
+            server.closeAllConnections?.();
+            server.close(() => console.log('http closed'));
+            try { await pool.end?.(); } catch {}
+            process.exit(0);
+          };
+          process.on('SIGTERM', shutdown);
+          process.on('SIGINT', shutdown);
+    accept:
+      - "true"
 
-  - id: crypto_shared
-    name: AES-256-GCM in shared
-    steps:
-      - file_write:
-          path: packages/shared/src/crypto/encryption.ts
-          contents: |
-            import { randomBytes, createCipheriv, createDecipheriv } from 'crypto';
-            const ALGO='aes-256-gcm';
-            const key = Buffer.from(process.env.ENCRYPTION_KEY_BASE64 || '', 'base64');
-            export function encrypt(plaintext:string){ const iv=randomBytes(12); const c=createCipheriv(ALGO,key,iv); const enc=Buffer.concat([c.update(plaintext,'utf8'),c.final()]); const tag=c.getAuthTag(); return Buffer.concat([iv,tag,enc]).toString('base64'); }
-            export function decrypt(b64:string){ const buf=Buffer.from(b64,'base64'); const iv=buf.subarray(0,12); const tag=buf.subarray(12,28); const data=buf.subarray(28); const d=createDecipheriv(ALGO,key,iv); d.setAuthTag(tag); const dec=Buffer.concat([d.update(data),d.final()]); return dec.toString('utf8'); }
-    success_criteria:
-      - note: Round-trip tests pass; changing key fails decryption.
+  readiness_liveness:
+    goal: Separate /api/livez (always OK) and /api/readyz (checks DB).
+    files:
+      - path: ${backend_dir}/src/http/routes.ts
+        ensure_ts: |
+          import { Router } from 'express';
+          import { usersRoutes } from '../modules/users/http/routes.js';
+          import type { IUserRepo } from '../modules/users/domain/User.js';
+          export function buildRoutes(deps: { userRepo: IUserRepo, health?: { db: () => Promise<boolean> } }) {
+            const r = Router();
+            r.get('/livez', (_req, res) => res.send('OK'));
+            r.get('/readyz', async (_req, res) => {
+              const ok = await (deps.health?.db?.() ?? Promise.resolve(true));
+              return ok ? res.send('OK') : res.status(503).send('NOT_READY');
+            });
+            r.get('/health', (_req, res) => res.json({ ok: true }));
+            r.use('/users', usersRoutes(deps.userRepo));
+            return r;
+          }
+    accept:
+      - "true"
 
-  - id: admin_transpile_shared
-    name: Next.js config for @app/shared + static export
-    steps:
-      - file_write:
-          path: packages/admin/next.config.js
-          contents: |
-            /** @type {import('next').NextConfig} */
-            const nextConfig = {
-              output: 'export',
-              basePath: '/admin',
-              images: { unoptimized: true },
-              experimental: { externalDir: true },
-              transpilePackages: ['@app/shared']
+  request_id_ctx:
+    goal: Correlate logs with X-Request-ID via AsyncLocalStorage.
+    files:
+      - path: ${backend_dir}/src/shared/context.ts
+        ensure_ts: |
+          import { AsyncLocalStorage } from 'node:async_hooks';
+          export type Ctx = { requestId: string };
+          export const als = new AsyncLocalStorage<Ctx>();
+          export const withCtx = <T>(ctx: Ctx, fn: () => T) => als.run(ctx, fn);
+          export const getCtx = () => als.getStore();
+      - path: ${backend_dir}/src/app.ts
+        ensure_contains: "withCtx({ requestId"
+        patch: |
+          import { randomUUID } from 'crypto';
+          import { withCtx } from './shared/context.js';
+          app.use((req, _res, next) => {
+            const requestId = (req.header('x-request-id') as string) || randomUUID();
+            // @ts-expect-error
+            req.id = requestId;
+            withCtx({ requestId }, next);
+          });
+    accept:
+      - "true"
+
+  db_migrations_prisma_or_knex:
+    goal: Reproducible schema via Prisma or Knex (choose by defaults.db_tool).
+    when:
+      - "${db_tool} in ['prisma','knex','pg']"
+    run_if:
+      prisma:
+        - npm i -w ${backend_dir} -D prisma
+        - npm i -w ${backend_dir} @prisma/client
+        - test -f ${backend_dir}/prisma/schema.prisma || npx -w ${backend_dir} prisma init
+      knex:
+        - npm i -w ${backend_dir} knex pg
+        - npm i -w ${backend_dir} -D tsx
+    accept:
+      - "true"
+
+  tx_error_map:
+    goal: Centralize transactions and domain->HTTP error mapping.
+    files:
+      - path: ${backend_dir}/src/http/errors/map.ts
+        ensure_ts: |
+          import { AppError } from './AppError.js';
+          export const mapDomainError = (e: unknown) => {
+            if ((e as Error).message === 'USER_EXISTS') return new AppError('USER_EXISTS','User exists',409);
+            return e;
+          };
+    accept:
+      - "true"
+
+  redis_idempotency:
+    goal: Optional idempotency for POST using Redis.
+    when:
+      - "${redis_enabled} == true"
+    files:
+      - path: ${backend_dir}/src/http/middleware/idempotency.ts
+        ensure_ts: |
+          import type { Request, Response, NextFunction } from 'express';
+          import Redis from 'ioredis';
+          const redis = new Redis(process.env.REDIS_URL);
+          export async function idempotency(req: Request, res: Response, next: NextFunction) {
+            const key = req.header('idempotency-key'); if (!key) return next();
+            const hit = await redis.get(key); if (hit) return res.status(409).json({ error:'IDEMPOTENT_REPLAY' });
+            await redis.setex(key, 600, 'used'); // 10 min
+            return next();
+          }
+    run:
+      - npm i -w ${backend_dir} ioredis
+    accept:
+      - "true"
+
+  pagination_contract:
+    goal: Cursor-based pagination contract across list endpoints.
+    files:
+      - path: ${backend_dir}/src/validation/pagination.ts
+        ensure_ts: |
+          import { z } from 'zod';
+          export const ListQuery = z.object({
+            cursor: z.string().optional(),
+            limit: z.coerce.number().min(1).max(100).default(20)
+          });
+          export type ListResult<T> = { items: T[]; nextCursor?: string };
+    accept:
+      - "true"
+
+  response_validation:
+    goal: (Dev) ensure responses match zod schemas for key endpoints.
+    files:
+      - path: ${backend_dir}/src/http/middleware/responseValidate.ts
+        ensure_ts: |
+          import type { Request, Response, NextFunction } from 'express';
+          import type { ZodSchema } from 'zod';
+          export const validateResponse = (schema: ZodSchema) => {
+            return (_req: Request, res: Response, next: NextFunction) => {
+              const send = res.json.bind(res);
+              res.json = (body: any) => {
+                if (process.env.NODE_ENV !== 'production') {
+                  const ok = schema.safeParse(body);
+                  if (!ok.success) console.warn('Response schema mismatch', ok.error.issues);
+                }
+                return send(body);
+              };
+              next();
             };
-            module.exports = nextConfig;
-      - run: npm run build -w packages/admin && npm run export -w packages/admin
-    success_criteria:
-      - file_exists: packages/admin/admin-out/index.html
+          };
+    accept:
+      - "true"
 
-  - id: tests_coverage
-    name: Vitest + Supertest with coverage gates
-    steps:
-      - run: npm -w packages/backend i -D vitest @vitest/coverage-v8 supertest ts-node
-      - file_write:
-          path: packages/backend/vitest.config.ts
-          contents: |
-            import { defineConfig } from 'vitest/config';
-            export default defineConfig({ test: { coverage: { provider: 'v8', statements: 85, branches: 80, functions: 85, lines: 85 } } });
-      - run: npm run test -w packages/backend -- --run
-    success_criteria:
-      - note: Coverage meets thresholds.
+  ci_pipeline:
+    goal: CI that builds/tests shared→backend→admin; scans duplicates & secrets.
+    files:
+      - path: .github/workflows/ci.yml
+        ensure_yaml: |
+          name: CI
+          on: [push, pull_request]
+          jobs:
+            build_test:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                - uses: actions/setup-node@v4
+                  with:
+                    node-version: '20'
+                    cache: 'npm'
+                - run: npm ci -w packages/shared -w packages/backend -w packages/admin
+                - run: npm run build -w packages/shared
+                - run: npm run lint -w packages/backend || true
+                - run: npm run test -w packages/backend || true
+                - run: npm run build -w packages/backend
+                - run: npm run build -w packages/admin && npm run export -w packages/admin
+                - run: npm i -D gitleaks jscpd
+                - run: npx gitleaks detect --source . || true
+                - run: npx jscpd --threshold 2 --reporters console --pattern "**/*.{ts,tsx,js,jsx}" --ignore "**/dist/**,**/.next/**,**/admin-out/**"
+    accept:
+      - "true"
 
-  - id: tests_shared
-    name: Unit tests for @app/shared utilities
-    steps:
-      - ensure_dep:
-          where: packages/shared
-          dev: ["vitest","@vitest/coverage-v8","ts-node","rimraf"]
-      - file_write:
-          path: packages/shared/vitest.config.ts
-          contents: |
-            import { defineConfig } from 'vitest/config';
-            export default defineConfig({ test: { coverage: { provider: 'v8', statements: 85, branches: 80, functions: 85, lines: 85 } } });
-      - file_write:
-          path: packages/shared/src/greet/index.test.ts
-          contents: |
-            import { describe, it, expect } from 'vitest';
-            import { greet } from './index.js';
-            describe('greet', () => { it('greets a name', () => { expect(greet('World')).toBe('Hello, World!'); }); });
-      - code_mod:
-          files: [packages/shared/package.json]
-          changes:
-            - set_json: { path: "scripts.test", value: "vitest --run" }
-      - run: npm run test -w packages/shared
-    success_criteria:
-      - cmd: npm run test -w packages/shared
+  docker_polish:
+    goal: Multi-stage build with separate caches, non-root runtime, healthcheck.
+    files:
+      - path: Dockerfile
+        ensure_docker: |
+          # deps: backend
+          FROM node:20-bookworm-slim AS backend_deps
+          WORKDIR /app/packages/backend
+          COPY packages/backend/package*.json ./
+          RUN npm ci --include=dev
 
-  - id: lint_prettier
-    name: Lint/format & boundaries
-    steps:
-      - run: npm -w packages/backend i -D eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-import eslint-plugin-n eslint-config-prettier prettier
-      - run: npm -w packages/admin   i -D eslint-config-next prettier
-      - file_write:
-          path: packages/backend/.eslintrc.cjs
-          contents: |
-            module.exports = { parser:'@typescript-eslint/parser', plugins:['@typescript-eslint','import','n'], extends:['eslint:recommended','plugin:@typescript-eslint/recommended','plugin:import/recommended','plugin:n/recommended','prettier'], rules:{'import/no-cycle':'error','n/no-sync':'error'}, settings:{'import/resolver':{typescript:{project:'./tsconfig.json'}}} };
-    success_criteria:
-      - cmd: npm run lint -w packages/backend || true
+          # deps: admin
+          FROM node:20-bookworm-slim AS admin_deps
+          WORKDIR /app/packages/admin
+          COPY packages/admin/package*.json ./
+          RUN npm ci --include=dev
 
-  - id: ci_pipeline
-    name: CI pipeline
-    steps:
-      - file_write:
-          path: .github/workflows/ci.yml
-          contents: |
-            name: CI
-            on: [push, pull_request]
-            jobs:
-              build_test:
-                runs-on: ubuntu-latest
-                steps:
-                  - uses: actions/checkout@v4
-                  - uses: actions/setup-node@v4
-                    with: { node-version: '20', cache: 'npm' }
-                  - run: npm ci -w packages/shared -w packages/backend -w packages/admin
-                  - run: npm run build -w packages/shared
-                  - run: npm run lint -w packages/backend
-                  - run: npm run test -w packages/shared
-                  - run: npm run test -w packages/backend
-                  - run: npm run build -w packages/backend
-                  - run: npm run build -w packages/admin && npm run export -w packages/admin
-                  - run: npm audit --omit=dev || true
-    success_criteria:
-      - note: CI green only if lint, tests, builds succeed.
+          # build: shared
+          FROM node:20-bookworm-slim AS shared_build
+          WORKDIR /app
+          COPY packages/shared ./packages/shared
+          RUN npm ci -w packages/shared && npm run build -w packages/shared
 
-  - id: docker_multistage
-    name: Multi-stage Docker (separate caches, slim, non-root)
-    steps:
-      - file_write:
-          path: Dockerfile
-          contents: |
-            FROM node:20-bookworm-slim AS backend_deps
-            WORKDIR /app/packages/backend
-            COPY packages/backend/package*.json ./
-            RUN npm ci --include=dev
-            
-            FROM node:20-bookworm-slim AS admin_deps
-            WORKDIR /app/packages/admin
-            COPY packages/admin/package*.json ./
-            RUN npm ci --include=dev
-            
-            FROM node:20-bookworm-slim AS backend_build
-            WORKDIR /app
-            COPY --from=backend_deps /app/packages/backend/node_modules ./packages/backend/node_modules
-            COPY packages/shared ./packages/shared
-            COPY packages/backend ./packages/backend
-            RUN npm run build -w packages/shared && npm run build -w packages/backend
-            
-            FROM node:20-bookworm-slim AS admin_build
-            WORKDIR /app
-            COPY --from=admin_deps /app/packages/admin/node_modules ./packages/admin/node_modules
-            COPY packages/shared ./packages/shared
-            COPY packages/admin ./packages/admin
-            RUN npm run build -w packages/shared && npm run build -w packages/admin && npm run export -w packages/admin
-            
-            FROM node:20-bookworm-slim AS runtime
-            WORKDIR /app
-            ENV NODE_ENV=production
-            USER node
-            COPY packages/backend/package*.json ./packages/backend/
-            RUN npm ci --omit=dev -w packages/backend
-            COPY --from=backend_build /app/packages/backend/dist ./packages/backend/dist
-            COPY --from=admin_build   /app/packages/admin/admin-out ./packages/admin/admin-out
-            ENV ADMIN_STATIC_DIR=/app/packages/admin/admin-out
-            EXPOSE 3000
-            CMD ["npm","--prefix","packages/backend","run","start"]
-      - run: docker build --file Dockerfile --target runtime -t app:latest .
-    success_criteria:
-      - cmd: docker image inspect app:latest
+          # build: backend
+          FROM node:20-bookworm-slim AS backend_build
+          WORKDIR /app
+          COPY --from=backend_deps /app/packages/backend/node_modules ./packages/backend/node_modules
+          COPY packages/backend ./packages/backend
+          COPY --from=shared_build /app/packages/shared ./packages/shared
+          RUN npm run build -w packages/backend
 
-  - id: lockfile_sync
-    name: Sync lockfiles per package
-    steps:
-      - run: rm -rf packages/shared/node_modules packages/shared/package-lock.json
-      - run: rm -rf packages/backend/node_modules packages/backend/package-lock.json
-      - run: rm -rf packages/admin/node_modules packages/admin/package-lock.json
-      - run: npm --prefix packages/shared install --package-lock-only
-      - run: npm --prefix packages/backend install --package-lock-only
-      - run: npm --prefix packages/admin   install --package-lock-only
-      - run: npm --prefix packages/shared ci && npm --prefix packages/backend ci && npm --prefix packages/admin ci
-    success_criteria:
-      - file_exists: packages/shared/package-lock.json
-      - file_exists: packages/backend/package-lock.json
-      - file_exists: packages/admin/package-lock.json
+          # build: admin
+          FROM node:20-bookworm-slim AS admin_build
+          WORKDIR /app
+          COPY --from=admin_deps /app/packages/admin/node_modules ./packages/admin/node_modules
+          COPY packages/admin ./packages/admin
+          COPY --from=shared_build /app/packages/shared ./packages/shared
+          RUN npm run build -w packages/admin && npm run export -w packages/admin
 
-  - id: runtime_serve_admin
-    name: Serve admin static from backend
-    steps:
-      - note: In Express app, mount express.static(ADMIN_STATIC_DIR) at /admin.
-    success_criteria:
-      - http: { url: "http://localhost:3000/admin", status: 200 }
+          # runtime
+          FROM node:20-bookworm-slim AS runtime
+          WORKDIR /app
+          ENV NODE_ENV=production
+          COPY packages/backend/package*.json ./packages/backend/
+          RUN npm ci --omit=dev -w packages/backend
+          COPY --from=backend_build /app/packages/backend/dist ./packages/backend/dist
+          COPY --from=admin_build   /app/packages/admin/admin-out ./packages/packages/admin/admin-out
+          RUN mkdir -p /app/packages/admin && mv /app/packages/packages/admin/admin-out /app/packages/admin/admin-out || true
+          RUN chown -R node:node /app
+          USER node
+          ENV ADMIN_STATIC_DIR=/app/packages/admin/admin-out
+          EXPOSE 3000
+          HEALTHCHECK --interval=30s --timeout=5s --start-period=15s CMD node -e "require('http').get('http://127.0.0.1:3000/api/health',res=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+          CMD ["npm","--prefix","packages/backend","run","start"]
+    accept:
+      - "true"
 
-  - id: observability
-    name: Observability (logs, metrics)
-    steps:
-      - ensure_dep:
-          where: packages/backend
-          deps: ["pino","pino-http","prom-client"]
-      - file_write:
-          path: packages/backend/src/http/bootstrap/observability.ts
-          contents: |
-            import pino from 'pino';
-            import pinoHttp from 'pino-http';
-            import type { Express } from 'express';
-            import client from 'prom-client';
-            export const logger = pino({ level: process.env.LOG_LEVEL || 'info', redact: ['req.headers.authorization'] });
-            export function applyObservability(app: Express){
-              app.use(pinoHttp({ logger }));
-              client.collectDefaultMetrics();
-              app.get('/metrics', async (_req, res) => { res.set('Content-Type', client.register.contentType); res.end(await client.register.metrics()); });
-            }
-    success_criteria:
-      - http: { url: "http://localhost:3000/metrics", status: 200 }
-
-  - id: migration_rollout
-    name: Migration guide & PR strategy
-    steps:
-      - file_write:
-          path: MIGRATION_GUIDE.md
-          contents: |
-            # Phases: structure → ESM → strict TS → security → shared → tests → CI → Docker → observability → cleanups
-            - Create small PRs per phase; CI must pass each PR before merging.
-    success_criteria:
-      - file_exists: MIGRATION_GUIDE.md
-
-agents:
-  - id: StructureAgent
-    role: Monorepo Structure & Workspaces
-    actions: [ { workflow: monorepo_setup }, { workflow: ts_project_refs }, { workflow: enforce_esm } ]
-
-  - id: SharedAgent
-    role: Shared Package & Deduplication
-    actions: [ { workflow: shared_package }, { workflow: tsc_alias_setup }, { workflow: shared_dedupe }, { workflow: tests_shared } ]
-
-  - id: ArchAgent
-    role: Backend Architecture (Hexagonal)
-    actions: [ { workflow: hex_arch_backend } ]
-
-  - id: ErrorAgent
-    role: Error Handling
-    actions: [ { workflow: error_model } ]
-
-  - id: ValidationAgent
-    role: Validation & Env Schema
-    actions: [ { workflow: validation_env } ]
-
-  - id: SecurityAgent
-    role: Security Hardening
-    actions:
-      - { workflow: security_hardening }
-      - { workflow: sql_safety }
-
-  - id: AdminAgent
-    role: Next.js Admin Export
-    actions: [ { workflow: admin_transpile_shared } ]
-
-  - id: TestAgent
-    role: Testing & Coverage
-    actions: [ { workflow: tests_coverage } ]
-
-  - id: LintAgent
-    role: Lint/Format
-    actions: [ { workflow: lint_prettier } ]
-
-  - id: CIAgent
-    role: CI/CD
-    actions: [ { workflow: ci_pipeline }, { workflow: lockfile_sync } ]
-
-  - id: DockerAgent
-    role: Docker Build & Runtime
-    actions: [ { workflow: docker_multistage }, { workflow: runtime_serve_admin } ]
-
-  - id: ObservabilityAgent
-    role: Logs & Metrics
-    actions: [ { workflow: observability } ]
-```
-
----
+  changesets_release:
+    goal: Version and release @app/shared with Changesets (others stay private).
+    run:
+      - npm i -D -w . @changesets/cli
+      - npx -y -w . changeset init || true
+    accept:
+      - test -d .changeset || true
