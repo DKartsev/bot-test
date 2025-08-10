@@ -1,19 +1,13 @@
 import { Telegraf } from 'telegraf';
-import { config } from 'dotenv';
-import { z } from 'zod';
 import logger from './utils/logger';
 import textHandler from './handlers/textHandler';
 import mediaHandler from './handlers/mediaHandler';
-
-config();
-
-const envSchema = z.object({ BOT_TOKEN: z.string() });
+import { TG_BOT_TOKEN } from './config/env';
 
 let bot: Telegraf;
 
 try {
-  const { BOT_TOKEN } = envSchema.parse(process.env);
-  bot = new Telegraf(BOT_TOKEN);
+  bot = new Telegraf(TG_BOT_TOKEN);
   bot.on('text', textHandler);
   bot.on(['photo', 'video', 'voice', 'audio'], mediaHandler);
   logger.info('Bot initialized');

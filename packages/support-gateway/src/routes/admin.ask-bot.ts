@@ -3,8 +3,6 @@ import { z } from 'zod';
 import { generateResponse } from '../services/ragService';
 
 export default async function adminAskBotRoutes(server: FastifyInstance) {
-  server.addHook('preHandler', server.verifyOperatorAuth);
-
   server.post('/ask-bot', async (request, reply) => {
     const bodySchema = z.object({ question: z.string() });
     try {

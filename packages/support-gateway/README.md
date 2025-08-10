@@ -16,7 +16,11 @@
 
 ## Переменные окружения
 
-- `BOT_TOKEN` — токен Telegram-бота.
+- `TG_BOT_TOKEN` — токен Telegram-бота.
+- `TG_WEBHOOK_PATH` — путь вебхука, по умолчанию `/webhooks/telegram`.
+- `TG_WEBHOOK_SECRET` — опциональный секрет для проверки вебхука.
+- `ADMIN_IP_ALLOWLIST` — список разрешённых IP для доступа к админке.
+- `ADMIN_TOKENS` — токены доступа к административному API.
 - `SUPABASE_URL` — URL проекта Supabase.
 - `SUPABASE_KEY` — ключ Supabase.
 - `OPENAI_API_KEY` — ключ доступа OpenAI для RAG-сервиса.

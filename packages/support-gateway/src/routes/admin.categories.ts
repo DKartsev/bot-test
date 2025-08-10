@@ -3,8 +3,6 @@ import { z } from 'zod';
 import supabase from '../db';
 
 export default async function adminCategoriesRoutes(server: FastifyInstance) {
-  server.addHook('preHandler', server.verifyOperatorAuth);
-
   server.get('/categories', async (_req, reply) => {
     const { data, error } = await supabase
       .from('categories')
