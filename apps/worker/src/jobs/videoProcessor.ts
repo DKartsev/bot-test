@@ -32,14 +32,17 @@ export default async function videoProcessor(job: Job) {
         ],
       };
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      }).then((r) => r.json());
+      const response = await fetchWithRetry(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const summary = response.choices?.[0]?.message?.content?.[0]?.text || '';
       const { error } = await supabase
@@ -91,14 +94,17 @@ export default async function videoProcessor(job: Job) {
         ],
       };
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      }).then((r) => r.json());
+      const response = await fetchWithRetry(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const description = response.choices?.[0]?.message?.content?.[0]?.text || '';
       summaries.push(description);
@@ -119,5 +125,18 @@ export default async function videoProcessor(job: Job) {
     throw err;
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
+async function fetchWithRetry(url: string, init: RequestInit, retries = 3): Promise<any> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url, init);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+    }
   }
 }

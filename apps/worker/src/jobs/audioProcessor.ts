@@ -20,13 +20,16 @@ export default async function audioProcessor(job: Job) {
     form.append('file', new Blob([buffer]), 'audio.ogg');
     form.append('model', 'whisper-1');
 
-    const transcription = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: form,
-    }).then((r) => r.json());
+    const transcription = await fetchWithRetry(
+      'https://api.openai.com/v1/audio/transcriptions',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: form,
+      }
+    );
 
     const transcript = transcription.text as string;
 
@@ -42,5 +45,18 @@ export default async function audioProcessor(job: Job) {
   } catch (err) {
     logger.error({ err, jobId: job.id }, 'Audio processing failed');
     throw err;
+  }
+}
+
+async function fetchWithRetry(url: string, init: RequestInit, retries = 3): Promise<any> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url, init);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+    }
   }
 }

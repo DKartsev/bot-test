@@ -23,7 +23,11 @@ const envSchema = z.object({
 async function buildServer() {
   const server = Fastify({ logger: logger as any });
 
-  await server.register(multipart);
+  await server.register(multipart, {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB
+    },
+  });
   await server.register(verifyOperatorAuth);
   await server.register(adminRoutes, { prefix: '/admin' });
   await server.register(adminCategoriesRoutes, { prefix: '/admin' });

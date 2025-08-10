@@ -17,11 +17,12 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
       handoff: z.enum(['human', 'bot']).optional(),
       category_id: z.string().optional(),
       assignee_name: z.string().optional(),
+      search: z.string().optional(),
       limit: z.coerce.number().default(20),
       cursor: z.string().optional(),
     });
 
-    const { status, handoff, category_id, assignee_name, limit, cursor } =
+    const { status, handoff, category_id, assignee_name, search, limit, cursor } =
       querySchema.parse(request.query);
 
     let q = supabase
@@ -36,6 +37,7 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
     if (handoff) q = q.eq('handoff', handoff);
     if (category_id) q = q.eq('category_id', category_id);
     if (assignee_name) q = q.eq('assignee_name', assignee_name);
+    if (search) q = q.ilike('user_telegram_id', `%${search}%`);
     if (cursor) q = q.lt('updated_at', cursor);
 
     const { data, error } = await q;
@@ -159,6 +161,21 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
         return;
       }
 
+      if ((file as any).file.truncated) {
+        reply.code(413).send({ error: 'file_too_large' });
+        return;
+      }
+
+      const mime = file.mimetype;
+      if (
+        !mime.startsWith('image/') &&
+        !mime.startsWith('video/') &&
+        mime !== 'application/pdf'
+      ) {
+        reply.code(400).send({ error: 'unsupported_type' });
+        return;
+      }
+
       const { data: conv, error: convErr } = await supabase
         .from('conversations')
         .select('user_telegram_id, assignee_name')
@@ -176,7 +193,6 @@ export default async function adminConversationsRoutes(server: FastifyInstance) 
       }
 
       const buffer = await file.toBuffer();
-      const mime = file.mimetype;
       let method: 'sendPhoto' | 'sendVideo' | 'sendDocument';
       let mediaType: 'photo' | 'video' | 'document';
       if (mime.startsWith('image/')) {
