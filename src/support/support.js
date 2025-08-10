@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
-const { fuzzySearch } = require('../search/fuzzySearch');
+const { semanticSearch } = require('../search/semanticSearch');
 const { fallbackQuery } = require('../llm/fallback');
 const { logger } = require('../utils/logger');
 const { createStore } = require('../data/store');
@@ -78,9 +78,9 @@ async function getAnswer(question, opts = {}) {
     return result;
   }
   try {
-    const fuzzyTop = fuzzySearch(question, TOPK, tenant);
+    const fuzzyTop = await semanticSearch(question, TOPK, tenant);
     const bestExact = fuzzyTop[0];
-    if (bestExact && bestExact.score === 0) {
+    if (bestExact && bestExact.sim >= 0.99) {
       const { questionText, answerTemplate } = selectLocalizedQA(
         bestExact.item,
         lang,
