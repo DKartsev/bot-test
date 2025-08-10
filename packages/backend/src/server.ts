@@ -17,8 +17,15 @@ const server = app.listen(port, () => console.log(`API on :${port}`));
 const shutdown = async () => {
   console.log('graceful shutdown...');
   server.closeAllConnections?.();
-  server.close(() => console.log('http closed'));
-  try { await pool.end?.(); } catch {}
+  await new Promise<void>((resolve) =>
+    server.close(() => {
+      console.log('http closed');
+      resolve();
+    })
+  );
+  try {
+    await pool.end?.();
+  } catch {}
   process.exit(0);
 };
 process.on('SIGTERM', shutdown);
