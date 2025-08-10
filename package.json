@@ -20,14 +20,9 @@
     "docker:run": "docker run --rm -p 3000:3000 --env-file .env -v $PWD/data:/app/data -v $PWD/logs:/app/logs -v $PWD/feedback:/app/feedback my-support-bot:latest",
     "sem:rebuild": "node -e \"(async()=>{const s=require('./src/semantic/index');if(s.rebuildAll){console.log(await s.rebuildAll())}})()\"",
     "rag:reindex": "node -e \"(async()=>{const r=require('./src/rag/index');if(r.rebuildAll){console.log(await r.rebuildAll())}})()\"",
-    "preinstall": "node scripts/preinstall.js",
-    "build": "tsc"
+    "preinstall": "node scripts/preinstall.js"
   },
   "dependencies": {
-    "@types/express": "^4.17.21",
-    "@types/node": "^20.11.30",
-    "tsx": "^4.7.1",
-    "vitest": "^1.3.1",
     "@xenova/transformers": "^2.17.2",
     "accept-language-parser": "^1.5.0",
     "airtable": "^0.12.1",
@@ -69,6 +64,11 @@
     "formdata-node": "^6.0.3"
   },
   "devDependencies": {
-    "typescript": "^5.4.0"
+    "@types/express": "5.0.3",
+    "@types/node": "24.2.1",
+    "@vitest/coverage-v8": "3.2.4",
+    "tsx": "4.20.3",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4"
   }
 }
