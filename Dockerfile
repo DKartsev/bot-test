@@ -1,9 +1,15 @@
 FROM node:20-bookworm-slim AS backend_deps
 WORKDIR /app
+
+# нужен корневой lockfile для npm workspaces
+COPY package*.json ./
+# описания пакетов воркспейсов (для разрешения зависимостей)
 COPY packages/backend/package*.json ./packages/backend/
-COPY packages/shared/package*.json ./packages/shared/
-WORKDIR /app/packages/backend
-RUN npm ci --include=dev
+COPY packages/shared/package*.json  ./packages/shared/
+
+# ставим dev-зависимости ТОЛЬКО для backend, используя корневой lockfile
+# выключаем любые install/prepare/postinstall (husky и т.п.)
+RUN npm ci --include=dev -w packages/backend --ignore-scripts
 
 FROM node:20-bookworm-slim AS backend_build
 WORKDIR /app
@@ -16,11 +22,14 @@ RUN npm --prefix packages/backend run build
 FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-# важно: корневой package.json нужен для npm workspaces (-w)
+# корневой package*.json ОБЯЗАТЕЛЕН до npm ci -w
 COPY package*.json ./
-COPY packages/shared/package*.json ./packages/shared/
+COPY packages/shared/package*.json  ./packages/shared/
 COPY packages/backend/package*.json ./packages/backend/
-RUN npm ci --omit=dev -w packages/shared -w packages/backend
+
+# прод-зависимости для shared и backend из корневого lockfile
+# и без скриптов, чтобы не вызывался prepare:husky
+RUN npm ci --omit=dev -w packages/shared -w packages/backend --ignore-scripts
 COPY --from=backend_build /app/packages/shared/dist   ./packages/shared/dist
 COPY --from=backend_build /app/packages/backend/dist ./packages/backend/dist
 RUN chown -R node:node /app
