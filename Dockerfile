@@ -46,7 +46,6 @@ RUN npm ci --omit=dev -w packages/shared -w packages/backend --ignore-scripts
 # копируем билд-артефакты
 COPY --from=backend_build /app/packages/shared/dist   ./packages/shared/dist
 COPY --from=backend_build /app/packages/backend/dist ./packages/backend/dist
-COPY .env.example ./
 
 # без root
 RUN chown -R node:node /app
