@@ -5,6 +5,7 @@ import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { Telegraf, Context } from 'telegraf';
+import { message } from 'telegraf/filters';
 
 /* global fetch */
 
@@ -205,7 +206,7 @@ export async function buildServer(): Promise<FastifyInstance> {
 
     // Simple handlers for smoke test
     bot.start((ctx: Context) => ctx.reply('👋 Hello! Bot is alive.'));
-    bot.on('text', (ctx: Context) => ctx.reply(`Echo: ${ctx.message.text}`));
+    bot.on(message('text'), (ctx) => ctx.reply(`Echo: ${ctx.message.text}`));
 
     // Secure webhook route
     app.route({
