@@ -1,50 +1,26 @@
 services:
   - type: web
-    name: my-support-bot
-    env: docker
+    name: app-backend
+    runtime: docker
     plan: starter
+    region: frankfurt
+    healthCheckPath: /api/health
     autoDeploy: true
-    healthCheckPath: /healthz
     envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
       - key: OPENAI_API_KEY
-      - key: ADMIN_TOKENS
-      - key: EDITOR_TOKENS
-      - key: DEFAULT_LANG
-      - key: SUPPORTED_LANGS
-      - key: ADMIN_IP_ALLOWLIST
-      - key: ADMIN_ALLOWED_ORIGINS
-      - key: ADMIN_RATE_WINDOW_MS
-      - key: ADMIN_RATE_MAX
-      - key: AUTO_CACHE_OPENAI
-      - key: SYNC_PROVIDER
-      - key: SYNC_CRON
-      - key: SYNC_BIDIRECTIONAL
-      - key: SYNC_ALLOW_DELETES
-      - key: GOOGLE_SHEETS_ID
-      - key: GOOGLE_APPLICATION_CREDENTIALS
-      - key: GOOGLE_SERVICE_ACCOUNT_JSON_B64
-      - key: AIRTABLE_API_KEY
-      - key: AIRTABLE_BASE_ID
-      - key: AIRTABLE_TABLE_NAME
-      - key: FEEDBACK_PROMOTE_MIN
-      - key: FEEDBACK_PROMOTE_RATIO
-      - key: FEEDBACK_FLAG_MIN
-      - key: FEEDBACK_FLAG_RATIO
-      - key: FEEDBACK_ENABLE_AUTO
-      - key: FEEDBACK_AGG_INTERVAL_MIN
-      - key: VERSIONS_MAX
-      - key: VERSIONS_TTL_DAYS
-      - key: VERSIONS_DEBOUNCE_MS
-      - key: VERSIONS_INCLUDE_PENDING
-      - key: VERSIONS_REASON_ON_MUTATION
-      - key: PORT
-    disks:
-      - name: data
-        mountPath: /app/data
-        sizeGB: 1
-      - name: logs
-        mountPath: /app/logs
-        sizeGB: 1
-      - name: feedback
-        mountPath: /app/feedback
-        sizeGB: 1
+        sync: false
+      # добавь другие секреты по мере необходимости
+
+  - type: web
+    name: app-admin
+    runtime: static
+    plan: free
+    buildCommand: npm ci && npm run -w packages/admin build && npm run -w packages/admin export
+    staticPublishPath: packages/admin/admin-out
+    # при необходимости можно добавить:
+    # domains:
+    #   - admin.example.com
