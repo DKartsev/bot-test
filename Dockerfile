@@ -25,7 +25,8 @@ COPY --from=backend_build /app/packages/shared/dist   ./packages/shared/dist
 COPY --from=backend_build /app/packages/backend/dist ./packages/backend/dist
 RUN chown -R node:node /app
 USER node
-EXPOSE 3000
+ENV PORT=3000
+EXPOSE $PORT
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
   CMD node -e "require('http').get('http://127.0.0.1:3000/api/health', res => process.exit(res.statusCode===200?0:1)).on('error', () => process.exit(1))"
 CMD ["node","packages/backend/dist/http/main.js"]
