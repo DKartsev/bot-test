@@ -4,7 +4,5 @@ const nextConfig = {
   basePath: "/admin",
   distDir: "admin-out",
   images: { unoptimized: true },
-  experimental: { externalDir: true },
-  transpilePackages: ["@app/shared"],
 };
 export default nextConfig;

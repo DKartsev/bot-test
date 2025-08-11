@@ -18,7 +18,7 @@ describe("health", () => {
     const app = await createServer();
     const res = await app.inject({ method: "GET", url: "/api/health" });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ ok: true });
+    expect(res.json()).toEqual({ status: "ok" });
     await app.close();
   });
 });

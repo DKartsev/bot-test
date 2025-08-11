@@ -10,13 +10,13 @@ const plugin: FastifyPluginAsync = async (fastify) => {
         response: {
           200: {
             type: "object",
-            properties: { ok: { type: "boolean" } },
-            required: ["ok"],
+            properties: { status: { type: "string" } },
+            required: ["status"],
           },
         },
       },
     },
-    async () => ({ ok: true }),
+    async () => ({ status: "ok" }),
   );
 };
 
