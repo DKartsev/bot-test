@@ -14,6 +14,11 @@ import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import { Telegraf, Context } from "telegraf";
 import { message } from "telegraf/filters";
+import crypto from "node:crypto";
+
+import { buildContext, answer, invalidateCache } from "../bot/pipeline.js";
+import { loadFaq } from "../faq/store.js";
+import { reindexKb } from "../kb/index.js";
 
 /* global fetch */
 
@@ -136,6 +141,16 @@ export async function buildServer() {
     FastifyTypeProviderDefault
   >({ logger: { level: env.LOG_LEVEL }, trustProxy: env.TRUST_PROXY });
 
+  app.addHook("onRequest", (req, reply, done) => {
+    let rid = req.headers["x-request-id"] as string | undefined;
+    if (!rid) rid = crypto.randomUUID();
+    (req as any).rid = rid;
+    reply.header("x-request-id", rid);
+    // @ts-ignore
+    req.log = req.log.child({ rid });
+    done();
+  });
+
   // Security headers
   await app.register(helmet as any, { contentSecurityPolicy: false });
 
@@ -192,9 +207,10 @@ export async function buildServer() {
     }
   };
 
-  app.setErrorHandler((err, _req, reply) => {
+  app.setErrorHandler((err, req, reply) => {
     const { status, body } = classifyError(err);
-    reply.code(status).send(body);
+    const rid = (req as any).rid;
+    reply.code(status).send({ ...body, rid });
   });
 
   app.setNotFoundHandler((req, reply) =>
@@ -295,6 +311,75 @@ export async function buildServer() {
     } as any,
   });
 
+  app.get(
+    "/api/admin/faq",
+    {
+      preHandler: adminAuthHook,
+      schema: {
+        summary: "Admin: FAQ list",
+        tags: ["admin"],
+        security: [{ bearerAuth: [] }],
+      } as any,
+    },
+    async (_req, reply) => {
+      reply.send(loadFaq());
+    },
+  );
+
+  app.post(
+    "/api/admin/faq/validate",
+    {
+      preHandler: adminAuthHook,
+      schema: {
+        summary: "Admin: FAQ validate",
+        tags: ["admin"],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              ok: { type: "boolean" },
+              errors: { type: "array", items: { type: "string" } },
+              count: { type: "number" },
+            },
+          },
+        },
+      } as any,
+    },
+    async (_req, reply) => {
+      const faq = loadFaq();
+      const ids = new Set<string>();
+      const errors: string[] = [];
+      for (const f of faq) {
+        if (!f.id || !f.q || !f.a) errors.push(`Invalid: ${f.id}`);
+        if (ids.has(f.id)) errors.push(`Duplicate: ${f.id}`);
+        ids.add(f.id);
+      }
+      invalidateCache();
+      reply.send({ ok: errors.length === 0, errors, count: faq.length });
+    },
+  );
+
+  app.post(
+    "/api/admin/kb/reindex",
+    {
+      preHandler: adminAuthHook,
+      schema: {
+        summary: "Admin: KB reindex",
+        tags: ["admin"],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: { type: "object", properties: { ok: { type: "boolean" } } },
+        },
+      } as any,
+    },
+    async (_req, reply) => {
+      reindexKb();
+      invalidateCache();
+      reply.send({ ok: true });
+    },
+  );
+
   // -------------------------------
   // Telegram: bot + secure webhook
   // -------------------------------
@@ -304,7 +389,15 @@ export async function buildServer() {
 
     // Simple handlers for smoke test
     bot.start((ctx: Context) => ctx.reply("👋 Hello! Bot is alive."));
-    bot.on(message("text"), (ctx) => ctx.reply(`Echo: ${ctx.message.text}`));
+    bot.on(message("text"), async (ctx) => {
+      await ctx.sendChatAction("typing");
+      await ctx.reply("⌛ Обрабатываю запрос...");
+      const res = await answer(ctx.message.text, {
+        rid: (ctx.state as any).rid,
+        logger: (ctx.state as any).logger || app.log,
+      });
+      await ctx.reply(res.text);
+    });
 
     // Secure webhook route
     app.route({
@@ -328,7 +421,9 @@ export async function buildServer() {
         try {
           // Call bot directly (avoids strict path binding of webhookCallback)
           // @ts-ignore update is any
-          await bot!.handleUpdate((req as any).body);
+          await bot!.handleUpdate((req as any).body, undefined, {
+            state: { rid: (req as any).rid, logger: req.log },
+          });
           return reply.send({ ok: true });
         } catch (err: any) {
           const { status, body } = classifyError(err);
@@ -385,6 +480,7 @@ export async function buildServer() {
     });
   });
 
+  await buildContext();
   return app;
 }
 
