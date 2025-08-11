@@ -1,13 +1,7 @@
-import path from "node:path";
-
-// Load dotenv-safe only outside production. In production, variables come from the
-// environment and `.env.example` isn't needed.
+// Load environment variables from `.env` in non-production environments.
+// This dynamic import avoids bundling dev-only dependencies in production.
 if (process.env.NODE_ENV !== "production") {
-  const { config } = await import("dotenv-safe");
-  config({
-    allowEmptyValues: false,
-    example: path.resolve(process.cwd(), ".env.example"),
-  });
+  await import("./loadEnv.js");
 }
 
 import { Pool } from "pg";
