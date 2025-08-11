@@ -1,21 +1,27 @@
 FROM node:20-bookworm-slim AS backend_deps
 WORKDIR /app
 
-# нужен корневой lockfile для npm workspaces
+# корневой lockfile обязателен для npm workspaces
 COPY package*.json ./
-# описания пакетов воркспейсов (для разрешения зависимостей)
+# метаданные воркспейсов
 COPY packages/backend/package*.json ./packages/backend/
 COPY packages/shared/package*.json  ./packages/shared/
 
-# ставим dev-зависимости ТОЛЬКО для backend, используя корневой lockfile
-# выключаем любые install/prepare/postinstall (husky и т.п.)
-RUN npm ci --include=dev -w packages/backend --ignore-scripts
+# ставим dev-зависимости ДЛЯ ДВУХ воркспейсов и отключаем скрипты (husky и т.п.)
+RUN npm ci --include=dev -w packages/shared -w packages/backend --ignore-scripts
 
+# ---------- build: используем node_modules из deps ----------
 FROM node:20-bookworm-slim AS backend_build
 WORKDIR /app
-COPY --from=backend_deps /app/packages/backend/node_modules ./packages/backend/node_modules
+
+# один общий node_modules (достаточно для обеих сборок)
+COPY --from=backend_deps /app/node_modules ./node_modules
+
+# исходники
 COPY packages/shared ./packages/shared
 COPY packages/backend ./packages/backend
+
+# важно: сначала собрать shared, затем backend
 RUN npm --prefix packages/shared run build
 RUN npm --prefix packages/backend run build
 
