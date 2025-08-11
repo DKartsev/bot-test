@@ -16,8 +16,10 @@ RUN npm ci --include=dev -w packages/shared -w packages/backend --ignore-scripts
 FROM node:20-bookworm-slim AS backend_build
 WORKDIR /app
 
-# общий node_modules (npm workspaces hoist)
-COPY --from=backend_deps /app/node_modules ./node_modules
+# корневой node_modules + workspace node_modules (hoisted/nested сценарии)
+COPY --from=backend_deps /app/node_modules                          ./node_modules
+COPY --from=backend_deps /app/packages/backend/node_modules         ./packages/backend/node_modules
+COPY --from=backend_deps /app/packages/shared/node_modules          ./packages/shared/node_modules
 
 # исходники
 COPY packages/shared ./packages/shared
