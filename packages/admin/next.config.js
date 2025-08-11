@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  basePath: '/admin',
+  output: "export",
+  basePath: "/admin",
+  distDir: "admin-out",
   images: { unoptimized: true },
   experimental: { externalDir: true },
-  transpilePackages: ['@app/shared']
+  transpilePackages: ["@app/shared"],
 };
 export default nextConfig;

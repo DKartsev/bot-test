@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "clean": "rimraf .next admin-out out",
-    "build": "npm run clean && next build",
-    "export": "npm run build && mv out admin-out"
+    "build": "next build",
+    "export": "next export"
   },
   "dependencies": {
     "@app/shared": "file:../shared",
