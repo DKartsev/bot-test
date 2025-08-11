@@ -4,10 +4,13 @@ if (process.env.NODE_ENV !== "production") {
   dotenv.config();
 }
 
-export const TG_BOT_TOKEN = must("TG_BOT_TOKEN");
+export const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN || "";
 export const TG_WEBHOOK_PATH =
   process.env.TG_WEBHOOK_PATH || "/webhooks/telegram";
 export const TG_WEBHOOK_SECRET = process.env.TG_WEBHOOK_SECRET || "";
+export const PUBLIC_URL = process.env.PUBLIC_URL || "";
+export const TELEGRAM_SET_WEBHOOK_ON_START =
+  process.env.TELEGRAM_SET_WEBHOOK_ON_START === "1";
 export const TELEGRAM_ENABLED = process.env.TELEGRAM_ENABLED === "1";
 export const ADMIN_IP_ALLOWLIST = (process.env.ADMIN_IP_ALLOWLIST || "")
   .split(",")

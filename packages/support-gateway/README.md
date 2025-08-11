@@ -30,3 +30,14 @@
 - `OPENAI_API_KEY` — ключ доступа OpenAI для RAG-сервиса.
 - `REDIS_URL` — строка подключения к Redis для BullMQ.
 - `PORT` — порт HTTP-сервера.
+
+## Telegram Webhook
+
+Сгенерировать секрет и управлять вебхуком:
+
+```bash
+npm -w packages/support-gateway run tg:gen-secret
+npm -w packages/support-gateway run tg:set-webhook
+npm -w packages/support-gateway run tg:get-webhook
+npm -w packages/support-gateway run tg:del-webhook
+```

@@ -1,16 +1,13 @@
 import Fastify from "fastify";
 import rateLimit from "@fastify/rate-limit";
 import { describe, it, expect, beforeEach } from "vitest";
-import { SignJWT } from "jose";
 import adminMessage from "./adminMessage";
-import { adminGuard } from "../middlewares/adminGuard";
+import adminGuard from "../middlewares/adminGuard";
 import { vi } from "vitest";
 
 vi.mock("../../services/ragService", () => ({
   generateResponse: vi.fn(async () => "ok"),
 }));
-
-const secret = new TextEncoder().encode("test-secret");
 
 async function buildApp() {
   const app = Fastify();
@@ -19,40 +16,35 @@ async function buildApp() {
     timeWindow: "1 minute",
     keyGenerator: (req) =>
       String(
-        req.headers["x-admin-api-key"] ||
+        req.headers["x-admin-token"] ||
           (req.headers.authorization || "").slice("Bearer ".length) ||
           req.ip,
       ),
   });
   app.addHook("preHandler", adminGuard);
-  await app.register(adminMessage, { prefix: "/api/admin" });
+  await app.register(adminMessage);
   await app.ready();
-  // debug
-  // console.log(app.printRoutes());
   return app;
 }
 
 describe("/api/admin/message", () => {
-  let adminToken: string;
-  let userToken: string;
-  beforeEach(async () => {
-    process.env.JWT_PUBLIC_KEY = "test-secret";
-    process.env.JWT_ISSUER = "app://core";
-    process.env.JWT_AUDIENCE = "admin";
+  beforeEach(() => {
     process.env.ADMIN_API_TOKENS = "adminkey";
     process.env.ADMIN_RATE_LIMIT_MAX = "2";
-    adminToken = await new SignJWT({ role: "admin" })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuer("app://core")
-      .setAudience("admin")
-      .setExpirationTime("1h")
-      .sign(secret);
-    userToken = await new SignJWT({ role: "user" })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuer("app://core")
-      .setAudience("admin")
-      .setExpirationTime("1h")
-      .sign(secret);
+  });
+
+  it("accepts valid token", async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/message",
+      payload: { text: "hi" },
+      headers: {
+        Authorization: "Bearer adminkey",
+        "content-type": "application/json",
+      },
+    });
+    expect(res.statusCode).toBe(200);
   });
 
   it("rejects missing token", async () => {
@@ -60,27 +52,23 @@ describe("/api/admin/message", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/admin/message",
-      payload: { message: "hi" },
+      payload: { text: "hi" },
+      headers: { "content-type": "application/json" },
     });
     expect(res.statusCode).toBe(401);
   });
 
-  it("rejects non-admin token", async () => {
+  it("rejects invalid token", async () => {
     const app = await buildApp();
     const res = await app.inject({
       method: "POST",
       url: "/api/admin/message",
-      payload: { message: "hi" },
-      headers: { Authorization: `Bearer ${userToken}` },
+      payload: { text: "hi" },
+      headers: {
+        Authorization: "Bearer wrong",
+        "content-type": "application/json",
+      },
     });
-    expect(res.statusCode).toBe(403);
-  });
-
-  it.skip("accepts admin api key", async () => {
-    // TODO: implement test once server refactor stabilizes
-  });
-
-  it.skip("enforces rate limit", async () => {
-    // TODO: implement test once server refactor stabilizes
+    expect(res.statusCode).toBe(401);
   });
 });
