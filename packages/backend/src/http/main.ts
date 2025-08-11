@@ -1,29 +1,41 @@
-import "dotenv-safe/config.js";
-import { buildServer } from "./server.js";
-import { loadEnv } from "../config/env.js";
-import { PgUserRepo } from "../modules/users/infra/PgUserRepo.js";
-import { Pool } from "pg";
-import { z } from "zod";
-import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
+// packages/backend/src/http/main.ts
 
-extendZodWithOpenApi(z);
+// Загружаем dotenv-safe ТОЛЬКО вне production.
+// В проде (Render) переменные приходят из Env, файл .env.example не нужен.
+import path from 'node:path';
 
-async function main() {
-  const env = loadEnv();
-  const pool = new Pool({ connectionString: env.DATABASE_URL });
-  const app = await buildServer({ userRepo: new PgUserRepo(pool) });
-  const port = Number(process.env.PORT) || 3000;
-  await app.listen({ port, host: "0.0.0.0" });
-  const shutdown = async () => {
-    app.log.info("graceful shutdown");
-    await app.close();
-    try {
-      await pool.end();
-    } catch {}
-    process.exit(0);
-  };
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+if (process.env.NODE_ENV !== 'production') {
+  const { config } = await import('dotenv-safe');
+  config({
+    allowEmptyValues: false,
+    example: path.resolve(process.cwd(), '.env.example'),
+  });
 }
 
-main();
+import { Pool } from 'pg';
+import { buildServer } from './server.js';
+import { PgUserRepo } from '../modules/users/infra/PgUserRepo.js';
+
+// ---------- чтение окружения ----------
+const PORT = Number(process.env.PORT ?? 3000);
+const DATABASE_URL = process.env.DATABASE_URL;
+const ENCRYPTION_KEY_BASE64 = process.env.ENCRYPTION_KEY_BASE64;
+
+if (!DATABASE_URL) {
+  throw new Error('DATABASE_URL is required');
+}
+if (!ENCRYPTION_KEY_BASE64) {
+  throw new Error('ENCRYPTION_KEY_BASE64 is required');
+}
+
+// ---------- инфраструктура ----------
+const pool = new Pool({ connectionString: DATABASE_URL });
+const userRepo = new PgUserRepo(pool);
+
+// ---------- запуск HTTP ----------
+const app = await buildServer({ userRepo });
+
+app.listen({ port: PORT, host: '0.0.0.0' }).catch((err) => {
+  app.log.error(err);
+  process.exit(1);
+});
