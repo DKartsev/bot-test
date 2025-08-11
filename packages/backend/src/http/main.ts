@@ -1,4 +1,5 @@
 import { preloadEnv } from "../config/dotenv.js";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 // 1) Сначала подгружаем .env в dev/test (в production — noop)
 await preloadEnv();
@@ -18,4 +19,22 @@ const userRepo = new PgUserRepo(pool);
 
 // 4) Запуск сервера
 const app = await buildServer({ userRepo });
+
+// ---- Health/Root routes for Render ----
+app.head("/", async (_req: FastifyRequest, reply: FastifyReply) => {
+  reply.code(200).send();
+});
+
+app.get("/", async (_req: FastifyRequest, reply: FastifyReply) => {
+  reply
+    .type("application/json")
+    .send({
+      status: "ok",
+      env: (process.env.NODE_ENV ?? "production"),
+      uptime: process.uptime(),
+      now: new Date().toISOString(),
+    });
+});
+// ---------------------------------------
+
 await app.listen({ port: PORT, host: "0.0.0.0" });
