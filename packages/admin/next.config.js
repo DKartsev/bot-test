@@ -5,4 +5,4 @@ const nextConfig = {
   distDir: "admin-out",
   images: { unoptimized: true },
 };
-export default nextConfig;
+module.exports = nextConfig;

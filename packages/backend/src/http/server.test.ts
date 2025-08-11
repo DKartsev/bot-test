@@ -28,7 +28,7 @@ describe("users register", () => {
     const app = await createServer();
     const res = await app.inject({
       method: "POST",
-      url: "/api/users/register",
+      url: "/api/register",
       payload: { email: "a@test.com", name: "A" },
     });
     expect(res.statusCode).toBe(201);

@@ -26,10 +26,7 @@ export async function buildServer(deps: { userRepo: IUserRepo }) {
   await app.register(swaggerUi, { routePrefix: "/docs" });
 
   await app.register(healthPlugin, { prefix: "/api" });
-  await app.register(usersPlugin, {
-    prefix: "/api/users",
-    repo: deps.userRepo,
-  });
+  await app.register(usersPlugin, { prefix: "/api", repo: deps.userRepo });
 
   app.setErrorHandler((err, req, reply) => {
     req.log.error(err);

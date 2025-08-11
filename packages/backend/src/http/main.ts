@@ -15,7 +15,7 @@ async function main() {
   const port = Number(process.env.PORT) || 3000;
   await app.listen({ port, host: "0.0.0.0" });
   const shutdown = async () => {
-    app.log.info("graceful shutdown...");
+    app.log.info("graceful shutdown");
     await app.close();
     try {
       await pool.end();
