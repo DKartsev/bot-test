@@ -13,3 +13,4 @@ admin-out
 .cache
 coverage
 build
+!**/.env.example
