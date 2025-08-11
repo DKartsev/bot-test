@@ -1,20 +1,20 @@
 import fp from "fastify-plugin";
-import { adminGuard } from "../middlewares/adminGuard.js";
+import adminGuard from "../middlewares/adminGuard.js";
 import { generateResponse } from "../../services/ragService.js";
 
 export default fp(async (app) => {
   app.route({
     method: "POST",
-    url: "/message",
+    url: "/api/admin/message",
     preHandler: [adminGuard],
     schema: {
       tags: ["admin"],
-      security: [{ bearerAuth: [] }, { adminApiKey: [] }],
+      security: [{ bearerAuth: [] }],
       body: {
         type: "object",
-        required: ["message"],
+        required: ["text"],
         properties: {
-          message: { type: "string", minLength: 1 },
+          text: { type: "string", minLength: 1 },
         },
       },
       response: {
@@ -25,13 +25,23 @@ export default fp(async (app) => {
           },
         },
         401: { type: "object", properties: { error: { type: "string" } } },
-        403: { type: "object", properties: { error: { type: "string" } } },
       },
     },
     handler: async (req, reply) => {
-      const { message } = req.body as any;
-      const response = await generateResponse(message);
-      return reply.send({ response });
+      const { text } = req.body as any;
+      try {
+        const response = await generateResponse(text);
+        return reply.send({ response });
+      } catch (err: any) {
+        const status = err?.response?.status;
+        if (status === 429 || (status && status >= 500)) {
+          req.log[status === 429 ? "warn" : "error"](
+            { provider: "openai", status, code: err.code },
+            "openai error",
+          );
+        }
+        throw err;
+      }
     },
   });
 });

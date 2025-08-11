@@ -6,7 +6,7 @@ import rateLimit from "@fastify/rate-limit";
 import path from "path";
 import fetch from "node-fetch";
 import logger from "./utils/logger";
-import bot from "./bot";
+import { makeBot } from "./telegram/bot";
 import adminRoutes from "./routes/admin.conversations";
 import adminCategoriesRoutes from "./routes/admin.categories";
 import adminStreamRoutes from "./routes/admin.stream";
@@ -15,13 +15,17 @@ import adminSavedRepliesRoutes from "./routes/admin.saved-replies";
 import adminCasesRoutes from "./routes/admin.cases";
 import adminAskBotRoutes from "./routes/admin.ask-bot";
 import adminMessageRoutes from "./http/plugins/adminMessage";
-import { adminGuard } from "./http/middlewares/adminGuard";
+import adminGuard from "./http/middlewares/adminGuard";
+import { classifyError } from "./utils/errorMap";
 import {
   TG_WEBHOOK_PATH,
   TG_WEBHOOK_SECRET,
   ADMIN_IP_ALLOWLIST,
   ADMIN_RATE_LIMIT_MAX,
   TG_BOT_TOKEN,
+  PUBLIC_URL,
+  TELEGRAM_SET_WEBHOOK_ON_START,
+  ADMIN_API_TOKENS,
 } from "./config/env";
 
 const envSchema = z.object({
@@ -61,6 +65,12 @@ function ipAllowlistMiddleware(req: any, reply: any, done: () => void) {
 export async function buildServer() {
   const server = Fastify({ logger: logger as any });
 
+  if (!ADMIN_API_TOKENS.length) {
+    logger.warn("ADMIN_API_TOKENS is empty");
+  }
+
+  const botContext = TG_BOT_TOKEN ? makeBot() : null;
+
   await server.register(multipart, {
     limits: {
       fileSize: 10 * 1024 * 1024, // 10MB
@@ -81,7 +91,7 @@ export async function buildServer() {
         timeWindow: "1 minute",
         keyGenerator: (req) =>
           String(
-            req.headers["x-admin-api-key"] ||
+            req.headers["x-admin-token"] ||
               (req.headers.authorization || "").slice("Bearer ".length) ||
               req.ip,
           ),
@@ -96,10 +106,11 @@ export async function buildServer() {
       await admin.register(adminCasesRoutes);
       await admin.register(adminAskBotRoutes);
       await admin.register(adminStreamRoutes);
-      await admin.register(adminMessageRoutes);
     },
     { prefix: "/api/admin" },
   );
+
+  await server.register(adminMessageRoutes);
 
   await server.register(fastifyStatic, {
     root: path.join(__dirname, "../operator-admin-out"),
@@ -117,15 +128,19 @@ export async function buildServer() {
   server.get("/healthz", async () => ({ ok: true }));
 
   server.post(
-    TG_WEBHOOK_PATH,
+    `${TG_WEBHOOK_PATH}/:token?`,
     {
       preHandler: (request, reply, done) => {
         if (TG_WEBHOOK_SECRET) {
-          const tok = request.headers["x-telegram-bot-api-secret-token"] as
-            | string
-            | undefined;
-          if (!tok || tok !== TG_WEBHOOK_SECRET) {
-            reply.status(403).send();
+          const headerTok = request.headers[
+            "x-telegram-bot-api-secret-token"
+          ] as string | undefined;
+          const paramTok = (request.params as any).token as string | undefined;
+          if (
+            headerTok !== TG_WEBHOOK_SECRET &&
+            paramTok !== TG_WEBHOOK_SECRET
+          ) {
+            reply.status(401).send();
             return;
           }
         }
@@ -134,7 +149,9 @@ export async function buildServer() {
     },
     async (request, reply) => {
       try {
-        await bot.handleUpdate(request.body as any);
+        if (botContext) {
+          await botContext.bot.handleUpdate(request.body as any);
+        }
         reply.send({ ok: true });
       } catch (err) {
         logger.error({ err }, "Webhook handling failed");
@@ -143,15 +160,9 @@ export async function buildServer() {
     },
   );
 
-  server.post("/api/message", async (request, reply) => {
-    logger.warn(
-      {
-        ip: request.ip,
-        ua: request.headers["user-agent"],
-      },
-      "legacy /api/message called",
-    );
-    reply.code(410).send({ error: "Endpoint moved to /api/admin/message" });
+  server.setErrorHandler((err, _req, reply) => {
+    const { status, body } = classifyError(err);
+    reply.code(status).send(body);
   });
 
   return server;
@@ -165,30 +176,43 @@ if (process.env.NODE_ENV !== "test") {
       await server.listen({ port: PORT, host: "0.0.0.0" });
       logger.info(`Server running on port ${PORT}`);
 
-      (async () => {
+      if (
+        TELEGRAM_SET_WEBHOOK_ON_START &&
+        PUBLIC_URL &&
+        TG_WEBHOOK_SECRET &&
+        TG_BOT_TOKEN
+      ) {
+        (async () => {
+          try {
+            const url = `${PUBLIC_URL}${TG_WEBHOOK_PATH}/${TG_WEBHOOK_SECRET}`;
+            const body = new URLSearchParams({
+              url,
+              secret_token: TG_WEBHOOK_SECRET,
+            });
+            await fetch(
+              `https://api.telegram.org/bot${TG_BOT_TOKEN}/setWebhook`,
+              {
+                method: "POST",
+                body,
+              },
+            );
+            logger.info({ url }, "[webhook] set");
+          } catch (e) {
+            logger.error({ err: e }, "[webhook] set error");
+          }
+        })();
+      }
+
+      const stop = async (sig: string) => {
         try {
-          const url = new URL(
-            TG_WEBHOOK_PATH,
-            process.env.APP_BASE_URL || "",
-          ).toString();
-          const body = new URLSearchParams({ url });
-          if (TG_WEBHOOK_SECRET) body.set("secret_token", TG_WEBHOOK_SECRET);
-          await fetch(
-            `https://api.telegram.org/bot${TG_BOT_TOKEN}/setWebhook`,
-            {
-              method: "POST",
-              body,
-            },
-          );
-          console.log(
-            "[webhook] set to",
-            url,
-            TG_WEBHOOK_SECRET ? "(secret set)" : "(no secret)",
-          );
-        } catch (e) {
-          console.error("[webhook] set error", e);
+          if (botContext) await botContext.bot.stop(sig);
+          await server.close();
+        } finally {
+          process.exit(0);
         }
-      })();
+      };
+      process.once("SIGINT", () => stop("SIGINT"));
+      process.once("SIGTERM", () => stop("SIGTERM"));
     } catch (err) {
       logger.error({ err }, "Failed to start server");
     }
