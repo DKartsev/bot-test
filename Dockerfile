@@ -21,6 +21,10 @@ COPY --from=backend_deps /app/node_modules ./node_modules
 COPY packages/shared ./packages/shared
 COPY packages/backend ./packages/backend
 
+# важно: tsc в пакетах делает extends на корневой tsconfig.base.json
+# скопируй корневые TS-конфиги в образ (только для времени сборки)
+COPY tsconfig*.json ./
+
 # важно: сначала собрать shared, затем backend
 RUN npm --prefix packages/shared run build
 RUN npm --prefix packages/backend run build
