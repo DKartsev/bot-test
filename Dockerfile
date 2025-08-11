@@ -11,15 +11,13 @@ COPY packages/shared/package*.json  ./packages/shared/
 # ставим prod+dev зависимости двух воркспейсов и вырубаем prepare/postinstall (husky)
 RUN npm ci --include=dev -w packages/shared -w packages/backend --ignore-scripts
 
-
 # ---------- build: используем node_modules из deps ----------
 FROM node:20-bookworm-slim AS backend_build
 WORKDIR /app
 
-# корневой node_modules + workspace node_modules (hoisted/nested сценарии)
+# корневой node_modules + (на всякий) backend/node_modules
 COPY --from=backend_deps /app/node_modules                          ./node_modules
 COPY --from=backend_deps /app/packages/backend/node_modules         ./packages/backend/node_modules
-COPY --from=backend_deps /app/packages/shared/node_modules          ./packages/shared/node_modules
 
 # исходники
 COPY packages/shared ./packages/shared
@@ -31,7 +29,6 @@ COPY tsconfig*.json ./
 # СНАЧАЛА собираем shared, потом backend
 RUN npm --prefix packages/shared run build
 RUN npm --prefix packages/backend run build
-
 
 # ---------- runtime ----------
 FROM node:20-bookworm-slim AS runtime
