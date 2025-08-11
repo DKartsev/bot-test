@@ -13,10 +13,17 @@ export const ADMIN_IP_ALLOWLIST = (process.env.ADMIN_IP_ALLOWLIST || "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
-export const ADMIN_TOKENS = (process.env.ADMIN_TOKENS || "")
+export const ADMIN_API_TOKENS = (process.env.ADMIN_API_TOKENS || "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+export const ADMIN_RATE_LIMIT_MAX = Number(
+  process.env.ADMIN_RATE_LIMIT_MAX || "30",
+);
+export const JWT_PUBLIC_KEY = process.env.JWT_PUBLIC_KEY || "";
+export const JWT_ISSUER = process.env.JWT_ISSUER || "";
+export const JWT_AUDIENCE = process.env.JWT_AUDIENCE || "admin";
+export const JWT_JWKS_URL = process.env.JWT_JWKS_URL || "";
 
 function must(name: string) {
   const v = process.env[name];
