@@ -25,9 +25,6 @@ class InMemoryRedis implements RedisLike {
 
 export function createRedisClient(url?: string): RedisLike {
   if (!url) return new InMemoryRedis();
-  // если используешь ioredis/redis — адаптируй к интерфейсу RedisLike и верни клиент
-  // пример с ioredis:
-  // const r = new (require('ioredis'))(url);
-  // return { get: (k) => r.get(k), setex: (k, ttl, v) => r.setex(k, ttl, v) as Promise<'OK'> };
-  return new InMemoryRedis(); // временно, пока не подключён реальный Redis
+  // Верни адаптер, совместимый с RedisLike, если подключишь реальный Redis
+  return new InMemoryRedis();
 }
