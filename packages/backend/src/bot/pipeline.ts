@@ -1,4 +1,4 @@
-import LRU from "lru-cache";
+import { LRUCache } from "lru-cache";
 import type pino from "pino";
 import { normalize } from "../nlp/text.js";
 import { findExact, loadFaq } from "../faq/store.js";
@@ -10,7 +10,10 @@ export interface AnswerResult {
   sources?: Array<{ title: string; slug: string }>;
 }
 
-const cache = new LRU<string, AnswerResult>({ max: 500, ttl: 1000 * 60 * 15 });
+const cache = new LRUCache<string, AnswerResult>({
+  max: 500,
+  ttl: 15 * 60 * 1000,
+});
 
 export async function buildContext() {
   loadFaq();
