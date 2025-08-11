@@ -21,19 +21,15 @@ export async function buildServer(deps: {
   await app.register(cors, { origin: true });
   await app.register(rateLimit, { max: 200, timeWindow: "1 minute" });
   await app.register(sensible);
-  await app.register(swagger, {
-    openapi: { info: { title: "API", version: "1.0.0" } },
-  });
+  await app.register(swagger, { openapi: { info: { title: "API", version: "1.0.0" } } });
   await app.register(swaggerUi, { routePrefix: "/docs" });
   await app.register(healthPlugin, { prefix: "/api" });
   await app.register(usersPlugin, { prefix: "/api", repo: deps.userRepo });
 
-  app.setErrorHandler(
-    (err: FastifyError, _req: FastifyRequest, reply: FastifyReply) => {
-      app.log.error(err);
-      reply.code(500).send({ error: "Internal Server Error" });
-    },
-  );
+  app.setErrorHandler((err: FastifyError, _req: FastifyRequest, reply: FastifyReply) => {
+    app.log.error(err);
+    reply.code(500).send({ error: "Internal Server Error" });
+  });
 
   return app;
 }
