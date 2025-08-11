@@ -33,9 +33,10 @@ export function searchKb(
   limit = 3,
 ): Array<{ doc: KbDoc; snippet: string }> {
   const index = getIndex();
-  const res = index.search(query, { limit });
+  const hitsAll = index.search(query, { prefix: true, fuzzy: 0.1 });
+  const hits = hitsAll.slice(0, limit);
   const qTokens = tokensRU(query);
-  return res.map((r) => {
+  return hits.map((r) => {
     const doc = docs.find((d) => d.id === (r as any).id)!;
     const firstToken = qTokens.find((t) => {
       const idx = doc.content.toLowerCase().indexOf(t);
