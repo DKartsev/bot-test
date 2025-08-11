@@ -6,7 +6,7 @@ const createServer = async (repo?: Partial<IUserRepo>) => {
   const baseRepo: IUserRepo = {
     findByEmail: async () => null,
     create: async ({ email, name }) => ({ id: "1", email, name }),
-    list: async () => ({ items: [], nextCursor: undefined }),
+    list: async () => ({ items: [] }),
   };
   const app = await buildServer({ userRepo: { ...baseRepo, ...repo } });
   await app.ready();
@@ -28,7 +28,7 @@ describe("users register", () => {
     const app = await createServer();
     const res = await app.inject({
       method: "POST",
-      url: "/api/register",
+      url: "/api/users",
       payload: { email: "a@test.com", name: "A" },
     });
     expect(res.statusCode).toBe(201);

@@ -4,6 +4,6 @@ export interface IUserRepo {
   create(input: Omit<User, "id">): Promise<User>;
   list(params: {
     cursor?: string;
-    limit: number;
+    limit?: number;
   }): Promise<import("../../../validation/pagination.js").ListResult<User>>;
 }

@@ -19,11 +19,11 @@ export class PgUserRepo implements IUserRepo {
 
   async list({
     cursor,
-    limit,
+    limit = 20,
   }: {
     cursor?: string;
-    limit: number;
-  }): Promise<{ items: User[]; nextCursor?: string }> {
+    limit?: number;
+  }): Promise<import("../../../validation/pagination.js").ListResult<User>> {
     const values: unknown[] = [];
     let query = "SELECT id,email,name FROM users ORDER BY id ASC LIMIT $1";
     if (cursor) {
@@ -41,6 +41,9 @@ export class PgUserRepo implements IUserRepo {
       const next = rows.pop() as User;
       nextCursor = next.id;
     }
-    return { items: rows, nextCursor };
+    return {
+      items: rows,
+      ...(nextCursor ? { nextCursor } : {}),
+    };
   }
 }
