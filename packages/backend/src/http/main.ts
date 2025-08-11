@@ -4,7 +4,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
-import { Telegraf } from 'telegraf';
+import { Telegraf, Context } from 'telegraf';
 
 /* global fetch */
 
@@ -204,8 +204,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     bot = new Telegraf(env.TELEGRAM_BOT_TOKEN);
 
     // Simple handlers for smoke test
-    bot.start((ctx) => ctx.reply('👋 Hello! Bot is alive.'));
-    bot.on('text', (ctx) => ctx.reply(`Echo: ${ctx.message.text}`));
+    bot.start((ctx: Context) => ctx.reply('👋 Hello! Bot is alive.'));
+    bot.on('text', (ctx: Context) => ctx.reply(`Echo: ${ctx.message.text}`));
 
     // Secure webhook route
     app.route({
@@ -269,6 +269,8 @@ export async function buildServer(): Promise<FastifyInstance> {
 // ---------------------------------
 // Bootstrap
 // ---------------------------------
+import { fileURLToPath } from 'node:url';
+
 async function start() {
   const app = await buildServer();
 
@@ -303,4 +305,14 @@ async function start() {
   }
 }
 
-if (require.main === module) start();
+// ESM‑safe "entrypoint" check
+const isMain = (() => {
+  try {
+    const thisFile = fileURLToPath(import.meta.url);
+    return typeof process !== 'undefined' && process.argv && thisFile === process.argv[1];
+  } catch {
+    return false;
+  }
+})();
+
+if (isMain) start();
