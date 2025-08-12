@@ -9,8 +9,10 @@ function getFuse() {
     fuse = new Fuse(loadFaq(), {
       keys: ["q"],
       includeScore: true,
-      threshold: 0.4,
+      threshold: 0.45,
       ignoreLocation: true,
+      distance: 150,
+      minMatchCharLength: 2,
       getFn: (obj, path) => {
         if (path[0] === "q") return tokensRU(obj.q);
         // @ts-ignore

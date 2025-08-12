@@ -1,6 +1,6 @@
 import MiniSearch from "minisearch";
 import { loadKb, KbDoc } from "./loader.js";
-import { tokensRU } from "../nlp/text.js";
+import { normalize, tokensRU } from "../nlp/text.js";
 
 let mini: MiniSearch<KbDoc> | null = null;
 let docs: KbDoc[] = [];
@@ -12,7 +12,8 @@ function getIndex(): MiniSearch<KbDoc> {
       idField: "id",
       fields: ["title", "content", "tags"],
       storeFields: ["title", "slug"],
-      tokenize: (text) => tokensRU(text),
+      tokenize: tokensRU,
+      processTerm: (t) => t,
     });
     mini.addAll(docs);
   }
@@ -31,9 +32,14 @@ function highlight(content: string, queryTokens: string[]): string {
 export function searchKb(
   query: string,
   limit = 3,
-): Array<{ doc: KbDoc; snippet: string }> {
+): Array<{ doc: KbDoc; score: number; snippet: string }> {
+  if (normalize(query).length < 2) return [];
   const index = getIndex();
-  const hitsAll = index.search(query, { prefix: true, fuzzy: 0.1 });
+  const hitsAll = index.search(query, {
+    prefix: true,
+    fuzzy: 0.2,
+    boost: { title: 3, tags: 2, content: 1 },
+  });
   const hits = hitsAll.slice(0, limit);
   const qTokens = tokensRU(query);
   return hits.map((r) => {
@@ -50,7 +56,7 @@ export function searchKb(
       snippet = doc.content.slice(start, end);
     }
     snippet = highlight(snippet, qTokens);
-    return { doc, snippet };
+    return { doc, score: (r as any).score, snippet };
   });
 }
 
