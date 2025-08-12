@@ -10,5 +10,4 @@ const routes: FastifyPluginAsync = async (app) => {
   app.register(metrics);
   app.register(db);
 };
-
 export default routes;
