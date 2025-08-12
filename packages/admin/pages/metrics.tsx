@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 export default function MetricsPage() {
 	const [token, setToken] = useState<string>("");
@@ -7,9 +7,9 @@ export default function MetricsPage() {
 	const [host, setHost] = useState("");
 
 	useEffect(() => {
-		const t = localStorage.getItem("admin_token") || "";
-		setToken(t);
 		if (typeof window !== "undefined") {
+			const t = localStorage.getItem("admin_token") || "";
+			setToken(t);
 			setHost(window.location.origin.replace(/\/admin$/, ""));
 		}
 	}, []);
@@ -30,12 +30,14 @@ export default function MetricsPage() {
 			setData(json);
 			localStorage.setItem("admin_token", token);
 		} catch (e: any) {
-			alert(e.message || "Ошибка запроса");
-		} finally { setLoading(false); }
+			alert(e?.message || "Ошибка запроса");
+		} finally {
+			setLoading(false);
+		}
 	}, [token, host]);
 
 	const totals = data?.totals || {};
-	const daily = data?.daily || [];
+	const daily = Array.isArray(data?.daily) ? data.daily : [];
 
 	return (
 		<div className="p-6 max-w-4xl mx-auto">
@@ -61,9 +63,9 @@ export default function MetricsPage() {
 			</div>
 
 			<div className="grid grid-cols-3 gap-3 mb-6">
-				<Card title="Ответов (30д)" value={totals.total_responses ?? 0} />
-				<Card title="Средняя уверенность" value={(totals.avg_conf ?? 0).toFixed(2)} />
-				<Card title="Эскалаций (30д)" value={totals.total_escalations ?? 0} />
+				<Card title="Ответов (30д)" value={Number(totals.total_responses ?? 0)} />
+				<Card title="Средняя уверенность" value={isFinite(Number(totals.avg_conf)) ? Number(totals.avg_conf).toFixed(2) : "—"} />
+				<Card title="Эскалаций (30д)" value={Number(totals.total_escalations ?? 0)} />
 			</div>
 
 			<div className="overflow-x-auto border rounded-xl">
@@ -80,11 +82,19 @@ export default function MetricsPage() {
 					<tbody>
 						{daily.map((d: any, i: number) => (
 							<tr key={i} className="border-t">
-								<td className="p-2">{new Date(d.day).toLocaleDateString()}</td>
-								<td className="p-2">{d.responses}</td>
-								<td className="p-2">{Number(d.avg_conf).toFixed(2)}</td>
-								<td className="p-2">{d.escalations}</td>
-								<td className="p-2">{(Number(d.helpful_rate) * 100).toFixed(0)}%</td>
+								<td className="p-2">
+									{d.day && !isNaN(Date.parse(d.day))
+										? new Date(d.day).toLocaleDateString()
+										: "—"}
+								</td>
+								<td className="p-2">{Number(d.responses ?? 0)}</td>
+								<td className="p-2">{isFinite(Number(d.avg_conf)) ? Number(d.avg_conf).toFixed(2) : "—"}</td>
+								<td className="p-2">{Number(d.escalations ?? 0)}</td>
+								<td className="p-2">
+									{d.helpful_rate !== undefined && d.helpful_rate !== null
+										? `${(Number(d.helpful_rate) * 100).toFixed(0)}%`
+										: "—"}
+								</td>
 							</tr>
 						))}
 					</tbody>
@@ -102,7 +112,7 @@ function Card({ title, value }: { title: string; value: any }) {
 	return (
 		<div className="rounded-2xl border p-4 shadow-sm">
 			<div className="text-sm text-gray-500">{title}</div>
-			<div className="text-xl font-semibold">{value}</div>
+			<div className="text-xl font-semibold">{String(value)}</div>
 		</div>
 	);
 }
