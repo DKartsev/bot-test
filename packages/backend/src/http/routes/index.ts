@@ -1,14 +1,14 @@
 import { FastifyPluginAsync } from "fastify";
 import bot from "./bot.js";
-import adminFeedback from "./admin/feedback.js";
-import adminMetrics from "./admin/metrics.js";
-import adminDb from "./admin/db.js";
+import feedback from "./admin/feedback.js";
+import metrics from "./admin/metrics.js";
+import db from "./admin/db.js";
 
 const routes: FastifyPluginAsync = async (app) => {
-  await app.register(bot);
-  await app.register(adminFeedback);
-  await app.register(adminMetrics);
-  await app.register(adminDb);
+  app.register(bot);
+  app.register(feedback);
+  app.register(metrics);
+  app.register(db);
 };
 
 export default routes;
