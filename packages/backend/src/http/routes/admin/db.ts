@@ -1,6 +1,12 @@
 import { FastifyPluginAsync } from "fastify";
 
-function assertAdmin(req: any) {
+/**
+ * Admin DB Ping
+ * Требует Authorization: Bearer <один из ADMIN_API_TOKENS>.
+ * Возвращает текущую дату/время из Postgres.
+ */
+
+const assertAdmin = (req: any) => {
   const hdr = (req.headers["authorization"] as string) || "";
   const bearer = hdr.startsWith("Bearer ") ? hdr.slice(7) : undefined;
   const x = (req.headers["x-admin-token"] as string) || bearer;
@@ -13,7 +19,7 @@ function assertAdmin(req: any) {
     err.statusCode = 401;
     throw err;
   }
-}
+};
 
 const plugin: FastifyPluginAsync = async (app) => {
   app.get("/api/admin/db/ping", async (req, reply) => {
@@ -25,10 +31,11 @@ const plugin: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      const q = await app.pg.query<{ now: string }>("select now() as now");
-      return { ok: true, now: q.rows[0].now };
+      const rs = await app.pg.query<{ now: string }>("select now() as now");
+      const now: string | null = rs?.rows?.[0]?.now ?? null; // избегаем TS2532
+      return { ok: true, now };
     } catch (err) {
-      req.log.error({ err }, "db ping failed");
+      app.log.error({ err }, "db ping failed");
       reply.code(500);
       return { error: "InternalError" };
     }
