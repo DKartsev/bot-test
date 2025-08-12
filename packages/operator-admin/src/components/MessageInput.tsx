@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Button } from '@shadcn/ui/button';
-import { Input } from '@shadcn/ui/input';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 import { api } from '../lib/api';
 import SavedRepliesDrawer from './SavedRepliesDrawer';
 
@@ -92,7 +92,7 @@ export default function MessageInput({
   };
 
   return (
-    <div className="flex space-x-2 items-center">
+    <div className="flex space-x-2 items-center p-4 bg-gray-50 rounded-lg border">
       <SavedRepliesDrawer onInsert={(t) => setText((prev) => prev + t)} />
       <input
         ref={fileInputRef}
@@ -100,7 +100,13 @@ export default function MessageInput({
         className="hidden"
         onChange={handleFileChange}
       />
-      <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={sending}>
+      <Button 
+        type="button" 
+        onClick={() => fileInputRef.current?.click()} 
+        disabled={sending}
+        variant="outline"
+        size="sm"
+      >
         📎
       </Button>
       <Input
@@ -109,11 +115,16 @@ export default function MessageInput({
         onKeyDown={handleKey}
         placeholder="Введите сообщение"
         className="flex-1"
+        disabled={sending}
       />
-      <Button onClick={handleSend} disabled={sending}>
-        Отправить
+      <Button onClick={handleSend} disabled={sending || !text.trim()}>
+        {sending ? 'Отправка...' : 'Отправить'}
       </Button>
-      {toast && <span className="text-sm text-green-600">{toast}</span>}
+      {toast && (
+        <div className="absolute top-4 right-4 bg-green-600 text-white px-3 py-2 rounded shadow-lg">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

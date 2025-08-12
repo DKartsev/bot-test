@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@shadcn/ui/button';
+import { Button } from './ui/button';
 import { api } from '../lib/api';
 
 interface Props {
@@ -30,23 +30,23 @@ export default function CreateCaseModal({ conversationId, onClose, onCreated }: 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-4 rounded w-full max-w-md">
-        <h2 className="text-lg font-bold mb-2">Создать кейс</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-xl">
+        <h2 className="text-xl font-bold mb-4">Создать кейс</h2>
         <input
-          className="w-full border rounded p-2 mb-2"
+          className="w-full border border-gray-300 rounded-md p-3 mb-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="Название"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
         <textarea
-          className="w-full border rounded p-2 mb-2"
+          className="w-full border border-gray-300 rounded-md p-3 mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
           rows={4}
           placeholder="Краткое описание"
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
         />
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={onClose}>
             Отмена
           </Button>

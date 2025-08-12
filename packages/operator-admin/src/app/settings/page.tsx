@@ -42,28 +42,56 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold mb-4">Настройки</h1>
-      <label className="flex items-center gap-2">
-        <input type="checkbox" checked={sound} onChange={handleSound} />
-        Звук при новых сообщениях
-      </label>
-      <label className="flex items-center gap-2">
-        <input type="checkbox" checked={desktop} onChange={handleDesktop} />
-        Desktop-уведомления
-      </label>
-      <label className="flex items-center gap-2">
-        <input type="checkbox" checked={assigned} onChange={handleAssigned} />
-        Уведомлять, когда мне назначен чат
-      </label>
-      <div>
-        <label className="block mb-1">Имя оператора</label>
-        <input
-          type="text"
-          value={name}
-          onChange={handleName}
-          className="border p-1 rounded w-full max-w-sm"
-        />
+    <div className="max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Настройки</h1>
+      <div className="bg-white rounded-lg shadow p-6 space-y-6">
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Уведомления</h2>
+          <div className="space-y-4">
+            <label className="flex items-center gap-3">
+              <input 
+                type="checkbox" 
+                checked={sound} 
+                onChange={handleSound}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <span>Звук при новых сообщениях</span>
+            </label>
+            <label className="flex items-center gap-3">
+              <input 
+                type="checkbox" 
+                checked={desktop} 
+                onChange={handleDesktop}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <span>Desktop-уведомления</span>
+            </label>
+            <label className="flex items-center gap-3">
+              <input 
+                type="checkbox" 
+                checked={assigned} 
+                onChange={handleAssigned}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <span>Уведомлять, когда мне назначен чат</span>
+            </label>
+          </div>
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Профиль</h2>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Имя оператора
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={handleName}
+              className="w-full max-w-sm border border-gray-300 rounded-md p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Введите ваше имя"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

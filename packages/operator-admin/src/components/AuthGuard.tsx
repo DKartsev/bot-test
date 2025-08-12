@@ -10,6 +10,7 @@ interface Props {
 export default function AuthGuard({ children }: Props) {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -18,8 +19,20 @@ export default function AuthGuard({ children }: Props) {
     } else {
       setAuthorized(true);
     }
+    setLoading(false);
   }, [router]);
 
-  if (!authorized) return null;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div>Загрузка...</div>
+      </div>
+    );
+  }
+
+  if (!authorized) {
+    return null;
+  }
+
   return <>{children}</>;
 }

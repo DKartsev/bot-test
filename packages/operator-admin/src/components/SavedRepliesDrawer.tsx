@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button } from '@shadcn/ui/button';
-import { Input } from '@shadcn/ui/input';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 import { api } from '../lib/api';
 
 interface SavedReply {
@@ -91,7 +91,7 @@ export default function SavedRepliesDrawer({ onInsert }: SavedRepliesDrawerProps
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} variant="secondary">
+      <Button onClick={() => setOpen(true)} variant="outline" size="sm">
         Сохранённые
       </Button>
       {open && (
@@ -100,15 +100,24 @@ export default function SavedRepliesDrawer({ onInsert }: SavedRepliesDrawerProps
             className="absolute inset-0 bg-black opacity-50"
             onClick={() => setOpen(false)}
           ></div>
-          <div className="relative w-80 h-full bg-white shadow-xl p-4 overflow-y-auto">
-            <div className="mb-2 flex items-center space-x-2">
+          <div className="relative w-96 h-full bg-white shadow-xl p-6 overflow-y-auto">
+            <div className="mb-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Сохранённые ответы</h2>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
               <Input
                 placeholder="Поиск"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
               <select
-                className="border rounded p-1"
+                className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500"
                 value={tag}
                 onChange={(e) => setTag(e.target.value)}
               >
@@ -119,19 +128,27 @@ export default function SavedRepliesDrawer({ onInsert }: SavedRepliesDrawerProps
                   </option>
                 ))}
               </select>
-              <Button onClick={openNew}>Добавить</Button>
+              <Button onClick={openNew} className="w-full">
+                Добавить новый
+              </Button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {replies.map((r) => (
-                <div key={r.id} className="border p-2 rounded">
-                  <div className="font-medium">{r.title}</div>
+                <div key={r.id} className="border border-gray-200 p-3 rounded-md bg-gray-50">
+                  <div className="font-medium text-gray-800 mb-1">{r.title}</div>
                   {r.tags.length > 0 && (
-                    <div className="text-xs text-gray-500">{r.tags.join(', ')}</div>
+                    <div className="text-xs text-gray-500 mb-2">
+                      {r.tags.map(tag => (
+                        <span key={tag} className="inline-block bg-gray-200 px-2 py-1 rounded mr-1">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                   )}
-                  <div className="mt-1 text-sm whitespace-pre-wrap break-words">
+                  <div className="text-sm whitespace-pre-wrap break-words text-gray-700 mb-3">
                     {r.content}
                   </div>
-                  <div className="mt-2 flex space-x-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       onClick={() => {
@@ -150,24 +167,32 @@ export default function SavedRepliesDrawer({ onInsert }: SavedRepliesDrawerProps
                   </div>
                 </div>
               ))}
+              {replies.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  Сохранённых ответов пока нет
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
       {editing && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
           <div
             className="absolute inset-0 bg-black opacity-50"
             onClick={() => setEditing(null)}
           ></div>
-          <div className="relative bg-white p-4 w-96 space-y-2 rounded shadow">
+          <div className="relative bg-white p-6 w-full max-w-lg space-y-4 rounded-lg shadow-xl">
+            <h3 className="text-lg font-semibold">
+              {editing.id ? 'Редактировать ответ' : 'Новый ответ'}
+            </h3>
             <Input
               placeholder="Заголовок"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
             />
             <textarea
-              className="w-full border rounded p-2 h-40"
+              className="w-full border border-gray-300 rounded-md p-3 h-32 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
               placeholder="Контент"
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
@@ -177,11 +202,13 @@ export default function SavedRepliesDrawer({ onInsert }: SavedRepliesDrawerProps
               value={form.tags}
               onChange={(e) => setForm({ ...form, tags: e.target.value })}
             />
-            <div className="flex justify-end space-x-2">
+            <div className="flex justify-end space-x-3 pt-2">
               <Button variant="secondary" onClick={() => setEditing(null)}>
                 Отмена
               </Button>
-              <Button onClick={save}>Сохранить</Button>
+              <Button onClick={save} disabled={!form.title.trim() || !form.content.trim()}>
+                Сохранить
+              </Button>
             </div>
           </div>
         </div>

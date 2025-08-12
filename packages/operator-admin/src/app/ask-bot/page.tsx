@@ -4,8 +4,8 @@ import { useState } from 'react';
 import AuthGuard from '../../components/AuthGuard';
 import RecommendedQuestions from '../components/RecommendedQuestions';
 import { api } from '../../lib/api';
-import { Button } from '@shadcn/ui/button';
-import { Input } from '@shadcn/ui/input';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
 
 interface ChatMessage {
   role: 'operator' | 'bot';

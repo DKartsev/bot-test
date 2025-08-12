@@ -25,6 +25,7 @@ export default function ConversationsPage() {
   });
   const [stream, setStream] = useState<EventSource | null>(null);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const s = connectSSE();
@@ -36,10 +37,16 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     const loadCats = async () => {
-      const res = await api('/admin/categories');
-      if (res.ok) {
-        const data = await res.json();
-        setCategories(data);
+      try {
+        const res = await api('/admin/categories');
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(data || []);
+        }
+      } catch (error) {
+        console.error('Failed to load categories:', error);
+      } finally {
+        setLoading(false);
       }
     };
     loadCats();
@@ -49,26 +56,35 @@ export default function ConversationsPage() {
     setFilters((prev) => ({ ...prev, ...f }));
   };
 
+  if (loading) {
+    return (
+      <AuthGuard>
+        <div className="p-4">
+          <div>Загрузка...</div>
+        </div>
+      </AuthGuard>
+    );
+  }
   return (
     <AuthGuard>
       <div className="p-4">
         <h1 className="text-2xl font-bold mb-4">Диалоги</h1>
-        <div className="flex gap-2 mb-2">
+        <div className="flex flex-wrap gap-2 mb-4">
           <button
             className={`px-3 py-1 border rounded ${
               !filters.categoryId || filters.categoryId === 'all'
-                ? 'bg-gray-200'
+                ? 'bg-blue-500 text-white'
                 : ''
             }`}
             onClick={() => handleChange({ categoryId: 'all' })}
           >
-            All
+            Все категории
           </button>
           {categories.slice(0, 5).map((c) => (
             <button
               key={c.id}
               className={`px-3 py-1 border rounded ${
-                filters.categoryId === c.id ? 'bg-gray-200' : ''
+                filters.categoryId === c.id ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'
               }`}
               onClick={() => handleChange({ categoryId: c.id })}
             >

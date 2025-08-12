@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button } from '@shadcn/ui/button';
+import { Button } from '../../../components/ui/button';
 import AuthGuard from '../../../components/AuthGuard';
 import ChatView from '../../../components/ChatView';
 import MessageInput from '../../../components/MessageInput';
@@ -135,25 +135,34 @@ export default function ConversationPage({ params }: { params: { id: string } })
           <div>
             <h1 className="text-xl font-bold">Диалог {id}</h1>
               {conversation && (
-                <div className="text-sm text-gray-600">
-                  status: {conversation.status}, handoff: {conversation.handoff}
+                <div className="text-sm text-gray-600 mt-2 flex flex-wrap items-center gap-2">
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    conversation.status === 'open' ? 'bg-green-100 text-green-800' :
+                    conversation.status === 'closed' ? 'bg-gray-100 text-gray-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {conversation.status}
+                  </span>
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    conversation.handoff === 'human' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {conversation.handoff === 'human' ? 'Оператор' : 'Бот'}
+                  </span>
                   {conversation.assignee_name && (
-                    <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
                       Закреплён за: {conversation.assignee_name}
                     </span>
                   )}
                   {conversation.category && (
-                    <span className="ml-2">
-                      <CategoryBadge
-                        name={conversation.category.name}
-                        color={conversation.category.color}
-                      />
-                    </span>
+                    <CategoryBadge
+                      name={conversation.category.name}
+                      color={conversation.category.color}
+                    />
                   )}
                 </div>
               )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {conversation?.assignee_name ? (
               conversation.assignee_name === operatorName ? null : (
                 <Button variant="secondary" onClick={handleTakeover}>
@@ -161,20 +170,24 @@ export default function ConversationPage({ params }: { params: { id: string } })
                 </Button>
               )
             ) : (
-              <Button onClick={handleClaim}>Ответить</Button>
+              <Button onClick={handleClaim} className="bg-green-600 hover:bg-green-700">
+                Взять в работу
+              </Button>
             )}
             {conversation?.handoff === 'human' && (
-              <Button onClick={handleReturn}>Вернуть боту</Button>
+              <Button variant="outline" onClick={handleReturn}>
+                Вернуть боту
+              </Button>
             )}
             <Button variant="secondary" onClick={handleEditCategory}>
-              Изменить категорию
+              Категория
             </Button>
             <Button variant="secondary" onClick={() => setShowCaseModal(true)}>
               Создать кейс
             </Button>
             {editingCategory && (
               <select
-                className="border p-1 rounded"
+                className="border border-gray-300 p-2 rounded-md focus:ring-2 focus:ring-blue-500"
                 onChange={handleCategoryChange}
                 defaultValue={conversation?.category?.id ?? 'none'}
               >
@@ -188,7 +201,7 @@ export default function ConversationPage({ params }: { params: { id: string } })
             )}
           </div>
         </div>
-        <div className="flex-1 flex flex-col md:flex-row gap-4 mb-4 overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 mb-4 overflow-hidden">
           <div className="flex-1 flex flex-col">
             <div className="flex-1 overflow-y-auto mb-4">
               <ChatView
@@ -201,7 +214,7 @@ export default function ConversationPage({ params }: { params: { id: string } })
               assigneeName={conversation?.assignee_name}
             />
           </div>
-          <div className="md:w-80 w-full flex-shrink-0 overflow-y-auto">
+          <div className="lg:w-80 w-full flex-shrink-0 overflow-y-auto">
             <NotesPanel conversationId={id} />
           </div>
         </div>

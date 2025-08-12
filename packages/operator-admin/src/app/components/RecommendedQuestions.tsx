@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
-import { Button } from '@shadcn/ui/button';
+import { Button } from '../../components/ui/button';
 
 interface Question {
   id: string;

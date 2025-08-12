@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@shadcn/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@shadcn/ui/card';
-import { Input } from '@shadcn/ui/input';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Input } from '../../components/ui/input';
 import { useSupabaseClient } from '../hooks/useSupabaseClient';
 
 export default function LoginForm() {

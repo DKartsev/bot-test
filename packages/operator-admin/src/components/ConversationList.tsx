@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@shadcn/ui/button';
+import { Button } from './ui/button';
 import CategoryBadge from './CategoryBadge';
 import { api } from '../lib/api';
 
@@ -133,49 +133,74 @@ export default function ConversationList({
   }, [stream, status, handoff, search, categoryId, mine]);
 
   return (
-    <div>
-      <table className="min-w-full text-left border">
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left">
         <thead>
-          <tr>
-            <th className="p-2 border-b">Telegram ID</th>
-            <th className="p-2 border-b">Категория</th>
-            <th className="p-2 border-b">Статус</th>
-            <th className="p-2 border-b">Handoff</th>
-            <th className="p-2 border-b">Оператор</th>
-            <th className="p-2 border-b">Обновлено</th>
-            <th className="p-2 border-b">Последнее сообщение</th>
+          <tr className="bg-gray-50">
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telegram ID</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Категория</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Режим</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Оператор</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Обновлено</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Последнее сообщение</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="bg-white divide-y divide-gray-200">
           {items.map((conv) => (
             <tr
               key={conv.id}
-              className="cursor-pointer hover:bg-gray-50"
+              className="cursor-pointer hover:bg-gray-50 transition-colors"
               onClick={() => router.push(`/conversations/${conv.id}`)}
             >
-              <td className="p-2 border-b">{conv.user_telegram_id}</td>
-              <td className="p-2 border-b">
+              <td className="px-4 py-3 text-sm font-medium text-gray-900">{conv.user_telegram_id}</td>
+              <td className="px-4 py-3 text-sm">
                 {conv.category ? (
                   <CategoryBadge
                     name={conv.category.name}
                     color={conv.category.color}
                   />
-                ) : null}
+                ) : (
+                  <span className="text-gray-400">—</span>
+                )}
               </td>
-              <td className="p-2 border-b">{conv.status}</td>
-              <td className="p-2 border-b">{conv.handoff}</td>
-              <td className="p-2 border-b">{conv.assignee_name || ''}</td>
-              <td className="p-2 border-b">{new Date(conv.updated_at).toLocaleString()}</td>
-              <td className="p-2 border-b">{conv.last_message_preview}</td>
+              <td className="px-4 py-3 text-sm">
+                <span className={`px-2 py-1 rounded-full text-xs ${
+                  conv.status === 'open' ? 'bg-green-100 text-green-800' :
+                  conv.status === 'closed' ? 'bg-gray-100 text-gray-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {conv.status}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-sm">
+                <span className={`px-2 py-1 rounded-full text-xs ${
+                  conv.handoff === 'human' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {conv.handoff === 'human' ? 'Оператор' : 'Бот'}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-sm text-gray-900">{conv.assignee_name || '—'}</td>
+              <td className="px-4 py-3 text-sm text-gray-500">{new Date(conv.updated_at).toLocaleString()}</td>
+              <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
+                {conv.last_message_preview || '—'}
+              </td>
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
       {hasMore && (
-        <div className="mt-4">
+        <div className="px-4 py-3 bg-gray-50 border-t">
           <Button onClick={handleLoadMore} disabled={loading}>
-            Load more
+            {loading ? 'Загрузка...' : 'Загрузить ещё'}
           </Button>
+        </div>
+      )}
+      {items.length === 0 && !loading && (
+        <div className="px-4 py-8 text-center text-gray-500">
+          Диалоги не найдены
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Button } from '@shadcn/ui/button';
+import { Button } from './ui/button';
 import { api } from '../lib/api';
 import { connectSSE } from '../lib/stream';
 
@@ -122,47 +122,61 @@ export default function ChatView({ conversationId, initialHandoff = false }: Cha
   return (
     <div>
       {handoff && (
-        <div className="p-2 bg-yellow-100 text-center mb-2">Разговор передан оператору</div>
+        <div className="p-3 bg-yellow-100 border border-yellow-200 text-yellow-800 text-center mb-4 rounded-md">
+          🤝 Разговор передан оператору
+        </div>
       )}
       {hasMore && (
-        <div className="text-center my-2">
+        <div className="text-center my-4">
           <Button onClick={handleLoadMore} disabled={loading}>
-            Загрузить ещё
+            {loading ? 'Загрузка...' : 'Загрузить ранние сообщения'}
           </Button>
         </div>
       )}
-      <div className="space-y-2">
+      <div className="space-y-3">
         {messages.map((m) => (
-          <div key={m.id} className={`p-2 rounded ${roleBg(m.role)}`}>
-            <div className="text-xs text-gray-600 mb-1">
-              {new Date(m.created_at).toLocaleString()} — {m.role}
+          <div key={m.id} className={`p-3 rounded-lg ${roleBg(m.role)} border`}>
+            <div className="text-xs text-gray-500 mb-2 flex items-center justify-between">
+              <span>{new Date(m.created_at).toLocaleString()}</span>
+              <span className={`px-2 py-1 rounded text-xs ${
+                m.role === 'operator' ? 'bg-blue-600 text-white' :
+                m.role === 'bot' ? 'bg-green-600 text-white' :
+                'bg-gray-600 text-white'
+              }`}>
+                {m.role === 'operator' ? 'Оператор' : m.role === 'bot' ? 'Бот' : 'Пользователь'}
+              </span>
             </div>
-            <div>{m.content}</div>
+            <div className="text-sm leading-relaxed">{m.content}</div>
             {m.media_urls && m.media_urls.length > 0 && (
               <div className="mt-2 space-y-2">
                 {m.media_urls.map((url) => (
-                  <div key={url}>
+                  <div key={url} className="border rounded p-2 bg-white">
                     <a
                       href={url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-blue-600 underline"
+                      className="text-blue-600 hover:text-blue-800 underline text-sm"
                     >
-                      {url}
+                      Открыть медиафайл
                     </a>
-                    <img src={url} alt="media" className="mt-1 max-w-xs" />
+                    <img src={url} alt="media" className="mt-2 max-w-xs rounded" />
                   </div>
                 ))}
               </div>
             )}
             {(m.transcript || m.vision_summary) && (
-              <div className="mt-1 text-sm text-gray-600">
-                {m.transcript && <div>📜 {m.transcript}</div>}
-                {m.vision_summary && <div>👁️ {m.vision_summary}</div>}
+              <div className="mt-3 p-2 bg-white rounded border text-sm text-gray-600">
+                {m.transcript && <div className="mb-1"><strong>📜 Транскрипт:</strong> {m.transcript}</div>}
+                {m.vision_summary && <div><strong>👁️ Описание:</strong> {m.vision_summary}</div>}
               </div>
             )}
           </div>
         ))}
+        {messages.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            Сообщений пока нет
+          </div>
+        )}
       </div>
     </div>
   );

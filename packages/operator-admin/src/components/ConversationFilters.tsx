@@ -1,6 +1,6 @@
 'use client';
 
-import { Input } from '@shadcn/ui/input';
+import { Input } from './ui/input';
 
 interface ConversationFiltersProps {
   status?: string;
@@ -48,9 +48,9 @@ export default function ConversationFilters({
   };
 
   return (
-    <div className="flex flex-wrap gap-2 mb-4">
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
       <select
-        className="border p-2 rounded"
+        className="border border-gray-300 p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         value={status}
         onChange={handleStatusChange}
       >
@@ -59,7 +59,7 @@ export default function ConversationFilters({
         <option value="closed">Закрытые</option>
       </select>
       <select
-        className="border p-2 rounded"
+        className="border border-gray-300 p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         value={handoff}
         onChange={handleHandoffChange}
       >
@@ -71,10 +71,10 @@ export default function ConversationFilters({
         placeholder="Поиск по Telegram ID"
         value={search}
         onChange={handleSearchChange}
-        className="max-w-xs"
+        className="w-full"
       />
       <select
-        className="border p-2 rounded"
+        className="border border-gray-300 p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         value={categoryId}
         onChange={handleCategoryChange}
       >
@@ -85,9 +85,9 @@ export default function ConversationFilters({
           </option>
         ))}
       </select>
-      <label className="flex items-center space-x-1">
+      <label className="flex items-center space-x-2">
         <input type="checkbox" checked={mine} onChange={handleMineChange} />
-        <span>Мои</span>
+        <span className="text-sm">Только мои</span>
       </label>
     </div>
   );
