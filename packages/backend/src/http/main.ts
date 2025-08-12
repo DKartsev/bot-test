@@ -1,8 +1,9 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import rateLimit from "@fastify/rate-limit";
-import { Telegraf, message } from "telegraf";
+import { Telegraf } from "telegraf";
+import { message } from "telegraf/filters";
 import pgPlugin from "../plugins/pg.js";
-import ragAnswer from "../app/pipeline/ragAnswer.js";
+import { ragAnswer } from "../app/pipeline/ragAnswer.js";
 
 // Локальные роуты/плагины (NodeNext/ESM → указываем .js)
 import routes from "./routes/index.js";
@@ -22,8 +23,8 @@ export async function createApp(): Promise<FastifyInstance> {
     trustProxy: true,
   });
 
-  await app.register(rateLimit, { global: false });
-  await app.register(pgPlugin);
+  await app.register(rateLimit as any, { global: false });
+  await app.register(pgPlugin as any);
 
   // -------- Health --------
   app.head("/", async (_req, reply) => reply.code(200).send());
@@ -73,15 +74,20 @@ export async function createApp(): Promise<FastifyInstance> {
     const text = ctx.message.text || "";
     try {
       await ctx.sendChatAction("typing");
-    } catch (err) {
-      app.log.warn({ err }, "sendChatAction failed");
-    }
-
+    } catch {}
     try {
-      const result = await ragAnswer(app, { text });
-      await ctx.reply(result.answer);
+      const res = await ragAnswer({
+        text,
+        lang: "ru",
+        logger: app.log,
+        pg: app.pg,
+      });
+      const tail = res.escalate
+        ? "\n\nЕсли нужно — могу подключить оператора поддержки."
+        : "";
+      await ctx.reply(`${res.answer}${tail}`);
     } catch (err) {
-      app.log.error({ err }, "reply failed");
+      app.log.error({ err }, "ragAnswer/reply failed");
       try {
         await ctx.reply(
           "❌ Ошибка обработки. Могу подключить оператора поддержки.",

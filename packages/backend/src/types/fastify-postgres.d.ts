@@ -1,8 +1,15 @@
 import "fastify";
-import type { Pool } from "pg";
+import type { Pool, PoolClient, QueryResultRow } from "pg";
 
 declare module "fastify" {
   interface FastifyInstance {
-    pg: Pool;
+    pg: {
+      pool: Pool;
+      connect(): Promise<PoolClient>;
+      query<T extends QueryResultRow = QueryResultRow>(
+        query: string,
+        values?: any[],
+      ): Promise<{ rows: T[] }>;
+    };
   }
 }
