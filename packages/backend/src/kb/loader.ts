@@ -1,7 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
-import matter from "gray-matter";
 import { fileURLToPath } from "node:url";
+import matter from "gray-matter";
+
+import { KB_DIR } from "../env.js";
 
 export interface KbDoc {
   id: string;
@@ -15,25 +17,21 @@ const ROOT_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../../..",
 );
-const KB_DIRS = [
-  path.join(ROOT_DIR, "kb"),
-  path.join(ROOT_DIR, "docs/kb"),
-  path.join(ROOT_DIR, "knowledge_base"),
-  path.join(ROOT_DIR, "data/kb"),
-];
 let cache: KbDoc[] | null = null;
 
 export function loadKb(): KbDoc[] {
   if (cache) return cache;
-  const baseDir = KB_DIRS.map((p) => path.resolve(p)).find((p) =>
-    fs.existsSync(p),
-  );
-  if (!baseDir) {
+  const baseDir = path.resolve(ROOT_DIR, KB_DIR);
+  const app: any = (globalThis as any).app;
+  app?.log.info({ dir: baseDir }, "KB: scanning");
+  if (!fs.existsSync(baseDir)) {
     cache = [];
+    app?.log.info({ count: 0 }, "KB: loaded");
+    app?.log.warn("KB: empty");
     return cache;
   }
   const files = fs.readdirSync(baseDir).filter((f) => f.endsWith(".md"));
-  cache = files.map((file) => {
+  const docs = files.map((file) => {
     const raw = fs.readFileSync(path.join(baseDir, file), "utf-8");
     const parsed = matter(raw);
     const data: any = parsed.data || {};
@@ -46,5 +44,8 @@ export function loadKb(): KbDoc[] {
       content: parsed.content.trim(),
     } as KbDoc;
   });
+  cache = docs;
+  app?.log.info({ count: docs.length }, "KB: loaded");
+  if (!docs.length) app?.log.warn("KB: empty");
   return cache;
 }

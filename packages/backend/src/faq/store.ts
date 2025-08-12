@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { FAQ_PATH } from "../env.js";
+
 // types
 export type FaqPair = { id: string; q: string; a: string; tags?: string[] };
 
@@ -9,8 +11,8 @@ const ROOT_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../../..",
 );
-const JSON_PATH = path.join(ROOT_DIR, "data/qa/faq.json");
-const CSV_PATH = path.join(ROOT_DIR, "data/qa/faq.csv");
+const JSON_PATH = path.resolve(ROOT_DIR, FAQ_PATH);
+const CSV_PATH = JSON_PATH.replace(/\.json$/, ".csv");
 
 // кэш всегда массив (не null)
 let faqCache: FaqPair[] = [];
@@ -48,6 +50,9 @@ function pickQA(row: any): { q: string; a: string } | null {
 
 export function loadFaq(): FaqPair[] {
   if (faqCache.length) return faqCache;
+
+  const app: any = (globalThis as any).app;
+  app?.log.info({ path: FAQ_PATH }, "FAQ: loading");
 
   // ...загрузка raw-строк из JSON или CSV (CSV уже конвертирован в объекты)
   let rows: any[] = [];
@@ -94,6 +99,8 @@ export function loadFaq(): FaqPair[] {
   }
 
   faqCache = out;
+  app?.log.info({ count: out.length }, "FAQ: loaded");
+  if (out.length === 0) app?.log.warn("FAQ: empty");
   return faqCache;
 }
 
@@ -103,4 +110,9 @@ export function findExact(query: string): FaqPair | undefined {
   const qn = normalize(query ?? "");
   if (!qn) return;
   return faqCache.find((p) => normalize(p.q) === qn);
+}
+
+export function reloadFaq(): FaqPair[] {
+  faqCache = [];
+  return loadFaq();
 }
