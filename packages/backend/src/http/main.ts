@@ -1,5 +1,8 @@
 import Fastify, { type FastifyInstance } from "fastify";
+import rateLimit from "@fastify/rate-limit";
 import { Telegraf, message } from "telegraf";
+import pgPlugin from "../plugins/pg.js";
+import ragAnswer from "../app/pipeline/ragAnswer.js";
 
 // Локальные роуты/плагины (NodeNext/ESM → указываем .js)
 import routes from "./routes/index.js";
@@ -15,10 +18,12 @@ export async function createApp(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
       level: process.env.LOG_LEVEL ?? "info",
-      // requestId включён по умолчанию; Fastify проставляет req.id (видно в логах)
     },
     trustProxy: true,
   });
+
+  await app.register(rateLimit, { global: false });
+  await app.register(pgPlugin);
 
   // -------- Health --------
   app.head("/", async (_req, reply) => reply.code(200).send());
@@ -38,13 +43,14 @@ export async function createApp(): Promise<FastifyInstance> {
   const TG_SECRET = process.env.TG_WEBHOOK_SECRET || "";
 
   if (!TG_TOKEN) {
-    app.log.warn("TELEGRAM_BOT_TOKEN is not set — Telegram webhook route will NOT be registered");
+    app.log.warn(
+      "TELEGRAM_BOT_TOKEN is not set — Telegram webhook route will NOT be registered",
+    );
     return app;
   }
 
   const bot = new Telegraf(TG_TOKEN);
 
-  // Логирование/отлов ошибок Telegraf
   bot.catch((err, ctx) => {
     app.log.error({ err, update: ctx.update }, "Telegraf error");
   });
@@ -53,14 +59,16 @@ export async function createApp(): Promise<FastifyInstance> {
     try {
       const chat = (ctx.message as any)?.chat;
       app.log.info(
-        { tg_chat_id: chat?.id, tg_type: (ctx.message as any)?.type || "message" },
-        "tg update received"
+        {
+          tg_chat_id: chat?.id,
+          tg_type: (ctx.message as any)?.type || "message",
+        },
+        "tg update received",
       );
-    } catch { }
+    } catch {}
     return next();
   });
 
-  // Базовый обработчик текстов (минимальный фолбэк — чтобы было видно ответ бота)
   bot.on(message("text"), async (ctx) => {
     const text = ctx.message.text || "";
     try {
@@ -70,30 +78,38 @@ export async function createApp(): Promise<FastifyInstance> {
     }
 
     try {
-      // TODO: здесь можно вызвать ваш пайплайн (faq/kb + /api/bot/refine)
-      await ctx.reply(`Принял: ${text}\n(демо-ответ: подключим RAG/перефразирование позже)`);
+      const result = await ragAnswer(app, { text });
+      await ctx.reply(result.answer);
     } catch (err) {
       app.log.error({ err }, "reply failed");
       try {
-        await ctx.reply("❌ Ошибка обработки. Могу подключить оператора поддержки.");
-      } catch { }
+        await ctx.reply(
+          "❌ Ошибка обработки. Могу подключить оператора поддержки.",
+        );
+      } catch {}
     }
   });
 
-  // Вебхук с секретом: разрешаем только при валидном секрете (заголовок ИЛИ :token)
   app.post(`${TG_PATH}/:token?`, async (req, reply) => {
-    const headerSecret = String(req.headers["x-telegram-bot-api-secret-token"] || "");
+    const headerSecret = String(
+      req.headers["x-telegram-bot-api-secret-token"] || "",
+    );
     const urlSecret = (req.params as any)?.token || "";
     const hasSecret = Boolean(TG_SECRET);
 
     if (hasSecret) {
       if (headerSecret !== TG_SECRET && urlSecret !== TG_SECRET) {
-        app.log.warn({ ip: (req as any).ip }, "Unauthorized Telegram webhook access");
+        app.log.warn(
+          { ip: (req as any).ip },
+          "Unauthorized Telegram webhook access",
+        );
         return reply.code(401).send();
       }
     } else {
-      // Без секрета вебхук не обслуживаем — безопасный дефолт.
-      app.log.warn({ ip: (req as any).ip }, "Telegram webhook blocked: missing TG_WEBHOOK_SECRET");
+      app.log.warn(
+        { ip: (req as any).ip },
+        "Telegram webhook blocked: missing TG_WEBHOOK_SECRET",
+      );
       return reply.code(401).send();
     }
 
@@ -109,7 +125,6 @@ export async function createApp(): Promise<FastifyInstance> {
   return app;
 }
 
-// -------- Запуск сервера (кроме тестового окружения) --------
 async function start() {
   const app = await createApp();
   const port = Number(process.env.PORT || 3000);
@@ -124,8 +139,6 @@ async function start() {
 }
 
 if (process.env.NODE_ENV !== "test") {
-  // В production/dev — стартуем сразу
-  // В test — экспортируем только createApp()
   start();
 }
 
