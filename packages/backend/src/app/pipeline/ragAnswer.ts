@@ -1,17 +1,21 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyBaseLogger } from "fastify";
 import { findExact } from "../../faq/store.js";
 import { findFuzzy } from "../../faq/fuzzy.js";
-import type { SearchSource } from "../../domain/bot/types.js";
+import type {
+  SearchSource,
+  BotDraft,
+  RefineOptions,
+} from "../../domain/bot/types.js";
 import { refineDraft } from "../llm/llmRefine.js";
 
 interface RagParams {
   text: string;
   lang?: string;
+  logger: FastifyBaseLogger;
+  pg: FastifyInstance["pg"];
 }
 
-export async function ragAnswer(app: FastifyInstance, params: RagParams) {
-  const { text, lang } = params;
-  const logger = app.log;
+export async function ragAnswer({ text, lang, logger, pg }: RagParams) {
   let start = Date.now();
 
   const exact = findExact(text);
@@ -49,7 +53,7 @@ export async function ragAnswer(app: FastifyInstance, params: RagParams) {
   let sources: SearchSource[] = [];
   let draft = "";
   try {
-    const q = await app.pg.query<{ draft?: string; sources?: any }>(
+    const q = await pg.query<{ draft?: string; sources?: any }>(
       "select draft, sources from kb_search_json($1)",
       [text],
     );
@@ -78,15 +82,20 @@ export async function ragAnswer(app: FastifyInstance, params: RagParams) {
 
   const draftText = draft || sources.map((s) => s.snippet ?? "").join("\n");
   start = Date.now();
-  const result = await refineDraft(
-    { question: text, draft: draftText, sources, lang },
-    {
-      targetLang: lang ?? "ru",
-      minConfidenceToEscalate: Number(
-        process.env.MIN_CONFIDENCE_TO_ESCALATE || 0.55,
-      ),
-    },
-  );
+  const botDraft: BotDraft = {
+    question: text,
+    draft: draftText,
+    sources,
+    ...(lang !== undefined ? { lang } : {}),
+  };
+  const opts: RefineOptions = {
+    ...(lang !== undefined ? { targetLang: lang } : {}),
+    minConfidenceToEscalate: Number(
+      process.env.MIN_CONFIDENCE_TO_ESCALATE ?? 0.55,
+    ),
+    temperature: 0.3,
+  };
+  const result = await refineDraft(botDraft, opts);
   logger.info({
     stage: "refine",
     ms: Date.now() - start,
@@ -94,7 +103,7 @@ export async function ragAnswer(app: FastifyInstance, params: RagParams) {
   });
 
   try {
-    await app.pg.query(
+    await pg.query(
       `insert into bot_responses (question, draft, answer, confidence, escalate, lang) values ($1,$2,$3,$4,$5,$6)`,
       [
         text,
