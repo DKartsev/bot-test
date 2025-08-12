@@ -61,13 +61,15 @@ export async function ragAnswer({ text, lang, logger, pg }: RagParams) {
     if (row) {
       draft = typeof row.draft === "string" ? row.draft : "";
       if (Array.isArray(row.sources)) {
-        sources = row.sources.map((s: any) => ({
-          id: String(s.id),
-          ...(s.title !== undefined ? { title: s.title } : {}),
-          ...(s.url !== undefined ? { url: s.url } : {}),
-          ...(s.snippet !== undefined ? { snippet: s.snippet } : {}),
-          ...(s.score !== undefined ? { score: Number(s.score) } : {}),
-        }));
+        sources = row.sources
+          .filter((s: any) => s)
+          .map((s: any) => ({
+            id: String(s.id),
+            ...(s.title !== undefined ? { title: s.title } : {}),
+            ...(s.url !== undefined ? { url: s.url } : {}),
+            ...(s.snippet !== undefined ? { snippet: s.snippet } : {}),
+            ...(s.score !== undefined ? { score: Number(s.score) } : {}),
+          }));
       }
     }
     logger.info({
