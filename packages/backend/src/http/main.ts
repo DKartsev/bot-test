@@ -17,8 +17,9 @@ import { message } from "telegraf/filters";
 import crypto from "node:crypto";
 
 import { buildContext, answer, invalidateCache } from "../bot/pipeline.js";
-import { loadFaq } from "../faq/store.js";
-import { reindexKb } from "../kb/index.js";
+import { loadFaq, reloadFaq } from "../faq/store.js";
+import { reindexKb, searchKb } from "../kb/index.js";
+import { loadKb } from "../kb/loader.js";
 
 /* global fetch */
 
@@ -140,6 +141,8 @@ export async function buildServer() {
     FastifyBaseLogger,
     FastifyTypeProviderDefault
   >({ logger: { level: env.LOG_LEVEL }, trustProxy: env.TRUST_PROXY });
+
+  (globalThis as any).app = app;
 
   app.addHook("onRequest", (req, reply, done) => {
     let rid = req.headers["x-request-id"] as string | undefined;
@@ -267,6 +270,83 @@ export async function buildServer() {
       },
     } as any,
   });
+
+  // -------------------------------
+  // Admin diagnostics
+  // -------------------------------
+  app.get(
+    "/api/admin/stats",
+    {
+      preHandler: adminAuthHook,
+      schema: {
+        summary: "Admin: stats",
+        tags: ["admin"],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              faqCount: { type: "number" },
+              kbCount: { type: "number" },
+            },
+          },
+        },
+      } as any,
+    },
+    async (_req, reply) => {
+      const faqCount = loadFaq().length;
+      const kbCount = loadKb().length;
+      reply.send({ faqCount, kbCount });
+    },
+  );
+
+  app.get(
+    "/api/admin/kb/search",
+    {
+      preHandler: adminAuthHook,
+      schema: {
+        summary: "Admin: KB search",
+        tags: ["admin"],
+        security: [{ bearerAuth: [] }],
+        querystring: {
+          type: "object",
+          required: ["query"],
+          properties: { query: { type: "string" } },
+        },
+      } as any,
+    },
+    async (req, reply) => {
+      const { query = "" } = (req.query as any) || {};
+      const docs = searchKb(query, 3).map((r) => ({
+        title: r.doc.title,
+        slug: r.doc.slug,
+        snippet: r.snippet,
+      }));
+      reply.send(docs);
+    },
+  );
+
+  app.post(
+    "/api/admin/faq/reload",
+    {
+      preHandler: adminAuthHook,
+      schema: {
+        summary: "Admin: FAQ reload",
+        tags: ["admin"],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: {
+            type: "object",
+            properties: { faqCount: { type: "number" } },
+          },
+        },
+      } as any,
+    },
+    async (_req, reply) => {
+      const faqCount = reloadFaq().length;
+      reply.send({ faqCount });
+    },
+  );
 
   // -------------------------------
   // Admin: /api/admin/message

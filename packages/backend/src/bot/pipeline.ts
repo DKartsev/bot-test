@@ -75,7 +75,9 @@ export async function answer(
     return res;
   }
 
-  const res = { text: "Не нашёл ответа. Опишите проблему командой /ticket" };
+  const res = {
+    text: "Пока не нашёл ответ в базе. Опишите проблему командой /ticket или переформулируйте вопрос.",
+  };
   cache.set(key, res);
   return res;
 }
