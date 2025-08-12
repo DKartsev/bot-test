@@ -11,13 +11,18 @@
     "build": "npm run build -w packages/backend && npm run build -w packages/admin",
     "lint": "npm run lint -w packages/backend && npm run lint -w packages/admin",
     "test": "npm run test -w packages/backend",
-    "prepare": "husky"
+    "prepare": "node -e \"try{require('husky').install()}catch(e){process.exit(0)}\"",
+    "preinstall": "git config --local core.hooksPath .husky || true"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.5",
-    "prettier": "^3.6.2"
+    "prettier": "^3.6.2",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx,json,md}": "prettier --write"
+    "*.{js,jsx,ts,tsx,json,css,md}": [
+      "prettier --write"
+    ]
   }
 }
