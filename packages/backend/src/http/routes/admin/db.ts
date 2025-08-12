@@ -1,11 +1,5 @@
 import { FastifyPluginAsync } from "fastify";
 
-/**
- * Admin DB Ping
- * Требует Authorization: Bearer <один из ADMIN_API_TOKENS>.
- * Возвращает текущую дату/время из Postgres.
- */
-
 const assertAdmin = (req: any) => {
   const hdr = (req.headers["authorization"] as string) || "";
   const bearer = hdr.startsWith("Bearer ") ? hdr.slice(7) : undefined;
@@ -14,32 +8,20 @@ const assertAdmin = (req: any) => {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  if (!x || !tokens.includes(x)) {
-    const err: any = new Error("unauthorized");
-    err.statusCode = 401;
-    throw err;
-  }
+  if (!x || !tokens.includes(x)) { const e: any = new Error("unauthorized"); e.statusCode = 401; throw e; }
 };
 
 const plugin: FastifyPluginAsync = async (app) => {
   app.get("/api/admin/db/ping", async (req, reply) => {
-    try {
-      assertAdmin(req);
-    } catch {
-      reply.code(401);
-      return { error: "Unauthorized" };
-    }
-
+    try { assertAdmin(req); } catch { reply.code(401); return { error: "Unauthorized" }; }
     try {
       const rs = await app.pg.query<{ now: string }>("select now() as now");
-      const now: string | null = rs?.rows?.[0]?.now ?? null; // избегаем TS2532
+      const now: string | null = rs?.rows?.[0]?.now ?? null;
       return { ok: true, now };
     } catch (err) {
       app.log.error({ err }, "db ping failed");
-      reply.code(500);
-      return { error: "InternalError" };
+      reply.code(500); return { error: "InternalError" };
     }
   });
 };
-
 export default plugin;
