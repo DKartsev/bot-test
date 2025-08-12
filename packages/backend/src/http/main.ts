@@ -53,17 +53,16 @@ export async function createApp(): Promise<FastifyInstance> {
   const bot = new Telegraf(TG_TOKEN);
 
   bot.catch((err, ctx) => {
-    app.log.error({ err, update: ctx.update }, "Telegraf error");
+    app.log.error(
+      { err, tg_chat_id: ctx.chat?.id, tg_type: ctx.updateType },
+      "Telegraf error",
+    );
   });
 
   bot.on("message", async (ctx, next) => {
     try {
-      const chat = (ctx.message as any)?.chat;
       app.log.info(
-        {
-          tg_chat_id: chat?.id,
-          tg_type: (ctx.message as any)?.type || "message",
-        },
+        { tg_chat_id: ctx.chat?.id, tg_type: ctx.updateType },
         "tg update received",
       );
     } catch {}
