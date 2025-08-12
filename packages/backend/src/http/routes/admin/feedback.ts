@@ -10,20 +10,22 @@ const BodySchema = z.object({
 	operator_id: z.string().max(128).optional(),
 });
 
-function assertAdmin(app: any, req: any) {
+function assertAdmin(req: any) {
 	const hdr = (req.headers["authorization"] as string) || "";
 	const bearer = hdr.startsWith("Bearer ") ? hdr.slice(7) : undefined;
 	const x = (req.headers["x-admin-token"] as string) || bearer;
-	const tokens = (process.env.ADMIN_API_TOKENS || "").split(",").map(s => s.trim()).filter(Boolean);
+	const tokens = (process.env.ADMIN_API_TOKENS || "").split(",").map((s) => s.trim()).filter(Boolean);
 	if (!x || !tokens.includes(x)) {
-		throw new Error("unauthorized");
+		const err: any = new Error("unauthorized");
+		err.statusCode = 401;
+		throw err;
 	}
 }
 
 const plugin: FastifyPluginAsync = async (app) => {
 	app.post("/api/admin/feedback", async (req, reply) => {
 		try {
-			assertAdmin(app, req);
+			assertAdmin(req);
 		} catch {
 			reply.code(401);
 			return { error: "Unauthorized" };

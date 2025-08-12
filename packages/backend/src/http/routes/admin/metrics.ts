@@ -16,8 +16,9 @@ const plugin: FastifyPluginAsync = async (app) => {
 	app.get("/api/admin/stats/rag", async (req, reply) => {
 		try {
 			assertAdmin(req);
-		} catch (e: any) {
-			reply.code(401); return { error: "Unauthorized" };
+		} catch {
+			reply.code(401);
+			return { error: "Unauthorized" };
 		}
 
 		const q = await app.pg.query(`

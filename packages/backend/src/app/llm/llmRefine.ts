@@ -13,7 +13,7 @@ const client = new OpenAI({
 	apiKey: process.env.OPENAI_API_KEY,
 });
 
-const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini"; // замените при необходимости
+const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 export async function refineDraft(
 	draft: BotDraft,
@@ -43,16 +43,16 @@ export async function refineDraft(
 		strict: true,
 	};
 
-	const system = [
-		`Ты — ассистент поддержки. Твоя задача:`,
-		`1) Перефразировать черновик ответа так, чтобы он был коротким, точным и понятным.`,
-		`2) Использовать только факты из предоставленных источников/черновика.`,
+	const instructions = [
+		`Ты — ассистент поддержки.`,
+		`1) Перефразируй черновик ответа: коротко, точно, понятно.`,
+		`2) Используй ТОЛЬКО факты из черновика/источников.`,
 		`3) Язык ответа: ${targetLang}.`,
-		`4) Если информации недостаточно или уверенность низкая — предложи «связаться с оператором поддержки» без навязывания.`,
+		`4) Если информации недостаточно или уверенность низкая — аккуратно предложи «связаться с оператором поддержки».`,
 		`5) Не выдумывай фактов.`,
 	].join("\n");
 
-	const user = {
+	const userPayload = {
 		question: draft.question,
 		draft: draft.draft,
 		sources: draft.sources?.map(s => ({
@@ -60,19 +60,18 @@ export async function refineDraft(
 		})),
 	};
 
-	// Responses API + Structured Outputs (json_schema)
-	// Документация: API Reference (Responses) и Structured Outputs. 
-	// Результат валидируем через Zod. :contentReference[oaicite:2]{index=2}
+	// Responses API: используем instructions + content с input_text
+	// и Structured Outputs с json_schema. :contentReference[oaicite:1]{index=1}
 	const resp = await client.responses.create({
 		model: MODEL,
 		temperature,
+		instructions,
 		input: [
-			{ role: "system", content: system },
 			{
 				role: "user",
 				content: [
-					{ type: "text", text: "Вопрос и материалы ниже. Верни строго JSON по схеме." },
-					{ type: "input_text", text: JSON.stringify(user, null, 2) },
+					{ type: "input_text", text: "Вопрос и материалы ниже. Верни строго JSON по схеме." },
+					{ type: "input_text", text: JSON.stringify(userPayload, null, 2) },
 				],
 			},
 		],
@@ -89,7 +88,6 @@ export async function refineDraft(
 	}
 
 	const result = parsed.data;
-	// «Мягкая» эскалация — если уверенность ниже порога.
 	const escalate = result.escalate || result.confidence < minConfToEscalate;
 
 	return {

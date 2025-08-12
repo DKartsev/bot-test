@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
-import { refineDraft } from "../../app/llm/llmRefine";
-import { BotDraft } from "../../domain/bot/types";
+import { refineDraft } from "../../app/llm/llmRefine.js";
+import type { BotDraft } from "../../domain/bot/types";
 
 const BodySchema = z.object({
 	question: z.string().min(1),
@@ -24,9 +24,7 @@ const BodySchema = z.object({
 type Body = z.infer<typeof BodySchema>;
 
 const plugin: FastifyPluginAsync = async (app) => {
-	app.post<{
-		Body: Body
-	}>("/api/bot/refine", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req, reply) => {
+	app.post<{ Body: Body }>("/api/bot/refine", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req, reply) => {
 		const parse = BodySchema.safeParse(req.body);
 		if (!parse.success) {
 			reply.code(400);
@@ -43,20 +41,14 @@ const plugin: FastifyPluginAsync = async (app) => {
 
 		try {
 			const result = await refineDraft(draft, body.options);
-			// Сохраняем в БД для метрик
-			const inserted = await app.pg.query<{
-				id: string
-			}>(
+			const inserted = await app.pg.query<{ id: string }>(
 				`insert into bot_responses (question, draft, answer, confidence, escalate, lang)
          values ($1, $2, $3, $4, $5, $6)
          returning id`,
 				[draft.question, draft.draft, result.answer, result.confidence, result.escalate, draft.lang]
 			);
 
-			return {
-				id: inserted.rows[0].id,
-				...result,
-			};
+			return { id: inserted.rows[0].id, ...result };
 		} catch (e: any) {
 			req.log.error({ err: e }, "refine failed");
 			reply.code(502);
