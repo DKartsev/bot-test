@@ -17,9 +17,11 @@ import { message } from "telegraf/filters";
 import crypto from "node:crypto";
 
 import { buildContext, answer, invalidateCache } from "../bot/pipeline.js";
-import { loadFaq, reloadFaq } from "../faq/store.js";
+import { loadFaq, reloadFaq, findExact } from "../faq/store.js";
+import { findFuzzy } from "../faq/fuzzy.js";
 import { reindexKb, searchKb } from "../kb/index.js";
 import { loadKb } from "../kb/loader.js";
+import { normalize, tokensRU } from "../nlp/text.js";
 
 /* global fetch */
 
@@ -319,7 +321,7 @@ export async function buildServer() {
       const { query = "" } = (req.query as any) || {};
       const docs = searchKb(query, 3).map((r) => ({
         title: r.doc.title,
-        slug: r.doc.slug,
+        score: r.score,
         snippet: r.snippet,
       }));
       reply.send(docs);
@@ -345,6 +347,114 @@ export async function buildServer() {
     async (_req, reply) => {
       const faqCount = reloadFaq().length;
       reply.send({ faqCount });
+    },
+  );
+
+  app.post(
+    "/api/admin/pipeline/test",
+    {
+      preHandler: adminAuthHook,
+      schema: {
+        summary: "Admin: pipeline test",
+        tags: ["admin"],
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: "object",
+          required: ["text"],
+          properties: { text: { type: "string" } },
+        },
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              normalize: { type: "string" },
+              tokens: { type: "array", items: { type: "string" } },
+              faqExact: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  q: { type: "string" },
+                },
+                additionalProperties: false,
+              },
+              faqFuzzy: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  q: { type: "string" },
+                  score: { type: "number" },
+                },
+                additionalProperties: false,
+              },
+              kb: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    score: { type: "number" },
+                    snippet: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      } as any,
+    },
+    async (req, reply) => {
+      const { text } = (req.body as any) || {};
+      if (!text || typeof text !== "string") {
+        return reply
+          .code(400)
+          .send({ error: "Bad Request", details: 'Field "text" is required' });
+      }
+
+      const rid = (req as any).rid;
+
+      const norm = normalize(text);
+      const tokens = tokensRU(text);
+
+      let start = Date.now();
+      const exact = findExact(text);
+      req.log.info({
+        rid,
+        stage: "faq_exact",
+        ms: Date.now() - start,
+        hits: exact ? 1 : 0,
+      });
+
+      start = Date.now();
+      const fuzzy = findFuzzy(text);
+      req.log.info({
+        rid,
+        stage: "faq_fuzzy",
+        ms: Date.now() - start,
+        score: fuzzy.score,
+      });
+
+      start = Date.now();
+      const kbRes = searchKb(text, 3);
+      req.log.info({
+        rid,
+        stage: "kb_search",
+        ms: Date.now() - start,
+        hits: kbRes.length,
+      });
+
+      reply.send({
+        normalize: norm,
+        tokens,
+        faqExact: exact ? { id: exact.id, q: exact.q } : undefined,
+        faqFuzzy: fuzzy.hit
+          ? { id: fuzzy.hit.id, q: fuzzy.hit.q, score: fuzzy.score! }
+          : undefined,
+        kb: kbRes.map((r) => ({
+          title: r.doc.title,
+          score: r.score,
+          snippet: r.snippet,
+        })),
+      });
     },
   );
 

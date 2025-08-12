@@ -18,24 +18,24 @@ const STOP_WORDS = new Set([
   "или",
   "но",
   "если",
+  "то",
+  "же",
+  "при",
+  "из",
+  "не",
+  "ни",
+  "а",
   "к",
   "у",
-  "о",
   "от",
   "до",
-  "под",
+  "без",
   "над",
-  "со",
-  "же",
-  "то",
-  "а",
-  "не",
-  "из",
-  "при",
+  "под",
 ]);
 
 export function tokensRU(s: string): string[] {
   const norm = normalize(s);
   const tokens = norm.match(/[\p{L}\p{N}]+/gu) || [];
-  return tokens.filter((t) => !STOP_WORDS.has(t));
+  return tokens.filter((t) => t.length >= 2 && !STOP_WORDS.has(t));
 }
