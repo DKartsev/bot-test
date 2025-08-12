@@ -22,6 +22,7 @@ import { findFuzzy } from "../faq/fuzzy.js";
 import { reindexKb, searchKb } from "../kb/index.js";
 import { loadKb } from "../kb/loader.js";
 import { normalize, tokensRU } from "../nlp/text.js";
+import adminTelegram from "./routes/admin/telegram.js";
 
 /* global fetch */
 
@@ -195,6 +196,7 @@ export async function buildServer() {
   if (env.ENABLE_DOCS) {
     await app.register(swaggerUi as any, { routePrefix: "/docs" });
   }
+  await app.register(adminTelegram);
 
   // -------------------------------
   // Helpers
@@ -691,7 +693,7 @@ async function start() {
         if (anyApp?.bot && typeof anyApp.bot.stop === "function") {
           await anyApp.bot.stop(signal);
         }
-      } catch {}
+      } catch { }
       await app.close();
       process.exit(0);
     } catch (err) {
