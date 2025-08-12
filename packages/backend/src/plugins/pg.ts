@@ -1,6 +1,6 @@
 import fp from "fastify-plugin";
 import type { FastifyPluginAsync } from "fastify";
-import { Pool, type PoolClient, type QueryResult } from "pg";
+import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from "pg";
 import { readFileSync } from "node:fs";
 
 function buildSSL(): false | { rejectUnauthorized?: boolean; ca?: string } {
@@ -65,9 +65,9 @@ const pgPlugin: FastifyPluginAsync = async (app) => {
     async connect(): Promise<PoolClient> {
       return pool.connect();
     },
-    async query<T = any>(q: string, values?: any[]): Promise<{ rows: T[] }> {
-      const res: QueryResult<T> = await pool.query(q, values);
-      return { rows: res.rows as T[] };
+    async query<T extends QueryResultRow = any>(q: string, values?: any[]): Promise<{ rows: T[] }> {
+      const res = await pool.query<T>(q, values);
+      return { rows: res.rows };
     },
   });
 
