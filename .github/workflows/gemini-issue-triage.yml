@@ -1,0 +1,22 @@
+name: Gemini Issue Triage
+on:
+  issues:
+    types: [opened, edited, labeled]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gemini issue triage
+        uses: google-github-actions/run-gemini-cli@v0.1.10
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          prompt: |
+            Summarize this issue in Russian.
+            Assign severity (P0–P3) and add labels (area:backend, area:shared, type:bug, type:feature, type:enhancement).
+            If related to Telegram bot, specify module (auth, commands, handlers, Supabase).
+            Suggest missing reproduction steps if not provided.

@@ -1,0 +1,28 @@
+name: Weekly Telegram Bot Health Check
+on:
+  schedule:
+    - cron: "0 6 * * 1" # каждый понедельник в 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gemini weekly bot audit
+        uses: google-github-actions/run-gemini-cli@v0.1.10
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          prompt: |
+            Analyze Telegram bot code in packages/backend and packages/shared.
+            Focus on:
+            - API changes in Telegram
+            - Security (webhook auth, data validation)
+            - Code optimizations
+            - Supabase queries
+            Summarize findings and open a PR with recommended fixes if needed.
