@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { refineDraft } from "../../app/llm/llmRefine.js";
-import type { BotDraft } from "../../domain/bot/types";
+import type { BotDraft } from "../../domain/bot/types.js";
 
 const BodySchema = z.object({
 	question: z.string().min(1),
@@ -41,6 +41,14 @@ const plugin: FastifyPluginAsync = async (app) => {
 
 		try {
 			const result = await refineDraft(draft, body.options);
+
+			// Проверка наличия необходимых полей
+			if (!result.answer || typeof result.confidence !== "number" || typeof result.escalate !== "boolean") {
+				req.log.error({ result }, "refineDraft returned incomplete result");
+				reply.code(502);
+				return { error: "UpstreamLLMError", message: "LLM refinement returned incomplete result" };
+			}
+
 			const inserted = await app.pg.query<{ id: string }>(
 				`insert into bot_responses (question, draft, answer, confidence, escalate, lang)
          values ($1, $2, $3, $4, $5, $6)
@@ -48,9 +56,15 @@ const plugin: FastifyPluginAsync = async (app) => {
 				[draft.question, draft.draft, result.answer, result.confidence, result.escalate, draft.lang]
 			);
 
-			return { id: inserted.rows[0].id, ...result };
+			const id = inserted.rows?.[0]?.id;
+			if (!id) {
+				req.log.error({ rows: inserted.rows }, "insert bot_responses returned no id");
+				reply.code(500);
+				return { error: "InternalError" };
+			}
+			return { id, ...result };
 		} catch (e: any) {
-			req.log.error({ err: e }, "refine failed");
+			req.log.error({ err: e, stack: e?.stack }, "refine failed");
 			reply.code(502);
 			return { error: "UpstreamLLMError", message: "LLM refinement failed" };
 		}
