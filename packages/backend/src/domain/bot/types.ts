@@ -2,10 +2,10 @@ export type Lang = 'ru' | 'en' | 'eo' | string;
 
 export interface SearchSource {
 	id: string;
-	title?: string;
-	url?: string;
-	snippet?: string;
-	score?: number;
+	title?: string;   // опционально
+	url?: string;     // опционально
+	snippet?: string; // опционально
+	score?: number;   // опционально
 }
 
 export interface BotDraft {
@@ -18,7 +18,7 @@ export interface BotDraft {
 export interface RefineOptions {
 	targetLang?: Lang;
 	temperature?: number;
-	minConfidenceToEscalate?: number; // если confidence < порога — предлагаем оператора
+	minConfidenceToEscalate?: number;
 }
 
 export interface RefineResult {
