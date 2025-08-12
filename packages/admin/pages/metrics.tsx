@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 
 export default function MetricsPage() {
 	const [token, setToken] = useState<string>("");
@@ -9,21 +9,30 @@ export default function MetricsPage() {
 	useEffect(() => {
 		const t = localStorage.getItem("admin_token") || "";
 		setToken(t);
-		setHost(window.location.origin.replace(/\/admin$/, "")); // basePath=/admin
+		if (typeof window !== "undefined") {
+			setHost(window.location.origin.replace(/\/admin$/, ""));
+		}
 	}, []);
 
-	const fetchData = async () => {
+	const fetchData = useCallback(async () => {
 		if (!token) { alert("Введите токен администратора"); return; }
+		if (!host) { alert("Host не определён"); return; }
 		setLoading(true);
 		try {
 			const res = await fetch(`${host}/api/admin/stats/rag`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
+			if (!res.ok) {
+				const err = await res.text();
+				throw new Error(`Ошибка сервера: ${err}`);
+			}
 			const json = await res.json();
 			setData(json);
 			localStorage.setItem("admin_token", token);
+		} catch (e: any) {
+			alert(e.message || "Ошибка запроса");
 		} finally { setLoading(false); }
-	};
+	}, [token, host]);
 
 	const totals = data?.totals || {};
 	const daily = data?.daily || [];

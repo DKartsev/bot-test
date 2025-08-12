@@ -21,10 +21,14 @@ def bot_search_and_refine(question: str, draft: str, sources: list, lang: str = 
             "temperature": 0.3
         }
     }
-    r = requests.post(f"{BACKEND_URL}/api/bot/refine",
-                      json=payload, timeout=60)
-    r.raise_for_status()
-    return r.json()
+    try:
+        r = requests.post(f"{BACKEND_URL}/api/bot/refine",
+                          json=payload, timeout=60)
+        r.raise_for_status()
+        return r.json()
+    except requests.RequestException as e:
+        print(f"Ошибка запроса: {e}")
+        return {"error": str(e)}
 
 
 if __name__ == "__main__":
