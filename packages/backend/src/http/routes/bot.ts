@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from "fastify";
+import { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { refineDraft } from "../../app/llm/llmRefine.js";
 import type {
@@ -33,14 +33,14 @@ const BodySchema = z.object({
 
 type Body = z.infer<typeof BodySchema>;
 
-const plugin: FastifyPluginAsync = async (app) => {
+const plugin: FastifyPluginAsync = async (app: FastifyInstance, _opts) => {
   app.post<{ Body: Body }>(
     "/api/bot/refine",
     { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
     async (req, reply) => {
       const parse = BodySchema.safeParse(req.body);
       if (!parse.success) {
-        reply.code(400);
+        void reply.code(400);
         return { error: "ValidationError", details: parse.error.flatten() };
       }
       const body = parse.data;
@@ -99,13 +99,13 @@ const plugin: FastifyPluginAsync = async (app) => {
             { rows: inserted.rows },
             "insert bot_responses returned no id",
           );
-          reply.code(500);
+          void reply.code(500);
           return { error: "InternalError" };
         }
         return { id, ...result };
-      } catch (e: any) {
+      } catch (e: unknown) {
         req.log.error({ err: e }, "refine failed");
-        reply.code(502);
+        void reply.code(502);
         return { error: "UpstreamLLMError", message: "LLM refinement failed" };
       }
     },

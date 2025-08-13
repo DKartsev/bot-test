@@ -8,11 +8,11 @@ import { AppError, NotFoundError } from "../../../utils/errorHandler.js";
 // and controllers. For now, we will refactor it into a single plugin to maintain
 // the existing structure while fixing dependencies and error handling.
 
-const adminConversationRoutes: FastifyPluginAsync = (server, _opts, done) => {
+const adminConversationRoutes: FastifyPluginAsync = async (server, _opts) => {
   const { bot, eventBus } = server.deps;
 
   // GET /conversations
-  server.get("/conversations", async (_req, reply) => {
+  server.get("/conversations", (_req, reply) => {
     // ... (omitting the long implementation for brevity, but it would be refactored here)
     // The logic would be updated to use AppError and proper dependency injection.
     void reply.send({

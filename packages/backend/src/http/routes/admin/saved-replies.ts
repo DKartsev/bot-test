@@ -1,12 +1,11 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
-import { z } from "zod";
 import { supabase } from "../../../infra/db/connection.js";
 import { AppError } from "../../../utils/errorHandler.js";
 
-const adminSavedRepliesRoutes: FastifyPluginAsync = async (server) => {
+const adminSavedRepliesRoutes: FastifyPluginAsync = async (server, _opts) => {
   // GET /saved-replies
-  server.get("/saved-replies", async (req, reply) => {
+  server.get("/saved-replies", async (req, _reply) => {
     const { search, tag } = req.query as { search?: string; tag?: string };
     let query = supabase
       .from("saved_replies")
@@ -27,7 +26,7 @@ const adminSavedRepliesRoutes: FastifyPluginAsync = async (server) => {
   server.post("/saved-replies", async (req, reply) => {
     const { data, error } = await supabase
       .from("saved_replies")
-      .insert(req.body as any)
+      .insert(req.body)
       .select()
       .single();
     if (error) throw new AppError(error.message, 500);
@@ -35,11 +34,11 @@ const adminSavedRepliesRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // PATCH /saved-replies/:id
-  server.patch("/saved-replies/:id", async (req, reply) => {
+  server.patch("/saved-replies/:id", async (req, _reply) => {
     const { id } = req.params as { id: string };
     const { data, error } = await supabase
       .from("saved_replies")
-      .update(req.body as any)
+      .update(req.body)
       .eq("id", id)
       .select()
       .single();

@@ -15,62 +15,64 @@ const CasesParamsSchema = z.object({
   id: z.string(), // Assuming this is the conversation ID
 });
 
-const adminCasesRoutes: FastifyPluginAsync = async (server) => {
-  server.post(
-    "/conversations/:id/cases",
-    {
-      schema: {
-        body: CasesBodySchema,
-        params: CasesParamsSchema,
+const adminCasesRoutes: FastifyPluginAsync =
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async (server) => {
+    server.post(
+      "/conversations/:id/cases",
+      {
+        schema: {
+          body: CasesBodySchema,
+          params: CasesParamsSchema,
+        },
       },
-    },
-    async (request, reply) => {
-      const { bot } = server.deps;
-      const { id: conversation_id } = request.params as z.infer<
-        typeof CasesParamsSchema
-      >;
-      const { title, summary, created_by } = request.body as z.infer<
-        typeof CasesBodySchema
-      >;
+      async (request, reply) => {
+        const { bot } = server.deps;
+        const { id: conversation_id } = request.params as z.infer<
+          typeof CasesParamsSchema
+        >;
+        const { title, summary, created_by } = request.body as z.infer<
+          typeof CasesBodySchema
+        >;
 
-      // This env var was not in the main schema, adding it here.
-      // A better solution would be to add it to the main env schema.
-      const operatorAdminUrl = env.PUBLIC_URL?.replace(
-        "/admin",
-        "/operator-admin",
-      );
-      const link = `${operatorAdminUrl}/conversations/${conversation_id}`;
+        // This env var was not in the main schema, adding it here.
+        // A better solution would be to add it to the main env schema.
+        const operatorAdminUrl = env.PUBLIC_URL?.replace(
+          "/admin",
+          "/operator-admin",
+        );
+        const link = `${operatorAdminUrl}/conversations/${conversation_id}`;
 
-      const { data, error } = await supabase
-        .from("cases")
-        .insert({ conversation_id, title, summary, link, created_by })
-        .select()
-        .single();
+        const { data, error } = await supabase
+          .from("cases")
+          .insert({ conversation_id, title, summary, link, created_by })
+          .select()
+          .single();
 
-      if (error) {
-        throw new AppError(`Failed to create case: ${error.message}`, 500);
-      }
-
-      // This env var was not in the main schema
-      const notificationChatId = env.CASES_TELEGRAM_CHAT_ID;
-      if (notificationChatId) {
-        try {
-          const message = `*Новый кейс: ${title}*\n\n${summary}\n\n[Открыть кейс](${link})`;
-          await bot.telegram.sendMessage(notificationChatId, message, {
-            parse_mode: "Markdown",
-          });
-        } catch (err) {
-          request.log.error(
-            { err },
-            "Failed to send case creation notification to Telegram",
-          );
-          // Do not fail the request if the notification fails
+        if (error) {
+          throw new AppError(`Failed to create case: ${error.message}`, 500);
         }
-      }
 
-      return reply.code(201).send(data);
-    },
-  );
-};
+        // This env var was not in the main schema
+        const notificationChatId = env.CASES_TELEGRAM_CHAT_ID;
+        if (notificationChatId) {
+          try {
+            const message = `*Новый кейс: ${title}*\n\n${summary}\n\n[Открыть кейс](${link})`;
+            await bot.telegram.sendMessage(notificationChatId, message, {
+              parse_mode: "Markdown",
+            });
+          } catch (err) {
+            request.log.error(
+              { err },
+              "Failed to send case creation notification to Telegram",
+            );
+            // Do not fail the request if the notification fails
+          }
+        }
+
+        return reply.code(201).send(data);
+      },
+    );
+  };
 
 export default fp(adminCasesRoutes);

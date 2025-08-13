@@ -33,7 +33,9 @@ function luhnValid(number: string): boolean {
   if (!digits.length) return false;
   let sum = 0;
   for (let i = 0; i < digits.length; i++) {
-    let d = parseInt(digits[i], 10);
+    const digitStr = digits[i];
+    if (digitStr === undefined) continue;
+    let d = parseInt(digitStr, 10);
     if (i % 2 === 1) {
       d *= 2;
       if (d > 9) d -= 9;

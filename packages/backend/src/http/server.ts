@@ -7,16 +7,23 @@ import { env } from "../config/env.js";
 import { QAService } from "../app/qa/QAService.js";
 import { Bot } from "../bot/bot.js";
 import { EventBus } from "../app/events.js";
+import { IUserRepo } from "../modules/users/domain/User.js";
 import healthPlugin from "./plugins/health.js";
 import telegramPlugin from "./plugins/telegram.js";
 import adminPlugin from "./plugins/admin.js";
 import apiPlugin from "./plugins/api.js";
+import usersPlugin from "./plugins/users.js";
+import {
+  serializerCompiler,
+  validatorCompiler,
+} from "fastify-type-provider-zod";
 import { centralErrorHandler } from "../utils/errorHandler.js";
 
 export interface AppDeps {
   qaService: QAService;
   bot: Bot;
   eventBus: EventBus;
+  userRepo: IUserRepo;
 }
 
 export async function buildServer(deps: AppDeps) {
@@ -25,6 +32,10 @@ export async function buildServer(deps: AppDeps) {
     // A more advanced pino-pretty setup can be configured later if needed.
     logger: true,
   });
+
+  // Add Zod validator and serializer
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
 
   // Decorate the app instance with our dependencies, so they are available in routes
   app.decorate("deps", deps);
@@ -49,6 +60,10 @@ export async function buildServer(deps: AppDeps) {
 
   // App plugins
   await app.register(healthPlugin, { prefix: "/api" });
+  await app.register(usersPlugin, {
+    prefix: "/api",
+    repo: deps.userRepo,
+  });
   await app.register(telegramPlugin);
   await app.register(adminPlugin, { prefix: "/api/admin" });
   await app.register(apiPlugin, { prefix: "/api" });

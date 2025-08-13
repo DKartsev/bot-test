@@ -1,4 +1,9 @@
-import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
+import type {
+  FastifyInstance,
+  FastifyPluginAsync,
+  FastifyReply,
+  FastifyRequest,
+} from "fastify";
 import type { IUserRepo } from "../../modules/users/domain/User.js";
 
 type PluginOpts = { repo: IUserRepo };
@@ -6,7 +11,8 @@ type PluginOpts = { repo: IUserRepo };
 import fp from "fastify-plugin";
 
 const usersPlugin: FastifyPluginAsync<PluginOpts> = fp(
-  async (fastify, opts) => {
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async (fastify: FastifyInstance, opts: PluginOpts) => {
     fastify.get(
       "/users",
       async (_req: FastifyRequest, _reply: FastifyReply) => {

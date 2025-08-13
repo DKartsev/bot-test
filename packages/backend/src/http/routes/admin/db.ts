@@ -15,9 +15,10 @@ const assertAdmin = (req: FastifyRequest) => {
   }
 };
 
-const plugin: FastifyPluginAsync = (app, _opts, done) => {
+const plugin: FastifyPluginAsync = async (app, _opts) => {
   app.get("/api/admin/db/ping", async (req, reply) => {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       assertAdmin(req);
     } catch {
       void reply.code(401);
@@ -33,6 +34,5 @@ const plugin: FastifyPluginAsync = (app, _opts, done) => {
       return { error: "InternalError" };
     }
   });
-  done();
 };
 export default plugin;

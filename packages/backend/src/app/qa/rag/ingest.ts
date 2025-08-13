@@ -4,7 +4,7 @@ import { createHash, randomUUID } from "crypto";
 import pdf from "pdf-parse";
 import { JSDOM } from "jsdom";
 import TurndownService from "turndown";
-import { chunkText, TextChunk } from "./chunker.js";
+import { chunkText, TextChunk, ChunkOptions } from "./chunker.js";
 import { logger } from "../../../utils/logger.js";
 import * as dlp from "../../security/dlp.js";
 import { env } from "../../../config/env.js";
@@ -117,7 +117,11 @@ export async function ingestText(
   if (meta.lang) source.lang = meta.lang;
   if (meta.dlp) source.dlp = meta.dlp;
 
-  const chunks = chunkText(sanitizedText, { title: source.title });
+  const chunkOpts: ChunkOptions = {};
+  if (source.title) {
+    chunkOpts.title = source.title;
+  }
+  const chunks = chunkText(sanitizedText, chunkOpts);
   const sources = await readSources();
   sources.push(source);
   await writeSources(sources);
@@ -148,7 +152,10 @@ export async function ingestFile(
       const turndownService = new TurndownService();
       text = turndownService.turndown(dom.window.document.body.innerHTML);
       if (!meta.title) {
-        meta.title = dom.window.document.title || undefined;
+        const pageTitle = dom.window.document.title;
+        if (pageTitle) {
+          meta.title = pageTitle;
+        }
       }
     } else if (ext === ".md" || ext === ".markdown") {
       type = "md";
@@ -171,8 +178,9 @@ export async function ingestFile(
     source.path = dest;
     const sources = await readSources();
     const idx = sources.findIndex((s) => s.id === source.id);
-    if (idx >= 0) {
-      sources[idx].path = dest;
+    const sourceToUpdate = sources[idx];
+    if (sourceToUpdate) {
+      sourceToUpdate.path = dest;
       await writeSources(sources);
     }
   } catch (err) {

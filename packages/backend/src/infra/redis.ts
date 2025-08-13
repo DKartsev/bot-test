@@ -6,6 +6,7 @@ export type RedisLike = {
 class InMemoryRedis implements RedisLike {
   private store = new Map<string, { value: string; exp: number }>();
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async get(key: string): Promise<string | null> {
     const rec = this.store.get(key);
     if (!rec) return null;
@@ -16,6 +17,7 @@ class InMemoryRedis implements RedisLike {
     return rec.value;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async setex(key: string, ttl: number, value: string): Promise<"OK"> {
     const exp = Date.now() + ttl * 1000;
     this.store.set(key, { value, exp });

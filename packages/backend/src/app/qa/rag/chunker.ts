@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 
-interface ChunkOptions {
+export interface ChunkOptions {
   size?: number;
   overlap?: number;
   title?: string;

@@ -121,9 +121,13 @@ export class QAService {
       lang,
     );
 
+    const citations = finalAnswer.citations
+      ?.map((c) => (c.sourceId ? { id: c.sourceId } : null))
+      .filter((c): c is { id: string } => c !== null);
+
     return {
       answer: finalAnswer.text,
-      citations: finalAnswer.citations,
+      citations,
       source: "rag",
     };
   }

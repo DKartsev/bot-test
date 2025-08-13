@@ -35,7 +35,7 @@ export class PgUserRepo implements IUserRepo {
       values.push(limit + 1);
     }
     const r = await this.db.query(query, values);
-    let rows = r.rows as User[];
+    const rows = r.rows as User[];
     let nextCursor: string | undefined;
     if (rows.length > limit) {
       const next = rows.pop() as User;

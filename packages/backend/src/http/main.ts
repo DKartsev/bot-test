@@ -27,12 +27,12 @@ export async function createApp(): Promise<FastifyInstance> {
     trustProxy: true,
   });
 
-  await app.register(rateLimit as FastifyPluginCallback, { global: false });
-  await app.register(pgPlugin as FastifyPluginCallback);
+  await app.register(rateLimit, { global: false });
+  await app.register(pgPlugin);
 
   // -------- Health --------
-  app.head("/", async (_req, reply) => reply.code(200).send());
-  app.get("/", async () => ({
+  app.head("/", (_req, reply) => reply.code(200).send());
+  app.get("/", () => ({
     status: "ok",
     service: "bot-test-backend",
     time: new Date().toISOString(),
@@ -99,7 +99,9 @@ export async function createApp(): Promise<FastifyInstance> {
         await ctx.reply(
           "❌ Ошибка обработки. Могу подключить оператора поддержки.",
         );
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
   });
 
@@ -153,7 +155,7 @@ async function start() {
 }
 
 if (process.env.NODE_ENV !== "test") {
-  start();
+  void start();
 }
 
 export default createApp;

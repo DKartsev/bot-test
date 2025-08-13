@@ -1,6 +1,6 @@
-declare module 'zod';
+declare module "zod";
 export type ZodTypeAny = any;
-export interface ZodSchema<T = any> {
+export interface ZodSchema {
   safeParse: (data: unknown) => any;
 }
 export const z: any;

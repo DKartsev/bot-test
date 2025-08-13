@@ -19,5 +19,8 @@ export function parseBearerToken(
 ): string | null {
   if (!authHeader) return null;
   const match = authHeader.match(/^Bearer\s+(.*)$/i);
-  return match ? match[1].trim() : null;
+  if (!match || !match[1]) {
+    return null;
+  }
+  return match[1].trim();
 }

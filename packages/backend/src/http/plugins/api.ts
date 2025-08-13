@@ -7,7 +7,7 @@ const AskBodySchema = z.object({
   lang: z.string().optional().default("ru"),
 });
 
-const apiPlugin: FastifyPluginAsync = (server, _opts, done) => {
+const apiPlugin: FastifyPluginAsync = async (server, _opts) => {
   server.post(
     "/ask",
     {
@@ -31,7 +31,6 @@ const apiPlugin: FastifyPluginAsync = (server, _opts, done) => {
       }
     },
   );
-  done();
 };
 
 export default fp(apiPlugin);
