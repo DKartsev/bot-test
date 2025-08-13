@@ -1,47 +1,67 @@
-import Fastify, {
-  FastifyError,
-  FastifyReply,
-  FastifyRequest,
-  FastifyTypeProviderDefault,
-  FastifyBaseLogger,
-  RawServerDefault,
-  RawRequestDefaultExpression,
-  RawReplyDefaultExpression,
-} from "fastify";
+import Fastify from "fastify";
 import cors from "@fastify/cors";
-import rateLimit from "@fastify/rate-limit";
 import sensible from "@fastify/sensible";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
+import { env } from "../config/env.js";
+import { QAService } from "../app/qa/QAService.js";
+import { Bot } from "../bot/bot.js";
+import { EventBus } from "../app/events.js";
 import healthPlugin from "./plugins/health.js";
-import usersPlugin from "./plugins/users.js";
-import type { IUserRepo } from "../modules/users/domain/User.js";
+import telegramPlugin from "./plugins/telegram.js";
+import adminPlugin from "./plugins/admin.js";
+import apiPlugin from "./plugins/api.js";
+import { centralErrorHandler } from "../utils/errorHandler.js";
 
-export async function buildServer(deps: { userRepo: IUserRepo }) {
-  const app = Fastify<
-    RawServerDefault,
-    RawRequestDefaultExpression<RawServerDefault>,
-    RawReplyDefaultExpression<RawServerDefault>,
-    FastifyBaseLogger,
-    FastifyTypeProviderDefault
-  >({ logger: true });
+export interface AppDeps {
+  qaService: QAService;
+  bot: Bot;
+  eventBus: EventBus;
+}
 
-  await app.register(cors as any, { origin: true });
-  await app.register(rateLimit as any, { max: 200, timeWindow: "1 minute" });
-  await app.register(sensible as any);
-  await app.register(swagger as any, {
-    openapi: { info: { title: "API", version: "1.0.0" } },
+export async function buildServer(deps: AppDeps) {
+  const app = Fastify({
+    // Using the simple logger config for now to pass type checks.
+    // A more advanced pino-pretty setup can be configured later if needed.
+    logger: true,
   });
-  await app.register(swaggerUi as any, { routePrefix: "/docs" });
-  await app.register(healthPlugin, { prefix: "/api" });
-  await app.register(usersPlugin, { prefix: "/api", repo: deps.userRepo });
 
-  app.setErrorHandler(
-    (err: FastifyError, _req: FastifyRequest, reply: FastifyReply) => {
-      app.log.error(err);
-      reply.code(500).send({ error: "Internal Server Error" });
-    },
-  );
+  // Decorate the app instance with our dependencies, so they are available in routes
+  app.decorate("deps", deps);
+
+  // Core plugins
+  await app.register(cors, { origin: env.CORS_ORIGIN });
+  await app.register(sensible);
+
+  // Documentation plugins
+  if (env.ENABLE_DOCS) {
+    await app.register(swagger, {
+      openapi: {
+        info: {
+          title: "Bot API",
+          version: "1.0.0",
+          description: "API for the support bot and admin panel.",
+        },
+      },
+    });
+    await app.register(swaggerUi, { routePrefix: "/docs" });
+  }
+
+  // App plugins
+  await app.register(healthPlugin, { prefix: "/api" });
+  await app.register(telegramPlugin);
+  await app.register(adminPlugin, { prefix: "/api/admin" });
+  await app.register(apiPlugin, { prefix: "/api" });
+
+  // Centralized error handler
+  app.setErrorHandler(centralErrorHandler as any);
 
   return app;
+}
+
+// Augment the FastifyInstance interface with our dependencies
+declare module "fastify" {
+  export interface FastifyInstance {
+    deps: AppDeps;
+  }
 }
