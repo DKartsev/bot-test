@@ -5,7 +5,11 @@ describe("searchKb", () => {
   it("finds relevant snippet", () => {
     const res = searchKb("установка", 1);
     expect(res.length).toBeGreaterThan(0);
-    expect(res[0].doc.slug).toBe("setup");
-    expect(res[0].snippet.length).toBeGreaterThan(0);
+    const firstResult = res[0];
+    if (!firstResult) {
+      throw new Error("First result should be defined");
+    }
+    expect(firstResult.doc.slug).toBe("setup");
+    expect(firstResult.snippet.length).toBeGreaterThan(0);
   });
 });

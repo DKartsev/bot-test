@@ -12,10 +12,10 @@ const {
   TELEGRAM_SET_WEBHOOK_ON_START,
 } = env;
 
-const telegramPlugin: FastifyPluginAsync = (server, _opts, done) => {
+const telegramPlugin: FastifyPluginAsync = async (server, _opts) => {
   if (!TELEGRAM_BOT_TOKEN) {
     server.log.warn("TELEGRAM_BOT_TOKEN is not set, Telegram plugin disabled.");
-    return done();
+    return;
   }
 
   // Get the qaService from the server dependencies

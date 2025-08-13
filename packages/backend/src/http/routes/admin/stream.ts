@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 
-const adminStreamRoutes: FastifyPluginAsync = async (server) => {
+const adminStreamRoutes: FastifyPluginAsync = async (server, _opts) => {
   const { eventBus } = server.deps;
 
   server.get("/stream", (request, reply) => {
@@ -10,28 +10,34 @@ const adminStreamRoutes: FastifyPluginAsync = async (server) => {
     reply.raw.setHeader("Connection", "keep-alive");
     reply.raw.flushHeaders();
 
-    const send = (event: string, data: any) => {
+    const send = (event: string, data: unknown) => {
       reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
 
     const pingInterval = setInterval(() => send("ping", {}), 15000);
 
-    const listeners: Record<string, (...args: any[]) => void> = {
-      handoff: (p: any) => send("handoff", p),
-      new_user_msg: (p: any) => send("user_msg", p),
-      operator_reply: (p: any) => send("op_reply", p),
-      media_updated: (p: any) => send("media_upd", p),
-      assigned: (p: any) => send("assigned", p),
+    const listeners: Record<string, (...args: unknown[]) => void> = {
+      handoff: (p) => send("handoff", p),
+      new_user_msg: (p) => send("user_msg", p),
+      operator_reply: (p) => send("op_reply", p),
+      media_updated: (p) => send("media_upd", p),
+      assigned: (p) => send("assigned", p),
     };
 
     for (const event in listeners) {
-      eventBus.on(event, listeners[event]);
+      const listener = listeners[event];
+      if (listener) {
+        eventBus.on(event, listener);
+      }
     }
 
     request.raw.on("close", () => {
       clearInterval(pingInterval);
       for (const event in listeners) {
-        eventBus.off(event, listeners[event]);
+        const listener = listeners[event];
+        if (listener) {
+          eventBus.off(event, listener);
+        }
       }
       server.log.info("SSE client disconnected");
     });

@@ -1,12 +1,11 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
-import { z } from "zod";
 import { supabase } from "../../../infra/db/connection.js";
 import { AppError } from "../../../utils/errorHandler.js";
 
-const adminNotesRoutes: FastifyPluginAsync = async (server) => {
+const adminNotesRoutes: FastifyPluginAsync = async (server, _opts) => {
   // GET /conversations/:id/notes
-  server.get("/conversations/:id/notes", async (req, reply) => {
+  server.get("/conversations/:id/notes", async (req, _reply) => {
     const { id } = req.params as { id: string };
     const { data, error } = await supabase
       .from("operator_notes")

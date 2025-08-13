@@ -148,6 +148,14 @@ export class VectorStore {
       const chunk = chunks[i];
       const vector = vectors[i];
 
+      if (!chunk || !vector) {
+        logger.warn(
+          { chunkIndex: i },
+          "Skipping empty chunk or vector during upsert.",
+        );
+        continue;
+      }
+
       if (this.chunkIdToIndex.has(chunk.id)) {
         // TODO: Implement update logic if needed
         logger.warn(
@@ -186,14 +194,25 @@ export class VectorStore {
     const result = this.index.searchKnn(queryVector, k);
     if (!result.neighbors.length) return [];
 
-    return result.neighbors.map((neighborIndex, i) => {
-      const chunkId = this.indexToChunkId[neighborIndex];
-      const chunk = this.chunkMeta.get(chunkId)!;
-      return {
-        ...chunk,
-        similarity: 1 - result.distances[i], // HNSW-библиотека возвращает расстояние, а не сходство
-      };
-    });
+    const searchResults = result.neighbors
+      .map((neighborIndex, i) => {
+        const chunkId = this.indexToChunkId[neighborIndex];
+        if (!chunkId) return null;
+
+        const chunk = this.chunkMeta.get(chunkId);
+        if (!chunk) return null;
+
+        const distance = result.distances[i];
+        if (distance === undefined) return null;
+
+        return {
+          ...chunk,
+          similarity: 1 - distance, // HNSW-библиотека возвращает расстояние, а не сходство
+        };
+      })
+      .filter((res): res is VectorSearchResult => res !== null);
+
+    return searchResults;
   }
 
   /**

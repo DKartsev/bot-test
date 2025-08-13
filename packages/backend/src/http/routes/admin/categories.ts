@@ -16,7 +16,7 @@ const UpdateCategorySchema = CreateCategorySchema.partial().refine(
   { message: "At least one field must be provided for update." },
 );
 
-const adminCategoriesRoutes: FastifyPluginAsync = (server, _opts, done) => {
+const adminCategoriesRoutes: FastifyPluginAsync = async (server, _opts) => {
   // GET /categories
   server.get("/categories", async (_req, _reply) => {
     const { data, error } = await supabase
@@ -46,7 +46,7 @@ const adminCategoriesRoutes: FastifyPluginAsync = (server, _opts, done) => {
   server.patch(
     "/categories/:id",
     { schema: { body: UpdateCategorySchema } },
-    async (req, reply) => {
+    async (req, _reply) => {
       const { id } = req.params as { id: string };
       const { data, error } = await supabase
         .from("categories")
@@ -67,8 +67,6 @@ const adminCategoriesRoutes: FastifyPluginAsync = (server, _opts, done) => {
     if (error) throw new AppError(error.message, 500);
     return reply.code(204).send();
   });
-
-  done();
 };
 
 export default fp(adminCategoriesRoutes);

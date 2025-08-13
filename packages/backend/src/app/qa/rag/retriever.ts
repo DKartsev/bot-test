@@ -27,9 +27,10 @@ export class Retriever {
     if (shouldDiversify) {
       const perSourceCount: Record<string, number> = {};
       items = items.filter((item) => {
-        if (!item.title) return true;
-        perSourceCount[item.title] = (perSourceCount[item.title] || 0) + 1;
-        return perSourceCount[item.title] <= 2;
+        const title = item.title;
+        if (!title) return true;
+        perSourceCount[title] = (perSourceCount[title] || 0) + 1;
+        return perSourceCount[title] <= 2;
       });
     }
 

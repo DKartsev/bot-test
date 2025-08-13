@@ -1,27 +1,32 @@
 import { FastifyPluginAsync } from "fastify";
 
 function assertAdmin(req: any) {
-	const hdr = (req.headers["authorization"] as string) || "";
-	const bearer = hdr.startsWith("Bearer ") ? hdr.slice(7) : undefined;
-	const x = (req.headers["x-admin-token"] as string) || bearer;
-	const tokens = (process.env.ADMIN_API_TOKENS || "").split(",").map((s) => s.trim()).filter(Boolean);
-	if (!x || !tokens.includes(x)) {
-		const err: any = new Error("unauthorized");
-		err.statusCode = 401;
-		throw err;
-	}
+  const hdr = (req.headers["authorization"] as string) || "";
+  const bearer = hdr.startsWith("Bearer ") ? hdr.slice(7) : undefined;
+  const x = (req.headers["x-admin-token"] as string) || bearer;
+  const tokens = (process.env.ADMIN_API_TOKENS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!x || !tokens.includes(x)) {
+    const err: any = new Error("unauthorized");
+    err.statusCode = 401;
+    throw err;
+  }
 }
 
-const plugin: FastifyPluginAsync = async (app) => {
-	app.get("/api/admin/stats/rag", async (req, reply) => {
-		try {
-			assertAdmin(req);
-		} catch {
-			reply.code(401);
-			return { error: "Unauthorized" };
-		}
+const plugin: FastifyPluginAsync =
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async (app) => {
+    app.get("/api/admin/stats/rag", async (req, reply) => {
+      try {
+        assertAdmin(req);
+      } catch {
+        void reply.code(401);
+        return { error: "Unauthorized" };
+      }
 
-		const q = await app.pg.query(`
+      const q = await app.pg.query(`
       with base as (
         select date_trunc('day', created_at) as day,
                count(*) as responses,
@@ -48,7 +53,7 @@ const plugin: FastifyPluginAsync = async (app) => {
       order by 1 asc;
     `);
 
-		const totals = await app.pg.query(`
+      const totals = await app.pg.query(`
       select
         count(*) as total_responses,
         avg(confidence) as avg_conf,
@@ -57,8 +62,8 @@ const plugin: FastifyPluginAsync = async (app) => {
       where created_at >= now() - interval '30 days';
     `);
 
-		return { daily: q.rows, totals: totals.rows[0] };
-	});
-};
+      return { daily: q.rows, totals: totals.rows[0] };
+    });
+  };
 
 export default plugin;

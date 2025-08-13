@@ -31,20 +31,29 @@ export function hybridRank(
 ): Candidate[] {
   const candidates = new Map<string, Partial<Candidate>>();
 
-  // Обрабатываем результаты полнотекстового поиска
-  for (const { item, score } of fuzzyResults) {
-    if (!item || !item.id) continue;
-    const entry = candidates.get(item.id) || { item };
-    // Инвертируем score, т.к. в fuzzy 0 - лучший результат
-    entry.fuzzyScore = 1 - score;
-    candidates.set(item.id, entry);
+  // 1. Populate with all items from fuzzy results to ensure we have full item data
+  for (const { item } of fuzzyResults) {
+    if (item?.id && !candidates.has(item.id)) {
+      candidates.set(item.id, { item });
+    }
   }
 
-  // Обрабатываем результаты семантического поиска
+  // 2. Add fuzzy scores
+  for (const { item, score } of fuzzyResults) {
+    if (!item?.id) continue;
+    const entry = candidates.get(item.id);
+    if (entry) {
+      // Инвертируем score, т.к. в fuzzy 0 - лучший результат
+      entry.fuzzyScore = 1 - score;
+    }
+  }
+
+  // 3. Add semantic scores
   for (const { id, similarity } of semResults) {
-    const entry = candidates.get(id) || { item: { id } };
-    entry.semanticScore = similarity;
-    candidates.set(id, entry);
+    const entry = candidates.get(id);
+    if (entry) {
+      entry.semanticScore = similarity;
+    }
   }
 
   // Считаем комбинированный скор и сортируем

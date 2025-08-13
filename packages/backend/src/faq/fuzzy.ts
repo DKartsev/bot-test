@@ -1,5 +1,4 @@
 import Fuse from "fuse.js";
-import Fuse from "fuse.js";
 import { FaqPair, loadFaq } from "./store.js";
 import { tokensRU } from "../nlp/text.js";
 

@@ -1,5 +1,4 @@
 import { FastifyRequest } from "fastify";
-import { logger } from "./logger.js";
 
 export class AppError extends Error {
   public readonly statusCode: number;

@@ -1,4 +1,4 @@
-import { register, Counter, Gauge, Histogram } from "prom-client";
+import { register, Counter, Histogram } from "prom-client";
 
 // This is a more robust implementation using prom-client, as requested.
 // It replaces the old in-memory metrics system.

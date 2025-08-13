@@ -107,7 +107,8 @@ export function loadFaq(): FaqPair[] {
   for (const row of rows) {
     const qa = pickQA(row);
     if (!qa) continue;
-    out.push({
+
+    const newPair: FaqPair = {
       id:
         typeof row?.id === "string" && row.id
           ? row.id
@@ -115,15 +116,22 @@ export function loadFaq(): FaqPair[] {
             String(Date.now()) + Math.random().toString(16).slice(2)),
       q: qa.q,
       a: qa.a,
-      tags: Array.isArray(row?.tags)
-        ? row.tags.filter((t): t is string => typeof t === "string")
-        : undefined,
-    });
+    };
+
+    const tags = Array.isArray(row?.tags)
+      ? row.tags.filter((t): t is string => typeof t === "string")
+      : undefined;
+
+    if (tags?.length) {
+      newPair.tags = tags;
+    }
+
+    out.push(newPair);
   }
 
   faqCache = out;
-  app?.log.info({ count: out.length }, "FAQ: loaded");
-  if (out.length === 0) app?.log.warn("FAQ: empty");
+  app?.log?.info({ count: out.length }, "FAQ: loaded");
+  if (out.length === 0) app?.log?.warn("FAQ: empty");
   return faqCache;
 }
 

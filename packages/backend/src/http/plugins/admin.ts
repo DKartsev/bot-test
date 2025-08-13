@@ -21,7 +21,12 @@ function ipToInt(ip: string): number {
 
 function matchIp(ip: string, rule: string): boolean {
   if (rule.includes("/")) {
-    const [range, bits] = rule.split("/");
+    const parts = rule.split("/");
+    const range = parts[0];
+    const bits = parts[1];
+    if (range === undefined || bits === undefined) {
+      return false;
+    }
     const mask = -1 << (32 - Number(bits));
     return (ipToInt(ip) & mask) === (ipToInt(range) & mask);
   }
@@ -29,7 +34,11 @@ function matchIp(ip: string, rule: string): boolean {
 }
 
 // --- Admin Auth Guard ---
-async function adminGuard(req: FastifyRequest, reply: FastifyReply) {
+function adminGuard(
+  req: FastifyRequest,
+  reply: FastifyReply,
+  done: (err?: Error) => void,
+) {
   let token: string | undefined;
   const auth = req.headers.authorization;
 
@@ -40,11 +49,13 @@ async function adminGuard(req: FastifyRequest, reply: FastifyReply) {
   }
 
   if (token && ADMIN_API_TOKENS.includes(token)) {
-    return; // Success
+    done();
+    return;
   }
 
   req.log.warn({ ip: req.ip }, "Admin authentication failed");
   void reply.code(401).send({ error: "Unauthorized" });
+  done(new Error("Unauthorized"));
 }
 
 // --- The Plugin ---
@@ -53,7 +64,7 @@ const adminPlugin: FastifyPluginAsync = async (server) => {
   await server.register(rateLimit, {
     max: ADMIN_RATE_LIMIT_MAX,
     timeWindow: "1 minute",
-    keyGenerator: (req) =>
+    keyGenerator: (req: FastifyRequest) =>
       (req.headers["x-admin-token"] as string) ||
       (req.headers.authorization || "").slice("Bearer ".length) ||
       req.ip,
