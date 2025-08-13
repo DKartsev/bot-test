@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from "fastify";
+import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import fp from "fastify-plugin";
 import rateLimit from "@fastify/rate-limit";
 import { env } from "../../config/env.js";
@@ -29,7 +29,7 @@ function matchIp(ip: string, rule: string): boolean {
 }
 
 // --- Admin Auth Guard ---
-async function adminGuard(req: any, reply: any) {
+async function adminGuard(req: FastifyRequest, reply: FastifyReply) {
   let token: string | undefined;
   const auth = req.headers.authorization;
 
@@ -44,7 +44,7 @@ async function adminGuard(req: any, reply: any) {
   }
 
   req.log.warn({ ip: req.ip }, "Admin authentication failed");
-  reply.code(401).send({ error: "Unauthorized" });
+  void reply.code(401).send({ error: "Unauthorized" });
 }
 
 // --- The Plugin ---
@@ -60,20 +60,23 @@ const adminPlugin: FastifyPluginAsync = async (server) => {
   });
 
   // 2. Add security hooks that apply to all routes registered within this plugin
-  server.addHook("onRequest", (req, reply, done) => {
-    if (ADMIN_IP_ALLOWLIST && ADMIN_IP_ALLOWLIST.length > 0) {
-      const ip =
-        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-        req.ip;
-      const allowed = ADMIN_IP_ALLOWLIST.some((rule) => matchIp(ip, rule));
-      if (!allowed) {
-        req.log.warn({ ip }, "Admin IP rejected by allowlist");
-        reply.code(403).send({ error: "Forbidden" });
-        return;
+  server.addHook(
+    "onRequest",
+    (req: FastifyRequest, reply: FastifyReply, done) => {
+      if (ADMIN_IP_ALLOWLIST && ADMIN_IP_ALLOWLIST.length > 0) {
+        const ip =
+          (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+          req.ip;
+        const allowed = ADMIN_IP_ALLOWLIST.some((rule) => matchIp(ip, rule));
+        if (!allowed) {
+          req.log.warn({ ip }, "Admin IP rejected by allowlist");
+          void reply.code(403).send({ error: "Forbidden" });
+          return;
+        }
       }
-    }
-    done();
-  });
+      done();
+    },
+  );
 
   server.addHook("preHandler", adminGuard);
 

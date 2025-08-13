@@ -1,11 +1,9 @@
 import { promises as fs, watch, FSWatcher } from "fs";
 import path from "path";
 import yaml from "yaml";
-import { createHash } from "crypto";
 import { detectAll, Detection } from "./patterns.js";
 import { redact } from "./redactor.js";
 import { logger } from "../../utils/logger.js";
-import { env } from "../../config/env.js";
 
 // Define types for policies
 interface PolicyRule {
@@ -40,9 +38,9 @@ export async function loadPolicies() {
   logger.info("Loading DLP policies...");
   try {
     const text = await fs.readFile(POL_PATH, "utf8");
-    policies = yaml.parse(text) || { version: 0 };
+    policies = (yaml.parse(text) as Policies) || { version: 0 };
     logger.info({ version: policies.version }, "DLP policies loaded.");
-  } catch (err: any) {
+  } catch (err) {
     logger.error(
       { err, path: POL_PATH },
       "Failed to load DLP policies. DLP will be ineffective.",
@@ -55,23 +53,17 @@ export async function loadPolicies() {
     watcher = watch(
       POL_PATH,
       { persistent: false },
-      debounce(loadPolicies, 5000),
+      debounce(() => void loadPolicies(), 5000),
     );
     watcher.on("error", (err) =>
       logger.error({ err }, "DLP policy watcher error."),
     );
-  } catch (err: any) {
+  } catch (err) {
     logger.error(
       { err, path: POL_PATH },
       "Could not start watching DLP policy file.",
     );
   }
-}
-
-function severityRank(s: string | undefined): number {
-  return ["low", "medium", "high", "critical"].indexOf(
-    s?.toLowerCase() || "low",
-  );
 }
 
 function shouldBlock(detection: Detection): boolean {
@@ -119,4 +111,4 @@ export function sanitize(text: string): SanitizeResult {
 }
 
 // Initial load
-loadPolicies();
+void loadPolicies();

@@ -1,6 +1,5 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
-import { z } from "zod";
 import { supabase } from "../../../infra/db/connection.js";
 import { AppError, NotFoundError } from "../../../utils/errorHandler.js";
 
@@ -9,20 +8,20 @@ import { AppError, NotFoundError } from "../../../utils/errorHandler.js";
 // and controllers. For now, we will refactor it into a single plugin to maintain
 // the existing structure while fixing dependencies and error handling.
 
-const adminConversationRoutes: FastifyPluginAsync = async (server) => {
+const adminConversationRoutes: FastifyPluginAsync = (server, _opts, done) => {
   const { bot, eventBus } = server.deps;
 
   // GET /conversations
-  server.get("/conversations", async (req, reply) => {
+  server.get("/conversations", async (_req, reply) => {
     // ... (omitting the long implementation for brevity, but it would be refactored here)
     // The logic would be updated to use AppError and proper dependency injection.
-    reply.send({
+    void reply.send({
       message: "List of conversations (implementation pending refactor)",
     });
   });
 
   // GET /conversations/:id/messages
-  server.get("/conversations/:id/messages", async (req, reply) => {
+  server.get("/conversations/:id/messages", async (req, _reply) => {
     const { id } = req.params as { id: string };
     const { data, error } = await supabase
       .from("messages")
@@ -45,7 +44,7 @@ const adminConversationRoutes: FastifyPluginAsync = async (server) => {
       .single();
     if (convErr || !conv) throw new NotFoundError("conversation");
 
-    await bot.telegram.sendMessage(conv.user_telegram_id, text);
+    await bot.telegram.sendMessage(Number(conv.user_telegram_id), text);
 
     const { data: msg, error: msgErr } = await supabase
       .from("messages")

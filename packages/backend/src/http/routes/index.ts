@@ -4,10 +4,11 @@ import feedback from "./admin/feedback.js";
 import metrics from "./admin/metrics.js";
 import db from "./admin/db.js";
 
-const routes: FastifyPluginAsync = async (app) => {
-  app.register(bot);
-  app.register(feedback);
-  app.register(metrics);
-  app.register(db);
+const routes: FastifyPluginAsync = (app, _opts, done) => {
+  void app.register(bot);
+  void app.register(feedback);
+  void app.register(metrics);
+  void app.register(db);
+  done();
 };
 export default routes;

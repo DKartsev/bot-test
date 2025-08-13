@@ -53,7 +53,7 @@ export async function ragAnswer({ text, lang, logger, pg }: RagParams) {
   let sources: SearchSource[] = [];
   let draft = "";
   try {
-    const q = await pg.query<{ draft?: string; sources?: any }>(
+    const q = await pg.query<{ draft?: string; sources?: SearchSource[] }>(
       "select draft, sources from kb_search_json($1)",
       [text],
     );
@@ -62,8 +62,8 @@ export async function ragAnswer({ text, lang, logger, pg }: RagParams) {
       draft = typeof row.draft === "string" ? row.draft : "";
       if (Array.isArray(row.sources)) {
         sources = row.sources
-          .filter((s: any) => s)
-          .map((s: any) => ({
+          .filter((s) => s)
+          .map((s) => ({
             id: String(s.id),
             ...(s.title !== undefined ? { title: s.title } : {}),
             ...(s.url !== undefined ? { url: s.url } : {}),
@@ -77,7 +77,7 @@ export async function ragAnswer({ text, lang, logger, pg }: RagParams) {
       ms: Date.now() - start,
       hits: sources.length,
     });
-  } catch (err: any) {
+  } catch (err) {
     logger.error({ err }, "kb_search failed");
     logger.info({ stage: "kb_search", ms: Date.now() - start, hits: 0 });
   }
@@ -116,7 +116,7 @@ export async function ragAnswer({ text, lang, logger, pg }: RagParams) {
         lang ?? "ru",
       ],
     );
-  } catch (err: any) {
+  } catch (err) {
     logger.error({ err }, "insert bot_responses failed");
   }
 

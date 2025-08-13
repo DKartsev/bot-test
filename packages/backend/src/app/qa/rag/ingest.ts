@@ -55,9 +55,16 @@ async function ensureDir(): Promise<void> {
 async function readSources(): Promise<SourceDocument[]> {
   try {
     const content = await fs.readFile(SOURCES_FILE, "utf8");
-    return JSON.parse(content);
-  } catch (err: any) {
-    if (err.code === "ENOENT") return [];
+    return JSON.parse(content) as SourceDocument[];
+  } catch (err: unknown) {
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      err.code === "ENOENT"
+    ) {
+      return [];
+    }
     logger.error({ err }, "Failed to read sources.json");
     return [];
   }

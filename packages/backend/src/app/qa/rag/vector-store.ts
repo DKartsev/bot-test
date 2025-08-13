@@ -212,15 +212,29 @@ export class VectorStore {
     await Promise.all([
       fs
         .unlink(this.indexFile)
-        .catch((e) => e.code !== "ENOENT" && Promise.reject(e)),
+        .catch(
+          (e: unknown) =>
+            e &&
+            typeof e === "object" &&
+            "code" in e &&
+            e.code !== "ENOENT" &&
+            Promise.reject(e),
+        ),
       fs
         .unlink(this.metaFile)
-        .catch((e) => e.code !== "ENOENT" && Promise.reject(e)),
+        .catch(
+          (e: unknown) =>
+            e &&
+            typeof e === "object" &&
+            "code" in e &&
+            e.code !== "ENOENT" &&
+            Promise.reject(e),
+        ),
     ]);
     const lines = (await fs.readFile(this.chunksFile, "utf8")).split("\n");
     const chunks: TextChunk[] = lines
       .filter(Boolean)
-      .map((line) => JSON.parse(line));
+      .map((line) => JSON.parse(line) as TextChunk);
 
     await this.upsert(chunks);
     logger.info("Перестройка индекса завершена.");

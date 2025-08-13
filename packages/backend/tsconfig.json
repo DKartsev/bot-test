@@ -5,7 +5,6 @@
     "rootDir": "src",
     "composite": true
   },
-  "include": ["src"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.spec.ts"],
+  "include": ["src", "knexfile.ts", "vitest.config.ts"],
   "references": [{ "path": "../shared" }]
 }

@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
+import { Update } from "telegraf/types";
 import { makeBot } from "../../bot/bot.js";
 import { env } from "../../config/env.js";
 
@@ -11,15 +12,19 @@ const {
   TELEGRAM_SET_WEBHOOK_ON_START,
 } = env;
 
-const telegramPlugin: FastifyPluginAsync = async (server) => {
+const telegramPlugin: FastifyPluginAsync = (server, _opts, done) => {
   if (!TELEGRAM_BOT_TOKEN) {
     server.log.warn("TELEGRAM_BOT_TOKEN is not set, Telegram plugin disabled.");
-    return;
+    return done();
   }
 
   // Get the qaService from the server dependencies
   const { qaService } = server.deps;
-  const { bot, botWebhookCallback } = makeBot({ qaService });
+  const { bot } = makeBot({ qaService });
+
+  interface TelegramWebhookParams {
+    token?: string;
+  }
 
   server.post(
     `${TG_WEBHOOK_PATH}/:token?`,
@@ -29,22 +34,22 @@ const telegramPlugin: FastifyPluginAsync = async (server) => {
           const headerTok = request.headers[
             "x-telegram-bot-api-secret-token"
           ] as string | undefined;
-          const paramTok = (request.params as any).token as string | undefined;
+          const paramTok = (request.params as TelegramWebhookParams).token;
           if (
             headerTok !== TG_WEBHOOK_SECRET &&
             paramTok !== TG_WEBHOOK_SECRET
           ) {
             server.log.warn("Invalid Telegram secret token received");
-            reply.code(401).send({ error: "Unauthorized" });
+            void reply.code(401).send({ error: "Unauthorized" });
             return;
           }
         }
         done();
       },
     },
-    async (request, reply) => {
+    (request, reply) => {
       // The bot instance is already a webhook callback handler
-      await bot.handleUpdate(request.body as any, reply.raw);
+      void bot.handleUpdate(request.body as Update, reply.raw);
     },
   );
 

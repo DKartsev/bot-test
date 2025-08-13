@@ -9,14 +9,17 @@ import { VectorStore } from "./rag/vector-store.js";
 import { Retriever } from "./rag/retriever.js";
 import { Answerer } from "./rag/answerer.js";
 import { FuzzySearch } from "./fuzzy-search.js";
-import { hybridRank } from "./rerank.js";
-
 // Define a standard format for QA data
 interface QAItem {
   id: string;
   Question: string;
   Answer: string;
-  [key: string]: any;
+}
+
+interface QAResponse {
+  answer: string;
+  source: string;
+  citations?: { id: string }[];
 }
 
 /**
@@ -67,16 +70,13 @@ export class QAService {
    * The main method to ask a question.
    * Основной метод для обработки вопроса пользователя.
    */
-  async ask(
-    question: string,
-    lang: string = "ru",
-  ): Promise<{ answer: string; [key: string]: any }> {
+  async ask(question: string, lang: string = "ru"): Promise<QAResponse> {
     if (!this.isInitialized || !this.fuzzySearch) {
       throw new Error("QAService is not initialized.");
     }
 
     // 1. Perform fuzzy and vector searches in parallel
-    const [fuzzyResults, vectorResults] = await Promise.all([
+    const [fuzzyResults] = await Promise.all([
       this.fuzzySearch.search(question, 10),
       this.vectorStore.search(question, 10),
     ]);
@@ -137,7 +137,7 @@ export class QAService {
       const filePath = path.resolve(env.FAQ_PATH);
       const fileContent = await fs.readFile(filePath, "utf8");
       // The file is an array of objects with "q" and "a" properties.
-      const data: { q: string; a: string }[] = JSON.parse(fileContent);
+      const data = JSON.parse(fileContent) as { q: string; a: string }[];
       return data.map((item, index) => ({
         id: `faq-${index}`,
         Question: item.q,
