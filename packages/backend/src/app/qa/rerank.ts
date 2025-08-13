@@ -1,8 +1,6 @@
-import { env } from "../../config/env.js";
-
 // TODO: These should be defined in a shared types/domain file
 interface FuzzyResult {
-  item: { id: string; [key: string]: any };
+  item: { id: string; Question: string; Answer: string };
   score: number; // 0 is a perfect match
 }
 
@@ -12,7 +10,7 @@ interface SemanticResult {
 }
 
 interface Candidate {
-  item: { id: string; [key: string]: any };
+  item: { id: string; Question: string; Answer: string };
   fuzzyScore?: number;
   semanticScore?: number;
   combinedScore: number;
@@ -51,7 +49,7 @@ export function hybridRank(
 
   // Считаем комбинированный скор и сортируем
   const rankedList: Candidate[] = [];
-  for (const [id, partialCandidate] of candidates.entries()) {
+  for (const partialCandidate of candidates.values()) {
     const fuzzyScore = partialCandidate.fuzzyScore ?? 0;
     const semanticScore = partialCandidate.semanticScore ?? 0;
 

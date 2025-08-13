@@ -57,7 +57,7 @@ export class OpenAIEmbedder implements Embedder {
 
       // Нормализуем векторы для использования с косинусным расстоянием
       return response.data.map((item) => this.normalize(item.embedding));
-    } catch (err) {
+    } catch (err: unknown) {
       logger.error({ err }, "Ошибка при создании векторов с помощью OpenAI");
       // Возвращаем пустые векторы для текстов, которые не удалось обработать
       return texts.map(() => new Array(this.dimension).fill(0));

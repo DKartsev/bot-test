@@ -54,7 +54,7 @@ export async function buildServer(deps: AppDeps) {
   await app.register(apiPlugin, { prefix: "/api" });
 
   // Centralized error handler
-  app.setErrorHandler(centralErrorHandler as any);
+  app.setErrorHandler(centralErrorHandler);
 
   return app;
 }

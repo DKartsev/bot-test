@@ -1,6 +1,7 @@
 import Fuse from "fuse.js";
+import Fuse from "fuse.js";
 import { FaqPair, loadFaq } from "./store.js";
-import { normalize, tokensRU } from "../nlp/text.js";
+import { tokensRU } from "../nlp/text.js";
 
 let fuse: Fuse<FaqPair> | null = null;
 
@@ -15,8 +16,8 @@ function getFuse() {
       minMatchCharLength: 2,
       getFn: (obj, path) => {
         if (path[0] === "q") return tokensRU(obj.q);
-        // @ts-ignore
-        return obj[path[0]];
+        // @ts-expect-error - this is a fallback for other properties
+        return obj[path[0]] as string;
       },
     });
   }

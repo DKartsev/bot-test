@@ -25,8 +25,12 @@ export class Answerer {
       // В реальном приложении можно использовать более сложную логику,
       // например, возвращать ошибку или использовать fallback-механизм.
       this.client = {
-        chat: { completions: { create: () => Promise.reject("No API Key") } },
-      } as any;
+        chat: {
+          completions: {
+            create: () => Promise.reject(new Error("No API Key")),
+          },
+        },
+      } as unknown as OpenAI;
     } else {
       this.client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
     }

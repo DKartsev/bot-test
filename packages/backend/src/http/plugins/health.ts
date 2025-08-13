@@ -1,7 +1,9 @@
 import type { FastifyPluginAsync } from "fastify";
 
-export const healthPlugin: FastifyPluginAsync = async (fastify) => {
-  fastify.get("/health", async () => ({ status: "ok" }));
-};
+import fp from "fastify-plugin";
+
+export const healthPlugin: FastifyPluginAsync = fp(async (fastify) => {
+  fastify.get("/health", () => ({ status: "ok" }));
+});
 
 export default healthPlugin;

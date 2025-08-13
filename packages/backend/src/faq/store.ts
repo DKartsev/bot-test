@@ -26,8 +26,19 @@ export const normalize = (s: string): string =>
     .replace(/\s+/g, " ")
     .trim();
 
+type RawFaqRow = {
+  id?: string;
+  q?: string;
+  question?: string;
+  Вопрос?: string;
+  a?: string;
+  answer?: string;
+  Ответ?: string;
+  tags?: unknown;
+};
+
 // вытянуть q/a из разных возможных полей; пропускать битые записи
-function pickQA(row: any): { q: string; a: string } | null {
+function pickQA(row: RawFaqRow): { q: string; a: string } | null {
   const q =
     typeof row?.q === "string"
       ? row.q
@@ -51,15 +62,24 @@ function pickQA(row: any): { q: string; a: string } | null {
 export function loadFaq(): FaqPair[] {
   if (faqCache.length) return faqCache;
 
-  const app: any = (globalThis as any).app;
-  app?.log.info({ path: FAQ_PATH }, "FAQ: loading");
+  const app = (
+    globalThis as {
+      app?: {
+        log?: {
+          info: (p: unknown, m: string) => void;
+          warn: (m: string) => void;
+        };
+      };
+    }
+  ).app;
+  app?.log?.info({ path: FAQ_PATH }, "FAQ: loading");
 
   // ...загрузка raw-строк из JSON или CSV (CSV уже конвертирован в объекты)
-  let rows: any[] = [];
+  let rows: RawFaqRow[] = [];
   try {
     if (fs.existsSync(JSON_PATH)) {
       const raw = fs.readFileSync(JSON_PATH, "utf-8");
-      rows = JSON.parse(raw);
+      rows = JSON.parse(raw) as RawFaqRow[];
     } else if (fs.existsSync(CSV_PATH)) {
       const csv = fs.readFileSync(CSV_PATH, "utf-8");
       const lines = csv.trim().split(/\r?\n/);
@@ -76,8 +96,11 @@ export function loadFaq(): FaqPair[] {
       });
       fs.writeFileSync(JSON_PATH, JSON.stringify(rows, null, 2), "utf-8");
     }
-  } catch (err: any) {
-    throw new Error(`Failed to load FAQ: ${err.message}`);
+  } catch (err) {
+    if (err instanceof Error) {
+      throw new Error(`Failed to load FAQ: ${err.message}`);
+    }
+    throw new Error(`Failed to load FAQ: ${String(err)}`);
   }
 
   const out: FaqPair[] = [];
@@ -93,7 +116,7 @@ export function loadFaq(): FaqPair[] {
       q: qa.q,
       a: qa.a,
       tags: Array.isArray(row?.tags)
-        ? row.tags.filter((t: any) => typeof t === "string")
+        ? row.tags.filter((t): t is string => typeof t === "string")
         : undefined,
     });
   }

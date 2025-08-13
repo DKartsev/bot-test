@@ -3,23 +3,30 @@ import type { IUserRepo } from "../../modules/users/domain/User.js";
 
 type PluginOpts = { repo: IUserRepo };
 
-const usersPlugin: FastifyPluginAsync<PluginOpts> = async (fastify, opts) => {
-  fastify.get("/users", async (_req: FastifyRequest, _reply: FastifyReply) => {
-    const { items, nextCursor } = await opts.repo.list({});
-    return nextCursor ? { items, nextCursor } : { items };
-  });
+import fp from "fastify-plugin";
 
-  fastify.post(
-    "/users",
-    async (
-      req: FastifyRequest<{ Body: { name: string; email: string } }>,
-      reply: FastifyReply,
-    ) => {
-      const user = await opts.repo.create(req.body);
-      reply.code(201);
-      return user;
-    },
-  );
-};
+const usersPlugin: FastifyPluginAsync<PluginOpts> = fp(
+  async (fastify, opts) => {
+    fastify.get(
+      "/users",
+      async (_req: FastifyRequest, _reply: FastifyReply) => {
+        const { items, nextCursor } = await opts.repo.list({});
+        return nextCursor ? { items, nextCursor } : { items };
+      },
+    );
+
+    fastify.post(
+      "/users",
+      async (
+        req: FastifyRequest<{ Body: { name: string; email: string } }>,
+        reply: FastifyReply,
+      ) => {
+        const user = await opts.repo.create(req.body);
+        void reply.code(201);
+        return user;
+      },
+    );
+  },
+);
 
 export default usersPlugin;

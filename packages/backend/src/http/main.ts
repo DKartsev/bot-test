@@ -1,7 +1,11 @@
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, {
+  type FastifyInstance,
+  type FastifyPluginCallback,
+} from "fastify";
 import rateLimit from "@fastify/rate-limit";
 import { Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
+import { type Update } from "telegraf/types";
 import pgPlugin from "../plugins/pg.js";
 import { ragAnswer } from "../app/pipeline/ragAnswer.js";
 
@@ -23,8 +27,8 @@ export async function createApp(): Promise<FastifyInstance> {
     trustProxy: true,
   });
 
-  await app.register(rateLimit as any, { global: false });
-  await app.register(pgPlugin as any);
+  await app.register(rateLimit as FastifyPluginCallback, { global: false });
+  await app.register(pgPlugin as FastifyPluginCallback);
 
   // -------- Health --------
   app.head("/", async (_req, reply) => reply.code(200).send());
@@ -65,7 +69,9 @@ export async function createApp(): Promise<FastifyInstance> {
         { tg_chat_id: ctx.chat?.id, tg_type: ctx.updateType },
         "tg update received",
       );
-    } catch {}
+    } catch {
+      // ignore
+    }
     return next();
   });
 
@@ -73,7 +79,9 @@ export async function createApp(): Promise<FastifyInstance> {
     const text = ctx.message.text || "";
     try {
       await ctx.sendChatAction("typing");
-    } catch {}
+    } catch {
+      // ignore
+    }
     try {
       const res = await ragAnswer({
         text,
@@ -95,31 +103,32 @@ export async function createApp(): Promise<FastifyInstance> {
     }
   });
 
+  interface TelegramWebhookParams {
+    token?: string;
+  }
+
   app.post(`${TG_PATH}/:token?`, async (req, reply) => {
     const headerSecret = String(
       req.headers["x-telegram-bot-api-secret-token"] || "",
     );
-    const urlSecret = (req.params as any)?.token || "";
+    const urlSecret = (req.params as TelegramWebhookParams)?.token || "";
     const hasSecret = Boolean(TG_SECRET);
 
     if (hasSecret) {
       if (headerSecret !== TG_SECRET && urlSecret !== TG_SECRET) {
-        app.log.warn(
-          { ip: (req as any).ip },
-          "Unauthorized Telegram webhook access",
-        );
+        app.log.warn({ ip: req.ip }, "Unauthorized Telegram webhook access");
         return reply.code(401).send();
       }
     } else {
       app.log.warn(
-        { ip: (req as any).ip },
+        { ip: req.ip },
         "Telegram webhook blocked: missing TG_WEBHOOK_SECRET",
       );
       return reply.code(401).send();
     }
 
     try {
-      await bot.handleUpdate(req.body as any);
+      await bot.handleUpdate(req.body as Update);
       return reply.send();
     } catch (err) {
       app.log.error({ err }, "bot.handleUpdate failed");
