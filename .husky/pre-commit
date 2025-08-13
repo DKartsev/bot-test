@@ -1,5 +1,4 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+cd -- "$(git rev-parse --show-toplevel)"
 
 # Не выполнять хук в CI или если явно отключили
 if [ -n "$CI" ] || [ "${HUSKY:-1}" = "0" ]; then
@@ -8,16 +7,16 @@ if [ -n "$CI" ] || [ "${HUSKY:-1}" = "0" ]; then
 fi
 
 # Если нет npx — пропускаем
-command -v npx >/dev/null 2>&1 || {
+if ! command -v npx >/dev/null 2>&1; then
   echo "[husky] npx not found, skipping lint-staged."
   exit 0
-}
+fi
 
 # Запускаем lint-staged; даже при ошибке НЕ блокируем коммит
-if npx --no -- lint-staged; then
+if npx --no-install lint-staged; then
   echo "[husky] lint-staged finished."
-  exit 0
 else
   echo "[husky] lint-staged failed, but commit is allowed."
-  exit 0
 fi
+
+exit 0
