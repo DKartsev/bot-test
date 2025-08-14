@@ -1,6 +1,5 @@
 import Fastify, {
   type FastifyInstance,
-  type FastifyPluginCallback,
 } from "fastify";
 import rateLimit from "@fastify/rate-limit";
 import { Telegraf } from "telegraf";
