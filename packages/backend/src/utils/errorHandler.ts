@@ -41,6 +41,18 @@ export class ForbiddenError extends AppError {
   }
 }
 
+export class UpstreamApiError extends AppError {
+  constructor(message: string = "Bad Gateway") {
+    super(message, 502);
+  }
+}
+
+export class ServiceUnavailableError extends AppError {
+  constructor(message: string = "Service Unavailable") {
+    super(message, 503);
+  }
+}
+
 export function centralErrorHandler(
   error: Error,
   request: FastifyRequest,

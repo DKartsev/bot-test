@@ -8,9 +8,7 @@ import type { IUserRepo } from "../../modules/users/domain/User.js";
 
 type PluginOpts = { repo: IUserRepo };
 
-import fp from "fastify-plugin";
-
-const usersPlugin: FastifyPluginAsync<PluginOpts> = fp(
+const usersPlugin: FastifyPluginAsync<PluginOpts> =
   // eslint-disable-next-line @typescript-eslint/require-await
   async (fastify: FastifyInstance, opts: PluginOpts) => {
     fastify.get(
@@ -32,7 +30,6 @@ const usersPlugin: FastifyPluginAsync<PluginOpts> = fp(
         return user;
       },
     );
-  },
-);
+  };
 
 export default usersPlugin;

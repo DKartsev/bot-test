@@ -1,7 +1,15 @@
 import { describe, it, expect } from "vitest";
 import { buildServer } from "./server.js";
-const createServer = async () => {
+import { IUserRepo } from "../modules/users/domain/User.js";
+
+const createServer = async (repo?: Partial<IUserRepo>) => {
+  const baseRepo: IUserRepo = {
+    findByEmail: () => Promise.resolve(null),
+    create: ({ email, name }) => Promise.resolve({ id: "1", email, name }),
+    list: () => Promise.resolve({ items: [] }),
+  };
   const app = await buildServer({
+    userRepo: { ...baseRepo, ...repo },
     qaService: {} as any,
     bot: {} as any,
     eventBus: {} as any,
@@ -16,7 +24,6 @@ describe("health", () => {
     const res = await app.inject({
       method: "GET",
       url: "/api/health",
-      headers: { Authorization: "Bearer test-token" },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ status: "ok" });
@@ -31,7 +38,6 @@ describe("users register", () => {
       method: "POST",
       url: "/api/users",
       payload: { email: "a@test.com", name: "A" },
-      headers: { Authorization: "Bearer test-token" },
     });
     expect(res.statusCode).toBe(201);
     expect(res.json()).toMatchObject({ email: "a@test.com", name: "A" });
