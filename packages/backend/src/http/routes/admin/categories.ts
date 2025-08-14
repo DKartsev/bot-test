@@ -1,8 +1,8 @@
-import { FastifyPluginCallback } from "fastify";
+import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 import { z } from "zod";
 import { supabase } from "../../../infra/db/connection.js";
-import { AppError, NotFoundError } from "../../../utils/errorHandler.js";
+import { AppError, NotFoundError } from "../../utils/errorHandler.js";
 
 const CategorySchema = z.object({
   id: z.string(),
@@ -16,7 +16,7 @@ const UpdateCategorySchema = CreateCategorySchema.partial().refine(
   { message: "At least one field must be provided for update." },
 );
 
-const adminCategoriesRoutes: FastifyPluginCallback = (server, _opts, done) => {
+const adminCategoriesRoutes: FastifyPluginAsync = async (server) => {
   // GET /categories
   server.get(
     "/categories",
@@ -81,7 +81,6 @@ const adminCategoriesRoutes: FastifyPluginCallback = (server, _opts, done) => {
       return reply.code(204).send();
     },
   );
-  done();
 };
 
 export default fp(adminCategoriesRoutes);

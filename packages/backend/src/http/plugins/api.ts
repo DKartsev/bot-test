@@ -1,4 +1,4 @@
-import { FastifyPluginCallback } from "fastify";
+import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 import { z } from "zod";
 
@@ -7,9 +7,7 @@ const AskBodySchema = z.object({
   lang: z.string().optional().default("ru"),
 });
 
-import { FastifyPluginCallback } from "fastify";
-
-const apiPlugin: FastifyPluginCallback = (server, _opts, done) => {
+const apiPlugin: FastifyPluginAsync = async (server) => {
   server.post(
     "/ask",
     {
@@ -26,14 +24,12 @@ const apiPlugin: FastifyPluginCallback = (server, _opts, done) => {
         return reply.send(result);
       } catch (err) {
         request.log.error({ err }, "Error in /ask route");
-        // TODO: Use structured error handling
         return reply
           .code(500)
           .send({ error: "Failed to process your question." });
       }
     },
   );
-  done();
 };
 
 export default fp(apiPlugin);

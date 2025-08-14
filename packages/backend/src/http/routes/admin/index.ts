@@ -1,4 +1,5 @@
-import { FastifyPluginCallback } from "fastify";
+import { FastifyPluginAsync } from "fastify";
+import fp from "fastify-plugin";
 import askBot from "./ask-bot.js";
 import cases from "./cases.js";
 import categories from "./categories.js";
@@ -13,23 +14,19 @@ import stream from "./stream.js";
 import telegram from "./telegram.js";
 import users from "./users.js";
 
-import { FastifyPluginCallback } from "fastify";
-
-const adminRoutes: FastifyPluginCallback = (server, _opts, done) => {
-  void server.register(askBot);
-  void server.register(cases);
-  void server.register(categories);
-  void server.register(chats);
-  void server.register(conversations);
-  void server.register(db);
-  void server.register(feedback);
-  void server.register(metrics);
-  void server.register(notes);
-  void server.register(savedReplies);
-  void server.register(stream);
-  void server.register(telegram);
-  void server.register(users);
-  done();
+const adminRoutes: FastifyPluginAsync = async (server) => {
+  await server.register(askBot);
+  await server.register(cases);
+  await server.register(categories);
+  await server.register(chats);
+  await server.register(conversations);
+  await server.register(db);
+  await server.register(feedback);
+  await server.register(metrics);
+  await server.register(notes);
+  await server.register(savedReplies);
+  await server.register(stream);
+  await server.register(telegram);
+  await server.register(users);
 };
 
-export default adminRoutes;

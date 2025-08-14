@@ -48,11 +48,15 @@ export const EnvSchema = z.object({
 
   // Database
   DATABASE_URL: z.string().min(1),
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_KEY: z.string().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
 
   // OpenAI / RAG
   OPENAI_API_KEY: z.string().min(1),
   FAQ_PATH: z.string().default("data/qa/faq.json"),
   KB_DIR: z.string().default("data/kb"),
+  MIN_CONFIDENCE_TO_ESCALATE: z.coerce.number().min(0).max(1).default(0.55),
 
   // JWT (Optional, for more advanced auth)
   JWT_SECRET: z.string().min(32).optional(), // Optional for now

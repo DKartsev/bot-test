@@ -1,9 +1,16 @@
-import { FastifyPluginCallback } from "fastify";
+import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
+import { z } from "zod";
 import { supabase } from "../../../infra/db/connection.js";
-import { AppError } from "../../../utils/errorHandler.js";
+import { AppError } from "../../utils/errorHandler.js";
 
-const adminNotesRoutes: FastifyPluginCallback = (server, _opts, done) => {
+const CreateNoteSchema = z.object({
+  content: z.string().min(1),
+  author_name: z.string().min(1),
+  message_id: z.string().optional(),
+});
+
+const adminNotesRoutes: FastifyPluginAsync = async (server) => {
   // GET /conversations/:id/notes
   server.get(
     "/conversations/:id/notes",
@@ -12,30 +19,29 @@ const adminNotesRoutes: FastifyPluginCallback = (server, _opts, done) => {
       const { id } = req.params as { id: string };
       const { data, error } = await supabase
         .from("operator_notes")
-      .select("*")
-      .eq("conversation_id", id)
-      .order("created_at");
-    if (error) throw new AppError(error.message, 500);
-    return { notes: data || [] };
-  });
+        .select("*")
+        .eq("conversation_id", id)
+        .order("created_at");
+      if (error) throw new AppError("DATABASE_ERROR", error.message, 500);
+      return { notes: data || [] };
+    });
 
   // POST /conversations/:id/notes
   server.post(
     "/conversations/:id/notes",
-    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    { 
+      schema: { body: CreateNoteSchema },
+      preHandler: [server.authenticate, server.authorize(["admin"])] 
+    },
     async (req, reply) => {
       const { id: conversation_id } = req.params as { id: string };
-      const body = req.body as {
-        content: string;
-        message_id?: string;
-        author_name: string;
-      };
+      const body = req.body as z.infer<typeof CreateNoteSchema>;
       const { data, error } = await supabase
         .from("operator_notes")
         .insert({ conversation_id, ...body })
         .select()
         .single();
-      if (error) throw new AppError(error.message, 500);
+      if (error) throw new AppError("DATABASE_ERROR", error.message, 500);
       return reply.code(201).send(data);
     },
   );
@@ -50,11 +56,10 @@ const adminNotesRoutes: FastifyPluginCallback = (server, _opts, done) => {
         .from("operator_notes")
         .delete()
         .eq("id", noteId);
-      if (error) throw new AppError(error.message, 500);
+      if (error) throw new AppError("DATABASE_ERROR", error.message, 500);
       return reply.code(204).send();
     },
   );
-  done();
 };
 
 export default fp(adminNotesRoutes);

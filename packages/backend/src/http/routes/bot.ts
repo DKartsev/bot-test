@@ -1,4 +1,5 @@
-import { FastifyInstance, FastifyPluginCallback } from "fastify";
+import { FastifyInstance, FastifyPluginAsync } from "fastify";
+import fp from "fastify-plugin";
 import { z } from "zod";
 import { refineDraft } from "../../app/llm/llmRefine.js";
 import type {
@@ -33,19 +34,16 @@ const BodySchema = z.object({
 
 type Body = z.infer<typeof BodySchema>;
 
-const plugin: FastifyPluginCallback = (app: FastifyInstance, _opts, done) => {
+const botRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
   app.post<{ Body: Body }>(
-    "/api/bot/refine",
-    { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
+    "/bot/refine",
+    { 
+      schema: { body: BodySchema },
+      config: { rateLimit: { max: 20, timeWindow: "1 minute" } } 
+    },
     async (req, reply) => {
-      const parse = BodySchema.safeParse(req.body);
-      if (!parse.success) {
-        void reply.code(400);
-        return { error: "ValidationError", details: parse.error.flatten() };
-      }
-      const body = parse.data;
+      const body = req.body;
 
-      // Формируем sources без явных undefined (важно при exactOptionalPropertyTypes)
       const srcs: SearchSource[] = body.sources.map((s) => ({
         id: s.id,
         ...(s.title !== undefined ? { title: s.title } : {}),
@@ -61,7 +59,6 @@ const plugin: FastifyPluginCallback = (app: FastifyInstance, _opts, done) => {
         ...(body.lang !== undefined ? { lang: body.lang } : {}),
       };
 
-      // Нормализуем options так, чтобы не было типов вида string | undefined
       let opts: RefineOptions | undefined = undefined;
       if (body.options) {
         opts = {
@@ -110,7 +107,5 @@ const plugin: FastifyPluginCallback = (app: FastifyInstance, _opts, done) => {
       }
     },
   );
-  done();
 };
 
-export default plugin;
