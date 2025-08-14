@@ -87,9 +87,9 @@ const pgPlugin: FastifyPluginAsync =
       async connect(): Promise<PoolClient> {
         return pool.connect();
       },
-      async query<T extends QueryResultRow = any>(
+      async query<T extends QueryResultRow = QueryResultRow>(
         q: string,
-        values?: any[],
+        values?: (string | number | boolean | null | Date | Buffer)[],
       ): Promise<{ rows: T[] }> {
         const res = await pool.query<T>(q, values);
         return { rows: res.rows };
