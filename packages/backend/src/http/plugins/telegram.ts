@@ -47,9 +47,14 @@ const telegramPlugin: FastifyPluginAsync = async (server, _opts) => {
         done();
       },
     },
-    (request, reply) => {
-      // The bot instance is already a webhook callback handler
-      void bot.handleUpdate(request.body as Update, reply.raw);
+    async (request, reply) => {
+      try {
+        await bot.handleUpdate(request.body as Update);
+        return reply.send({ ok: true });
+      } catch (err) {
+        request.log.error({ err }, "Failed to handle Telegram update");
+        return reply.code(500).send({ error: "Failed to process update" });
+      }
     },
   );
 

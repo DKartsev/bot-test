@@ -7,7 +7,11 @@ const AskBodySchema = z.object({
   lang: z.string().optional().default("ru"),
 });
 
+<<<<<<< HEAD
 const apiPlugin: FastifyPluginAsync = async (server, _opts) => {
+=======
+const apiPlugin: FastifyPluginAsync = async (server) => {
+>>>>>>> 5524c501951c1608ff853d8f0341a899e49adbe1
   server.post(
     "/ask",
     {
@@ -24,7 +28,6 @@ const apiPlugin: FastifyPluginAsync = async (server, _opts) => {
         return reply.send(result);
       } catch (err) {
         request.log.error({ err }, "Error in /ask route");
-        // TODO: Use structured error handling
         return reply
           .code(500)
           .send({ error: "Failed to process your question." });

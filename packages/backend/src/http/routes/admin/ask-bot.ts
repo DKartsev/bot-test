@@ -10,24 +10,17 @@ const adminAskBotRoutes: FastifyPluginAsync = async (server) => {
   server.post(
     "/ask-bot",
     {
-        schema: {
-          body: AskBodySchema,
-        },
-        preHandler: [server.authenticate, server.authorize(["admin"])],
+      schema: {
+        body: AskBodySchema,
       },
-      async (request, reply) => {
-        const { qaService } = server.deps;
-        const { question } = request.body as z.infer<typeof AskBodySchema>;
+      preHandler: [server.authenticate, server.authorize(["admin"])],
+    },
+    async (request, reply) => {
+      const { qaService } = server.deps;
+      const { question } = request.body as z.infer<typeof AskBodySchema>;
+    }
+  )
+}
 
-        try {
-          const result = await qaService.ask(question);
-          return reply.send(result);
-        } catch (err) {
-          request.log.error({ err }, "ask-bot route failed");
-          return reply.code(500).send({ error: "failed_to_ask_bot" });
-        }
-      },
-    );
-  };
 
 export default fp(adminAskBotRoutes as any);

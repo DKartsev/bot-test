@@ -1,9 +1,27 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 import { supabase } from "../../../infra/db/connection.js";
+<<<<<<< HEAD
 import { AppError } from "../../../utils/errorHandler.js";
 
 const adminCategoriesRoutes: FastifyPluginAsync = async (server, _opts) => {
+=======
+import { AppError, NotFoundError } from "../../utils/errorHandler.js";
+
+const CategorySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string(),
+});
+
+const CreateCategorySchema = CategorySchema.omit({ id: true });
+const UpdateCategorySchema = CreateCategorySchema.partial().refine(
+  (d) => Object.keys(d).length > 0,
+  { message: "At least one field must be provided for update." },
+);
+
+const adminCategoriesRoutes: FastifyPluginAsync = async (server) => {
+>>>>>>> 5524c501951c1608ff853d8f0341a899e49adbe1
   // GET /categories
   server.get(
     "/categories",
