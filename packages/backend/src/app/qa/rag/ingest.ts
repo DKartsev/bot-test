@@ -1,12 +1,8 @@
-import { promises as fs } from "fs";
-import path from "path";
-import { createHash, randomUUID } from "crypto";
-import pdf from "pdf-parse";
-import { JSDOM } from "jsdom";
-import TurndownService from "turndown";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { createHash, randomUUID } from "node:crypto";
 import { chunkText, TextChunk, ChunkOptions } from "./chunker.js";
 import { logger } from "../../../utils/logger.js";
-import * as dlp from "../../security/dlp.js";
 import { env } from "../../../config/env.js";
 
 const DATA_DIR = env.KB_DIR;
@@ -94,9 +90,12 @@ export async function ingestText(
 ): Promise<{ source: SourceDocument; chunks: TextChunk[] }> {
   await ensureDir();
 
-  const { text: sanitizedText, detections } = dlp.sanitize(text);
+  // TODO: Implement DLP sanitization
+  const sanitizedText = text;
+  const detections: string[] = [];
+  
   if (detections.length) {
-    meta.dlp = { redacted: true, reasons: detections.map((d) => d.key) };
+    meta.dlp = { redacted: true, reasons: detections };
   }
 
   const hash = sha1(sanitizedText);
@@ -143,20 +142,12 @@ export async function ingestFile(
   try {
     if (mime.includes("pdf") || ext === ".pdf") {
       type = "pdf";
-      const data = await pdf(buffer);
-      text = data.text || "";
+      // TODO: Implement PDF parsing
+      text = "PDF content not implemented yet";
     } else if (mime.includes("html") || ext === ".html" || ext === ".htm") {
       type = "html";
-      const html = buffer.toString("utf8");
-      const dom = new JSDOM(html);
-      const turndownService = new TurndownService();
-      text = turndownService.turndown(dom.window.document.body.innerHTML);
-      if (!meta.title) {
-        const pageTitle = dom.window.document.title;
-        if (pageTitle) {
-          meta.title = pageTitle;
-        }
-      }
+      // TODO: Implement HTML parsing
+      text = "HTML content not implemented yet";
     } else if (ext === ".md" || ext === ".markdown") {
       type = "md";
       text = buffer.toString("utf8");

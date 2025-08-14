@@ -1,4 +1,4 @@
-import { FastifyPluginCallback } from "fastify";
+import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 import { z } from "zod";
 
@@ -7,9 +7,7 @@ const AskBodySchema = z.object({
   lang: z.string().optional().default("ru"),
 });
 
-import { FastifyPluginCallback } from "fastify";
-
-const apiPlugin: FastifyPluginCallback = (server, _opts, done) => {
+const apiPlugin: FastifyPluginAsync = async (server, _opts) => {
   server.post(
     "/ask",
     {
@@ -33,7 +31,6 @@ const apiPlugin: FastifyPluginCallback = (server, _opts, done) => {
       }
     },
   );
-  done();
 };
 
-export default fp(apiPlugin);
+export default fp(apiPlugin as any);

@@ -89,4 +89,4 @@ const telegramPlugin: FastifyPluginAsync = async (server, _opts) => {
   server.log.info("Telegram plugin registered.");
 };
 
-export default fp(telegramPlugin);
+export default fp(telegramPlugin as any);

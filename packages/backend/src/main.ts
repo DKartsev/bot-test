@@ -4,6 +4,7 @@ import { buildServer } from "./http/server.js";
 import { QAService } from "./app/qa/QAService.js";
 import { makeBot } from "./bot/bot.js";
 import { appEventBus } from "./app/events.js";
+import { PgUserRepo } from "./modules/users/infra/PgUserRepo.js";
 
 async function main() {
   logger.info("Запуск приложения...");
@@ -20,9 +21,14 @@ async function main() {
     qaService,
     bot,
     eventBus: appEventBus,
+    userRepo: null as any, // Временно null, будет заменен после регистрации плагинов
   });
 
-  // 4. Запускаем сервер
+  // 4. Создаем userRepo после создания сервера
+  const userRepo = new PgUserRepo(server);
+  server.deps.userRepo = userRepo;
+
+  // 5. Запускаем сервер
   try {
     await server.listen({
       port: env.PORT,

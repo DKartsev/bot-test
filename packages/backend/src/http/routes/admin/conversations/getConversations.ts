@@ -1,15 +1,15 @@
-import { FastifyPluginCallback } from "fastify";
+import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 
-const getConversationsRoute: FastifyPluginCallback = (server, _opts, done) => {
-  server.get("/conversations", (_req, reply) => {
-    // ... (omitting the long implementation for brevity, but it would be refactored here)
-    // The logic would be updated to use AppError and proper dependency injection.
-    void reply.send({
-      message: "List of conversations (implementation pending refactor)",
-    });
-  });
-  done();
+const getConversationsRoute: FastifyPluginAsync = async (server, _opts) => {
+  server.get(
+    "/conversations",
+    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    async (req, _reply) => {
+      // TODO: Implement conversation listing logic
+      return { conversations: [] };
+    },
+  );
 };
 
-export default fp(getConversationsRoute);
+export default fp(getConversationsRoute as any);

@@ -71,7 +71,22 @@ export class MemoryCache<T> {
   }
 }
 
-import { Conversation, Message, User } from "@app/shared";
+// Определяем локальные типы для кэша
+export interface Conversation {
+  id: string;
+  // добавьте другие поля по необходимости
+}
+
+export interface Message {
+  id: string;
+  // добавьте другие поля по необходимости
+}
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+}
 
 // Global cache instances should be avoided in a serious application,
 // but we keep them for now to match the original structure.

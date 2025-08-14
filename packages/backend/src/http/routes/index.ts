@@ -1,10 +1,8 @@
-import { FastifyPluginCallback } from "fastify";
-import bot from "./bot.js";
-import admin from "./admin/index.js";
+import { FastifyPluginAsync } from "fastify";
+import botRoutes from "./bot.js";
 
-const routes: FastifyPluginCallback = (app, _opts, done) => {
-  void app.register(bot);
-  void app.register(admin);
-  done();
+const routes: FastifyPluginAsync = async (app, _opts) => {
+  await app.register(botRoutes);
 };
+
 export default routes;

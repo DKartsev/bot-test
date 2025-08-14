@@ -1,77 +1,69 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
-import { z } from "zod";
 import { supabase } from "../../../infra/db/connection.js";
-import { env } from "../../../config/env.js";
 import { AppError } from "../../../utils/errorHandler.js";
 
-const CasesBodySchema = z.object({
-  title: z.string().min(1),
-  summary: z.string().min(1),
-  created_by: z.string().optional(),
-});
+const adminCasesRoutes: FastifyPluginAsync = async (server, _opts) => {
+  // GET /cases
+  server.get(
+    "/cases",
+    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    async (req, _reply) => {
+      const { data, error } = await supabase
+        .from("cases")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw new AppError(error.message, 500);
+      return { cases: data || [] };
+    },
+  );
 
-const CasesParamsSchema = z.object({
-  id: z.string(), // Assuming this is the conversation ID
-});
-
-const adminCasesRoutes: FastifyPluginAsync = (server) => {
+  // POST /cases
   server.post(
-    "/conversations/:id/cases",
-    {
-        schema: {
-          body: CasesBodySchema,
-          params: CasesParamsSchema,
-        },
-        preHandler: [server.authenticate, server.authorize(["admin"])],
-      },
-      async (request, reply) => {
-        const { bot } = server.deps;
-        const { id: conversation_id } = request.params as z.infer<
-          typeof CasesParamsSchema
-        >;
-        const { title, summary, created_by } = request.body as z.infer<
-          typeof CasesBodySchema
-        >;
+    "/cases",
+    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    async (req, reply) => {
+      const { data, error } = await supabase
+        .from("cases")
+        .insert(req.body)
+        .select()
+        .single();
+      if (error) throw new AppError(error.message, 500);
+      return reply.code(201).send(data);
+    },
+  );
 
-        // This env var was not in the main schema, adding it here.
-        // A better solution would be to add it to the main env schema.
-        const operatorAdminUrl = env.PUBLIC_URL?.replace(
-          "/admin",
-          "/operator-admin",
-        );
-        const link = `${operatorAdminUrl}/conversations/${conversation_id}`;
+  // PATCH /cases/:id
+  server.patch(
+    "/cases/:id",
+    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    async (req, _reply) => {
+      const { id } = req.params as { id: string };
+      const { data, error } = await supabase
+        .from("cases")
+        .update(req.body)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw new AppError(error.message, 500);
+      return data;
+    },
+  );
 
-        const { data, error } = await supabase
-          .from("cases")
-          .insert({ conversation_id, title, summary, link, created_by })
-          .select()
-          .single();
+  // DELETE /cases/:id
+  server.delete(
+    "/cases/:id",
+    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      const { error } = await supabase
+        .from("cases")
+        .delete()
+        .eq("id", id);
+      if (error) throw new AppError(error.message, 500);
+      return reply.code(204).send();
+    },
+  );
+};
 
-        if (error) {
-          throw new AppError(`Failed to create case: ${error.message}`, 500);
-        }
-
-        // This env var was not in the main schema
-        const notificationChatId = env.CASES_TELEGRAM_CHAT_ID;
-        if (notificationChatId) {
-          try {
-            const message = `*Новый кейс: ${title}*\n\n${summary}\n\n[Открыть кейс](${link})`;
-            await bot.telegram.sendMessage(notificationChatId, message, {
-              parse_mode: "Markdown",
-            });
-          } catch (err) {
-            request.log.error(
-              { err },
-              "Failed to send case creation notification to Telegram",
-            );
-            // Do not fail the request if the notification fails
-          }
-        }
-
-        return reply.code(201).send(data);
-      },
-    );
-  };
-
-export default fp(adminCasesRoutes);
+export default fp(adminCasesRoutes as any);

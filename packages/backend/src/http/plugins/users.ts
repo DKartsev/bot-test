@@ -1,20 +1,33 @@
 import type {
   FastifyInstance,
-  FastifyPluginCallback,
+  FastifyPluginAsync,
   FastifyReply,
   FastifyRequest,
 } from "fastify";
-import type { IUserRepo } from "@app/shared";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+}
+
+interface IUserRepo {
+  findByEmail(email: string): Promise<User | null>;
+  create(data: { email: string; name: string }): Promise<User>;
+  list(opts: { limit: number; cursor?: string }): Promise<{
+    items: User[];
+    nextCursor?: string;
+  }>;
+}
 
 type PluginOpts = { repo: IUserRepo };
 
-const usersPlugin: FastifyPluginCallback<PluginOpts> = (
+const usersPlugin: FastifyPluginAsync<PluginOpts> = async (
   fastify: FastifyInstance,
   opts: PluginOpts,
-  done: (err?: Error) => void,
 ) => {
   fastify.get("/users", async (_req: FastifyRequest, _reply: FastifyReply) => {
-    const { items, nextCursor } = await opts.repo.list({});
+    const { items, nextCursor } = await opts.repo.list({ limit: 20 });
     return nextCursor ? { items, nextCursor } : { items };
   });
 
@@ -29,7 +42,6 @@ const usersPlugin: FastifyPluginCallback<PluginOpts> = (
       return user;
     },
   );
-  done();
 };
 
 export default usersPlugin;

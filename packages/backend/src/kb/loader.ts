@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import path from "node:path";
+import path from "path";
 import { fileURLToPath } from "node:url";
 import matter from "gray-matter";
 
@@ -20,13 +20,6 @@ interface FrontMatter {
   tags?: string[];
 }
 
-interface App {
-  log: {
-    info: (obj: unknown, msg: string) => void;
-    warn: (msg: string) => void;
-  };
-}
-
 const ROOT_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../../..",
@@ -36,14 +29,14 @@ let cache: KbDoc[] | null = null;
 export function loadKb(): KbDoc[] {
   if (cache) return cache;
   const baseDir = path.resolve(ROOT_DIR, KB_DIR);
-  const app: App = (globalThis as { app: App }).app;
-  app?.log.info({ dir: baseDir }, "KB: scanning");
+  
   if (!fs.existsSync(baseDir)) {
     cache = [];
-    app?.log.info({ count: 0 }, "KB: loaded");
-    app?.log.warn("KB: empty");
+    console.log("KB: loaded", { count: 0 });
+    console.warn("KB: empty");
     return cache;
   }
+  
   const files = fs.readdirSync(baseDir).filter((f) => f.endsWith(".md"));
   const docs = files.map((file) => {
     const raw = fs.readFileSync(path.join(baseDir, file), "utf-8");
@@ -59,7 +52,7 @@ export function loadKb(): KbDoc[] {
     } as KbDoc;
   });
   cache = docs;
-  app?.log.info({ count: docs.length }, "KB: loaded");
-  if (!docs.length) app?.log.warn("KB: empty");
+  console.log("KB: loaded", { count: docs.length });
+  if (!docs.length) console.warn("KB: empty");
   return cache;
 }

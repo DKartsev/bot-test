@@ -48,7 +48,7 @@ function buildSSL(): false | { rejectUnauthorized?: boolean; ca?: string } {
   return ssl;
 }
 
-const pgPlugin: FastifyPluginAsync = (app) => {
+const pgPlugin: FastifyPluginAsync = async (app) => {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
       app.log.warn(
@@ -85,12 +85,12 @@ const pgPlugin: FastifyPluginAsync = (app) => {
       async connect(): Promise<PoolClient> {
         return pool.connect();
       },
-      async query<T extends QueryResultRow = QueryResultRow>(
+      async query<T = any>(
         q: string,
         values?: (string | number | boolean | null | Date | Buffer)[],
       ): Promise<{ rows: T[] }> {
-        const res = await pool.query<T>(q, values);
-        return { rows: res.rows };
+        const res = await pool.query(q, values);
+        return { rows: res.rows as T[] };
       },
     });
 
@@ -99,4 +99,4 @@ const pgPlugin: FastifyPluginAsync = (app) => {
     });
   };
 
-export default fp(pgPlugin);
+export default fp(pgPlugin as any);

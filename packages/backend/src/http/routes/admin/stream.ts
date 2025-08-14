@@ -1,7 +1,7 @@
-import { FastifyPluginCallback } from "fastify";
+import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 
-const adminStreamRoutes: FastifyPluginCallback = (server, _opts, done) => {
+const adminStreamRoutes: FastifyPluginAsync = async (server, _opts) => {
   const { eventBus } = server.deps;
 
   server.get(
@@ -43,7 +43,6 @@ const adminStreamRoutes: FastifyPluginCallback = (server, _opts, done) => {
       server.log.info("SSE client disconnected");
     });
   });
-  done();
 };
 
-export default fp(adminStreamRoutes);
+export default fp(adminStreamRoutes as any);

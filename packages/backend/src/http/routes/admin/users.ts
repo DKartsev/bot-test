@@ -1,40 +1,69 @@
-import { FastifyPluginCallback } from "fastify";
-import { z } from "zod";
+import { FastifyPluginAsync } from "fastify";
+import fp from "fastify-plugin";
+import { supabase } from "../../../infra/db/connection.js";
+import { AppError } from "../../../utils/errorHandler.js";
 
-const GetUserParamsSchema = z.object({
-  user_id: z.string(), // Can be a UUID or a Telegram ID, for now just a string
-});
-
-const adminUsersRoutes: FastifyPluginCallback = (server, _opts, done) => {
-  // GET /api/admin/users/{user_id}
+const adminUsersRoutes: FastifyPluginAsync = async (server, _opts) => {
+  // GET /users
   server.get(
-    "/users/:user_id",
-    {
-      schema: {
-        params: GetUserParamsSchema,
-        // TODO: Add response schema
-      },
-      preHandler: [server.authenticate, server.authorize(["admin"])],
-    },
-    async (request, reply) => {
-      const { user_id } = request.params as z.infer<
-        typeof GetUserParamsSchema
-      >;
-
-      // This is a placeholder as per the requirements.
-      // In a real implementation, this would fetch from the 'users' table.
-      const dummyUser = {
-        id: user_id,
-        telegram_id: `tg_${user_id}`,
-        username: `user_${user_id}`,
-        created_at: new Date().toISOString(),
-        verification_status: "verified",
-      };
-
-      return reply.send({ user: dummyUser });
+    "/users",
+    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    async (req, _reply) => {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id,email,name,created_at")
+        .order("created_at", { ascending: false });
+      if (error) throw new AppError(error.message, 500);
+      return { users: data || [] };
     },
   );
-  done();
+
+  // POST /users
+  server.post(
+    "/users",
+    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    async (req, reply) => {
+      const { data, error } = await supabase
+        .from("users")
+        .insert(req.body)
+        .select()
+        .single();
+      if (error) throw new AppError(error.message, 500);
+      return reply.code(201).send(data);
+    },
+  );
+
+  // PATCH /users/:id
+  server.patch(
+    "/users/:id",
+    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    async (req, _reply) => {
+      const { id } = req.params as { id: string };
+      const { data, error } = await supabase
+        .from("users")
+        .update(req.body)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw new AppError(error.message, 500);
+      return data;
+    },
+  );
+
+  // DELETE /users/:id
+  server.delete(
+    "/users/:id",
+    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      const { error } = await supabase
+        .from("users")
+        .delete()
+        .eq("id", id);
+      if (error) throw new AppError(error.message, 500);
+      return reply.code(204).send();
+    },
+  );
 };
 
-export default adminUsersRoutes;
+export default fp(adminUsersRoutes as any);

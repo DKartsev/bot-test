@@ -1,9 +1,9 @@
-import { FastifyPluginCallback } from "fastify";
+import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 import { supabase } from "../../../infra/db/connection.js";
 import { AppError } from "../../../utils/errorHandler.js";
 
-const adminNotesRoutes: FastifyPluginCallback = (server, _opts, done) => {
+const adminNotesRoutes: FastifyPluginAsync = async (server, _opts) => {
   // GET /conversations/:id/notes
   server.get(
     "/conversations/:id/notes",
@@ -54,7 +54,6 @@ const adminNotesRoutes: FastifyPluginCallback = (server, _opts, done) => {
       return reply.code(204).send();
     },
   );
-  done();
 };
 
-export default fp(adminNotesRoutes);
+export default fp(adminNotesRoutes as any);

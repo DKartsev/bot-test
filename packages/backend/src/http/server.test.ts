@@ -1,14 +1,28 @@
 import { describe, it, expect, vi } from "vitest";
 import { buildServer } from "./server.js";
-import { IUserRepo } from "@app/shared";
 import { QAService } from "../app/qa/QAService.js";
 import { Bot } from "../bot/bot.js";
 import { EventBus } from "../app/events.js";
 
+interface User {
+  id: string;
+  email: string;
+  name: string;
+}
+
+interface IUserRepo {
+  findByEmail(email: string): Promise<User | null>;
+  create(data: { email: string; name: string }): Promise<User>;
+  list(opts: { limit: number; cursor?: string }): Promise<{
+    items: User[];
+    nextCursor?: string;
+  }>;
+}
+
 const createServer = async (repo?: Partial<IUserRepo>) => {
   const baseRepo: IUserRepo = {
     findByEmail: () => Promise.resolve(null),
-    create: ({ email, name }) => Promise.resolve({ id: "1", email, name }),
+    create: ({ email, name }: { email: string; name: string }) => Promise.resolve({ id: "1", email, name }),
     list: () => Promise.resolve({ items: [] }),
   };
   const app = await buildServer({
@@ -19,7 +33,7 @@ const createServer = async (repo?: Partial<IUserRepo>) => {
       on: vi.fn(),
       off: vi.fn(),
       emit: vi.fn(),
-    } as EventBus,
+    } as unknown as EventBus,
   });
   await app.ready();
   return app;

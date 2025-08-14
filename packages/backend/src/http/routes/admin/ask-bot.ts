@@ -6,7 +6,7 @@ const AskBodySchema = z.object({
   question: z.string().min(1),
 });
 
-const adminAskBotRoutes: FastifyPluginAsync = (server) => {
+const adminAskBotRoutes: FastifyPluginAsync = async (server) => {
   server.post(
     "/ask-bot",
     {
@@ -30,4 +30,4 @@ const adminAskBotRoutes: FastifyPluginAsync = (server) => {
     );
   };
 
-export default fp(adminAskBotRoutes);
+export default fp(adminAskBotRoutes as any);
