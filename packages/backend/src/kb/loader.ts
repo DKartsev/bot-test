@@ -13,6 +13,20 @@ export interface KbDoc {
   content: string;
 }
 
+interface FrontMatter {
+  id?: string;
+  title?: string;
+  slug?: string;
+  tags?: string[];
+}
+
+interface App {
+  log: {
+    info: (obj: unknown, msg: string) => void;
+    warn: (msg: string) => void;
+  };
+}
+
 const ROOT_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../../..",
@@ -22,7 +36,7 @@ let cache: KbDoc[] | null = null;
 export function loadKb(): KbDoc[] {
   if (cache) return cache;
   const baseDir = path.resolve(ROOT_DIR, KB_DIR);
-  const app: any = (globalThis as any).app;
+  const app: App = (globalThis as { app: App }).app;
   app?.log.info({ dir: baseDir }, "KB: scanning");
   if (!fs.existsSync(baseDir)) {
     cache = [];
@@ -34,7 +48,7 @@ export function loadKb(): KbDoc[] {
   const docs = files.map((file) => {
     const raw = fs.readFileSync(path.join(baseDir, file), "utf-8");
     const parsed = matter(raw);
-    const data: any = parsed.data || {};
+    const data: FrontMatter = parsed.data;
     const slug = data.slug || file.replace(/\.md$/, "");
     return {
       id: data.id || slug,

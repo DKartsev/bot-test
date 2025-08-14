@@ -15,16 +15,15 @@ const CasesParamsSchema = z.object({
   id: z.string(), // Assuming this is the conversation ID
 });
 
-const adminCasesRoutes: FastifyPluginAsync =
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async (server) => {
-    server.post(
-      "/conversations/:id/cases",
-      {
+const adminCasesRoutes: FastifyPluginAsync = (server) => {
+  server.post(
+    "/conversations/:id/cases",
+    {
         schema: {
           body: CasesBodySchema,
           params: CasesParamsSchema,
         },
+        preHandler: [server.authenticate, server.authorize(["admin"])],
       },
       async (request, reply) => {
         const { bot } = server.deps;

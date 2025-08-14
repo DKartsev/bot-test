@@ -48,11 +48,9 @@ function buildSSL(): false | { rejectUnauthorized?: boolean; ca?: string } {
   return ssl;
 }
 
-const pgPlugin: FastifyPluginAsync =
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async (app) => {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
+const pgPlugin: FastifyPluginAsync = (app) => {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
       app.log.warn(
         "DATABASE_URL is not set; pg pool will be created with undefined connectionString",
       );

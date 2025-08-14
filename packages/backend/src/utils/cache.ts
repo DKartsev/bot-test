@@ -71,9 +71,11 @@ export class MemoryCache<T> {
   }
 }
 
+import { Conversation, Message, User } from "@app/shared";
+
 // Global cache instances should be avoided in a serious application,
 // but we keep them for now to match the original structure.
 // In a real app, these would be injected as dependencies.
-export const conversationCache = new MemoryCache<any>(600000); // 10 minutes
-export const messageCache = new MemoryCache<any>(300000); // 5 minutes
-export const userCache = new MemoryCache<any>(1800000); // 30 minutes
+export const conversationCache = new MemoryCache<Conversation>(600000); // 10 minutes
+export const messageCache = new MemoryCache<Message>(300000); // 5 minutes
+export const userCache = new MemoryCache<User>(1800000); // 30 minutes

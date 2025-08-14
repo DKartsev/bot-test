@@ -9,8 +9,8 @@ export class AsyncFileOperations {
     try {
       const content = await fs.readFile(filePath, "utf8");
       return JSON.parse(content);
-    } catch (error: any) {
-      if (error.code === "ENOENT") {
+    } catch (error: unknown) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") {
         return null;
       }
       logger.error({ error, filePath }, "Failed to read JSON file");
@@ -18,7 +18,7 @@ export class AsyncFileOperations {
     }
   }
 
-  static async writeJSON(filePath: string, data: any): Promise<void> {
+  static async writeJSON(filePath: string, data: unknown): Promise<void> {
     try {
       const tempPath = `${filePath}.tmp`;
       await fs.writeFile(tempPath, JSON.stringify(data, null, 2));
@@ -83,7 +83,7 @@ export async function withRetry<T>(
 /**
  * Debounce function for high-frequency operations
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   waitMs: number,
 ): (...args: Parameters<T>) => void {
@@ -98,7 +98,7 @@ export function debounce<T extends (...args: any[]) => any>(
 /**
  * Throttle function for rate-limited operations
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limitMs: number,
 ): (...args: Parameters<T>) => void {

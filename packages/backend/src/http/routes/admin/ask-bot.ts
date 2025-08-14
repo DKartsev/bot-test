@@ -6,15 +6,14 @@ const AskBodySchema = z.object({
   question: z.string().min(1),
 });
 
-const adminAskBotRoutes: FastifyPluginAsync =
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async (server) => {
-    server.post(
-      "/ask-bot",
-      {
+const adminAskBotRoutes: FastifyPluginAsync = (server) => {
+  server.post(
+    "/ask-bot",
+    {
         schema: {
           body: AskBodySchema,
         },
+        preHandler: [server.authenticate, server.authorize(["admin"])],
       },
       async (request, reply) => {
         const { qaService } = server.deps;

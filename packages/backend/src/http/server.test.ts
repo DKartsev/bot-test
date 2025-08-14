@@ -1,6 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { buildServer } from "./server.js";
-import { IUserRepo } from "../modules/users/domain/User.js";
+import { IUserRepo } from "@app/shared";
+import { QAService } from "../app/qa/QAService.js";
+import { Bot } from "../bot/bot.js";
+import { EventBus } from "../app/events.js";
 
 const createServer = async (repo?: Partial<IUserRepo>) => {
   const baseRepo: IUserRepo = {
@@ -10,9 +13,13 @@ const createServer = async (repo?: Partial<IUserRepo>) => {
   };
   const app = await buildServer({
     userRepo: { ...baseRepo, ...repo },
-    qaService: {} as any,
-    bot: {} as any,
-    eventBus: {} as any,
+    qaService: {} as QAService,
+    bot: {} as Bot,
+    eventBus: {
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
+    } as EventBus,
   });
   await app.ready();
   return app;

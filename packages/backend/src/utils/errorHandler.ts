@@ -1,4 +1,4 @@
-import { FastifyRequest } from "fastify";
+import { FastifyRequest, FastifyReply } from "fastify";
 
 export class AppError extends Error {
   public readonly statusCode: number;
@@ -56,7 +56,7 @@ export class ServiceUnavailableError extends AppError {
 export function centralErrorHandler(
   error: Error,
   request: FastifyRequest,
-  reply: any,
+  reply: FastifyReply,
 ) {
   if (error instanceof AppError) {
     request.log.warn(

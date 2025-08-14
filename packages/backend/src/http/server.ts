@@ -7,7 +7,7 @@ import { env } from "../config/env.js";
 import { QAService } from "../app/qa/QAService.js";
 import { Bot } from "../bot/bot.js";
 import { EventBus } from "../app/events.js";
-import { IUserRepo } from "../modules/users/domain/User.js";
+import { IUserRepo } from "@app/shared";
 import healthPlugin from "./plugins/health.js";
 import telegramPlugin from "./plugins/telegram.js";
 import adminPlugin from "./plugins/admin.js";

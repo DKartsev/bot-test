@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { Embedding } from "openai/resources/embeddings.mjs";
 import { logger } from "../../../utils/logger.js";
 import { env } from "../../../config/env.js";
 import { Embedder } from "./vector-store.js";
@@ -56,11 +57,17 @@ export class OpenAIEmbedder implements Embedder {
       });
 
       // Нормализуем векторы для использования с косинусным расстоянием
-      return response.data.map((item) => this.normalize(item.embedding));
-    } catch (err: unknown) {
+      const embeddings: number[][] = response.data.map((item: Embedding) =>
+        this.normalize(item.embedding),
+      );
+      return embeddings;
+    } catch (err) {
       logger.error({ err }, "Ошибка при создании векторов с помощью OpenAI");
       // Возвращаем пустые векторы для текстов, которые не удалось обработать
-      return texts.map(() => new Array(this.dimension).fill(0));
+      const emptyVectors: number[][] = texts.map(() =>
+        new Array(this.dimension).fill(0),
+      );
+      return emptyVectors;
     }
   }
 

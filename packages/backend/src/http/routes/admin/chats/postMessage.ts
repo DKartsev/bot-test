@@ -5,7 +5,7 @@ import { GetChatParamsSchema } from "./schemas.js";
 
 const PostMessageBodySchema = z.object({
   text: z.string().min(1),
-  // attachments: z.array(z.any()).optional(), // Placeholder for attachments
+  attachments: z.array(z.unknown()).optional(), // Placeholder for attachments
 });
 
 const postMessageRoute: FastifyPluginAsync = async (server) => {

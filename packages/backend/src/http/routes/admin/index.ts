@@ -1,9 +1,9 @@
-import { FastifyPluginAsync } from "fastify";
+import { FastifyPluginCallback } from "fastify";
 import askBot from "./ask-bot.js";
 import cases from "./cases.js";
 import categories from "./categories.js";
 import chats from "./chats/index.js";
-import conversations from "./conversations.js";
+import conversations from "./conversations/index.js";
 import db from "./db.js";
 import feedback from "./feedback.js";
 import metrics from "./metrics.js";
@@ -13,7 +13,9 @@ import stream from "./stream.js";
 import telegram from "./telegram.js";
 import users from "./users.js";
 
-const adminRoutes: FastifyPluginAsync = async (server) => {
+import { FastifyPluginCallback } from "fastify";
+
+const adminRoutes: FastifyPluginCallback = (server, _opts, done) => {
   void server.register(askBot);
   void server.register(cases);
   void server.register(categories);
@@ -27,6 +29,7 @@ const adminRoutes: FastifyPluginAsync = async (server) => {
   void server.register(stream);
   void server.register(telegram);
   void server.register(users);
+  done();
 };
 
 export default adminRoutes;

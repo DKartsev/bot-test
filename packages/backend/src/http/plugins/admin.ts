@@ -1,5 +1,4 @@
-import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
-import fp from "fastify-plugin";
+import { FastifyPluginCallback, FastifyRequest, FastifyReply } from "fastify";
 import rateLimit from "@fastify/rate-limit";
 import jwt from "@fastify/jwt";
 import { env } from "../../config/env.js";
@@ -15,7 +14,7 @@ import streamRoutes from "../routes/admin/stream.js";
 import chatsRoutes from "../routes/admin/chats.js";
 import usersRoutes from "../routes/admin/users.js";
 
-const { ADMIN_IP_ALLOWLIST, ADMIN_RATE_LIMIT_MAX, ADMIN_API_TOKENS } = env;
+const { ADMIN_IP_ALLOWLIST, ADMIN_RATE_LIMIT_MAX } = env;
 
 // --- IP Allowlist Logic ---
 function ipToInt(ip: string): number {
@@ -36,87 +35,98 @@ function matchIp(ip: string, rule: string): boolean {
   return ip === rule;
 }
 
-// --- The Plugin ---
-const adminPlugin: FastifyPluginAsync = async (server) => {
-  // 1. Register JWT plugin for authentication
-  if (env.JWT_SECRET) {
-    await server.register(jwt, {
-      secret: env.JWT_SECRET,
-    });
+import { User } from "@app/shared";
+
+declare module "fastify" {
+  interface FastifyRequest {
+    user?: User & { role: "admin" | "operator" };
   }
+}
 
-  // 2. Authentication and Authorization Hooks
-  // This hook verifies the JWT and decorates the request with the user payload.
-  server.decorate(
-    "authenticate",
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      if (!env.JWT_SECRET) {
-        req.log.warn("JWT_SECRET is not set. Skipping authentication.");
-        return;
-      }
-      try {
-        await req.jwtVerify();
-      } catch (err) {
-        void reply.send(err);
-      }
-    },
-  );
+// --- The Plugin ---
+const adminPlugin: FastifyPluginCallback = (server, _opts, done) => {
+  void (async () => {
+    // 1. Register JWT plugin for authentication
+    if (env.JWT_SECRET) {
+      await server.register(jwt, {
+        secret: env.JWT_SECRET,
+      });
+    }
 
-  // This hook checks if the user has the required role.
-  server.decorate("authorize", (allowedRoles: ("admin" | "operator")[]) => {
-    return async (req: FastifyRequest, reply: FastifyReply) => {
-      if (!req.user || typeof req.user.role !== "string") {
-        return reply.code(403).send({ error: "Forbidden: Missing role" });
-      }
-      if (!allowedRoles.includes(req.user.role as "admin" | "operator")) {
-        return reply
-          .code(403)
-          .send({ error: "Forbidden: Insufficient permissions" });
-      }
-    };
-  });
-
-  // 3. Register Admin-specific Rate Limiting
-  await server.register(rateLimit, {
-    max: ADMIN_RATE_LIMIT_MAX,
-    timeWindow: "1 minute",
-    keyGenerator: (req: FastifyRequest) => req.user?.sub || req.ip,
-  });
-
-  // 4. Add security hooks that apply to all routes registered within this plugin
-  server.addHook(
-    "onRequest",
-    (req: FastifyRequest, reply: FastifyReply, done) => {
-      // IP Allowlist Check
-      if (ADMIN_IP_ALLOWLIST && ADMIN_IP_ALLOWLIST.length > 0) {
-        const ip =
-          (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-          req.ip;
-        const allowed = ADMIN_IP_ALLOWLIST.some((rule) => matchIp(ip, rule));
-        if (!allowed) {
-          req.log.warn({ ip }, "Admin IP rejected by allowlist");
-          return reply.code(403).send({ error: "Forbidden" });
+    // 2. Authentication and Authorization Hooks
+    // This hook verifies the JWT and decorates the request with the user payload.
+    server.decorate(
+      "authenticate",
+      async (req: FastifyRequest, reply: FastifyReply) => {
+        if (!env.JWT_SECRET) {
+          req.log.warn("JWT_SECRET is not set. Skipping authentication.");
+          return;
         }
-      }
-      done();
-    },
-  );
+        try {
+          await req.jwtVerify();
+        } catch (err) {
+          const error = err as Error;
+          void reply.send(error);
+        }
+      },
+    );
 
-  // All routes in this plugin will first be authenticated
-  server.addHook("preHandler", server.authenticate);
+    // This hook checks if the user has the required role.
+    server.decorate(
+      "authorize",
+      (allowedRoles: ("admin" | "operator")[]) =>
+        async (req: FastifyRequest, reply: FastifyReply) => {
+          if (!req.user || typeof req.user.role !== "string") {
+            return reply.code(403).send({ error: "Forbidden: Missing role" });
+          }
+          if (!allowedRoles.includes(req.user.role)) {
+            return reply
+              .code(403)
+              .send({ error: "Forbidden: Insufficient permissions" });
+          }
+        },
+    );
 
-  // 5. Register routes
-  await server.register(askBotRoutes);
-  await server.register(casesRoutes);
-  await server.register(categoriesRoutes);
-  await server.register(conversationsRoutes);
-  await server.register(notesRoutes);
-  await server.register(savedRepliesRoutes);
-  await server.register(streamRoutes);
-  await server.register(chatsRoutes);
-  await server.register(usersRoutes);
+    // 3. Register Admin-specific Rate Limiting
+    await server.register(rateLimit, {
+      max: ADMIN_RATE_LIMIT_MAX,
+      timeWindow: "1 minute",
+      keyGenerator: (req: FastifyRequest) => req.user?.id || req.ip,
+    });
 
-  server.log.info("Admin plugin registered with security hooks and routes.");
+    // 4. Add security hooks that apply to all routes registered within this plugin
+    server.addHook(
+      "onRequest",
+      (req: FastifyRequest, reply: FastifyReply, done) => {
+        // IP Allowlist Check
+        if (ADMIN_IP_ALLOWLIST && ADMIN_IP_ALLOWLIST.length > 0) {
+          const ip =
+            (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+            req.ip;
+          const allowed = ADMIN_IP_ALLOWLIST.some((rule) => matchIp(ip, rule));
+          if (!allowed) {
+            req.log.warn({ ip }, "Admin IP rejected by allowlist");
+            return reply.code(403).send({ error: "Forbidden" });
+          }
+        }
+        done();
+      },
+    );
+
+    // 5. Register routes
+    await server.register(askBotRoutes);
+    await server.register(casesRoutes);
+    await server.register(categoriesRoutes);
+    await server.register(conversationsRoutes);
+    await server.register(notesRoutes);
+    await server.register(savedRepliesRoutes);
+    await server.register(streamRoutes);
+    await server.register(chatsRoutes);
+    await server.register(usersRoutes);
+
+    server.log.info("Admin plugin registered with security hooks and routes.");
+  })();
+  done();
 };
 
 export default adminPlugin;

@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from "fastify";
+import { FastifyPluginCallback } from "fastify";
 import fp from "fastify-plugin";
 import { z } from "zod";
 import { supabase } from "../../../infra/db/connection.js";
@@ -16,21 +16,28 @@ const UpdateCategorySchema = CreateCategorySchema.partial().refine(
   { message: "At least one field must be provided for update." },
 );
 
-const adminCategoriesRoutes: FastifyPluginAsync = async (server, _opts) => {
+const adminCategoriesRoutes: FastifyPluginCallback = (server, _opts, done) => {
   // GET /categories
-  server.get("/categories", async (_req, _reply) => {
-    const { data, error } = await supabase
-      .from("categories")
-      .select("id, name, color")
-      .order("name");
-    if (error) throw new AppError(error.message, 500);
-    return data;
-  });
+  server.get(
+    "/categories",
+    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    async (_req, _reply) => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name, color")
+        .order("name");
+      if (error) throw new AppError(error.message, 500);
+      return data;
+    },
+  );
 
   // POST /categories
   server.post(
     "/categories",
-    { schema: { body: CreateCategorySchema } },
+    {
+      schema: { body: CreateCategorySchema },
+      preHandler: [server.authenticate, server.authorize(["admin"])],
+    },
     async (req, reply) => {
       const { data, error } = await supabase
         .from("categories")
@@ -45,7 +52,10 @@ const adminCategoriesRoutes: FastifyPluginAsync = async (server, _opts) => {
   // PATCH /categories/:id
   server.patch(
     "/categories/:id",
-    { schema: { body: UpdateCategorySchema } },
+    {
+      schema: { body: UpdateCategorySchema },
+      preHandler: [server.authenticate, server.authorize(["admin"])],
+    },
     async (req, _reply) => {
       const { id } = req.params as { id: string };
       const { data, error } = await supabase
@@ -61,12 +71,17 @@ const adminCategoriesRoutes: FastifyPluginAsync = async (server, _opts) => {
   );
 
   // DELETE /categories/:id
-  server.delete("/categories/:id", async (req, reply) => {
-    const { id } = req.params as { id: string };
-    const { error } = await supabase.from("categories").delete().eq("id", id);
-    if (error) throw new AppError(error.message, 500);
-    return reply.code(204).send();
-  });
+  server.delete(
+    "/categories/:id",
+    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      const { error } = await supabase.from("categories").delete().eq("id", id);
+      if (error) throw new AppError(error.message, 500);
+      return reply.code(204).send();
+    },
+  );
+  done();
 };
 
 export default fp(adminCategoriesRoutes);
