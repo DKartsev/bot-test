@@ -1,8 +1,6 @@
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginCallback } from "fastify";
 
-import fp from "fastify-plugin";
-
-const healthPlugin: FastifyPluginAsync = async (fastify) => {
+const healthPlugin: FastifyPluginCallback = (fastify, _opts, done) => {
   fastify.get("/health", async (request, reply) => {
     try {
       // Check database connectivity
@@ -15,6 +13,7 @@ const healthPlugin: FastifyPluginAsync = async (fastify) => {
         .send({ status: "error", checks: { database: "error" } });
     }
   });
+  done();
 };
 
 export default healthPlugin;

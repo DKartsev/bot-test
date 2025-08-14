@@ -89,9 +89,9 @@ export class VectorStore {
    * Загружает индекс и метаданные с диска.
    */
   private async load(): Promise<void> {
-    const meta: IndexMeta = JSON.parse(
+    const meta = JSON.parse(
       await fs.readFile(this.metaFile, "utf8"),
-    );
+    ) as IndexMeta;
     if (meta.dim !== this.dimension) {
       throw new Error(
         `Dimension mismatch: index has ${meta.dim}, embedder has ${this.dimension}`,
@@ -109,7 +109,7 @@ export class VectorStore {
     const lines = (await fs.readFile(this.chunksFile, "utf8")).split("\n");
     for (const line of lines) {
       if (!line) continue;
-      const chunk: TextChunk = JSON.parse(line);
+      const chunk = JSON.parse(line) as TextChunk;
       this.chunkMeta.set(chunk.id, chunk);
     }
   }

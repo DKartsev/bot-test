@@ -8,7 +8,7 @@ declare module "fastify" {
       connect(): Promise<PoolClient>;
       query<T extends QueryResultRow = QueryResultRow>(
         query: string,
-        values?: any[],
+        values?: unknown[],
       ): Promise<{ rows: T[] }>;
     };
   }

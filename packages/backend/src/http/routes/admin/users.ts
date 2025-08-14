@@ -1,11 +1,11 @@
-import { FastifyPluginAsync } from "fastify";
+import { FastifyPluginCallback } from "fastify";
 import { z } from "zod";
 
 const GetUserParamsSchema = z.object({
   user_id: z.string(), // Can be a UUID or a Telegram ID, for now just a string
 });
 
-const adminUsersRoutes: FastifyPluginAsync = async (server) => {
+const adminUsersRoutes: FastifyPluginCallback = (server, _opts, done) => {
   // GET /api/admin/users/{user_id}
   server.get(
     "/users/:user_id",
@@ -14,9 +14,12 @@ const adminUsersRoutes: FastifyPluginAsync = async (server) => {
         params: GetUserParamsSchema,
         // TODO: Add response schema
       },
+      preHandler: [server.authenticate, server.authorize(["admin"])],
     },
     async (request, reply) => {
-      const { user_id } = request.params;
+      const { user_id } = request.params as z.infer<
+        typeof GetUserParamsSchema
+      >;
 
       // This is a placeholder as per the requirements.
       // In a real implementation, this would fetch from the 'users' table.
@@ -31,6 +34,7 @@ const adminUsersRoutes: FastifyPluginAsync = async (server) => {
       return reply.send({ user: dummyUser });
     },
   );
+  done();
 };
 
 export default adminUsersRoutes;

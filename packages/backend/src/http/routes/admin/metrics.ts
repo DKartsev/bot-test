@@ -1,30 +1,15 @@
-import { FastifyPluginAsync } from "fastify";
+import { FastifyPluginCallback } from "fastify";
+import { assertAdmin, HttpError } from "../../auth.js";
 
-function assertAdmin(req: any) {
-  const hdr = (req.headers["authorization"] as string) || "";
-  const bearer = hdr.startsWith("Bearer ") ? hdr.slice(7) : undefined;
-  const x = (req.headers["x-admin-token"] as string) || bearer;
-  const tokens = (process.env.ADMIN_API_TOKENS || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (!x || !tokens.includes(x)) {
-    const err: any = new Error("unauthorized");
-    err.statusCode = 401;
-    throw err;
-  }
-}
-
-const plugin: FastifyPluginAsync =
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async (app) => {
-    app.get("/api/admin/stats/rag", async (req, reply) => {
-      try {
-        assertAdmin(req);
-      } catch {
-        void reply.code(401);
-        return { error: "Unauthorized" };
-      }
+const plugin: FastifyPluginCallback = (app, _opts, done) => {
+  app.get("/api/admin/stats/rag", async (req, reply) => {
+    try {
+      assertAdmin(req);
+    } catch (e) {
+      const err = e as HttpError;
+      void reply.code(err.statusCode || 401);
+      return { error: "Unauthorized" };
+    }
 
       const q = await app.pg.query(`
       with base as (
@@ -64,6 +49,7 @@ const plugin: FastifyPluginAsync =
 
       return { daily: q.rows, totals: totals.rows[0] };
     });
-  };
+  done();
+};
 
 export default plugin;

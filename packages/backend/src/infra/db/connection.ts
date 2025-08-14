@@ -43,9 +43,10 @@ class DatabaseConnection {
         .limit(1);
       if (error) throw error;
       return { ok: true };
-    } catch (err: any) {
-      logger.error({ err }, "Database health check failed");
-      return { ok: false, error: err.message };
+    } catch (err: unknown) {
+      const error = err as Error;
+      logger.error({ err: error }, "Database health check failed");
+      return { ok: false, error: error.message };
     }
   }
 }

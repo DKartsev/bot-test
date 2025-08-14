@@ -1,5 +1,6 @@
-import { FastifyPluginAsync, FastifyRequest } from "fastify";
+import { FastifyPluginCallback } from "fastify";
 import { z } from "zod";
+import { assertAdmin, HttpError } from "../../auth.js";
 
 /**
  * Админ-диагностика Telegram: getMe и ping (sendMessage).
@@ -7,22 +8,7 @@ import { z } from "zod";
  * Не использует Telegraf, ходит напрямую в Telegram Bot API.
  */
 
-const assertAdmin = (req: FastifyRequest) => {
-  const hdr = (req.headers["authorization"] as string) || "";
-  const bearer = hdr.startsWith("Bearer ") ? hdr.slice(7) : undefined;
-  const x = (req.headers["x-admin-token"] as string) || bearer;
-  const tokens = (process.env.ADMIN_API_TOKENS || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (!x || !tokens.includes(x)) {
-    const err = new Error("unauthorized");
-    (err as any).statusCode = 401;
-    throw err;
-  }
-};
-
-const plugin: FastifyPluginAsync = async (app, _opts) => {
+const plugin: FastifyPluginCallback = (app, _opts, done) => {
   const TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
   if (!TOKEN) {
     app.log.warn(
@@ -33,10 +19,10 @@ const plugin: FastifyPluginAsync = async (app, _opts) => {
   // GET /api/admin/telegram/getMe
   app.get("/api/admin/telegram/getMe", async (req, reply) => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       assertAdmin(req);
-    } catch {
-      void reply.code(401);
+    } catch (e) {
+      const err = e as HttpError;
+      void reply.code(err.statusCode || 401);
       return { error: "Unauthorized" };
     }
     if (!TOKEN) {
@@ -64,10 +50,10 @@ const plugin: FastifyPluginAsync = async (app, _opts) => {
 
   app.post("/api/admin/telegram/ping", async (req, reply) => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       assertAdmin(req);
-    } catch {
-      void reply.code(401);
+    } catch (e) {
+      const err = e as HttpError;
+      void reply.code(err.statusCode || 401);
       return { error: "Unauthorized" };
     }
     if (!TOKEN) {
@@ -105,6 +91,7 @@ const plugin: FastifyPluginAsync = async (app, _opts) => {
       return { error: "UpstreamError" };
     }
   });
+  done();
 };
 
 export default plugin;

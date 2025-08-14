@@ -1,4 +1,4 @@
-import MiniSearch from "minisearch";
+import MiniSearch, { SearchResult } from "minisearch";
 import { loadKb, KbDoc } from "./loader.js";
 import { normalize, tokensRU } from "../nlp/text.js";
 
@@ -42,8 +42,8 @@ export function searchKb(
   });
   const hits = hitsAll.slice(0, limit);
   const qTokens = tokensRU(query);
-  return hits.map((r) => {
-    const doc = docs.find((d) => d.id === (r as any).id)!;
+  return hits.map((r: SearchResult) => {
+    const doc = docs.find((d) => d.id === r.id)!;
     const firstToken = qTokens.find((t) => {
       const idx = doc.content.toLowerCase().indexOf(t);
       return idx >= 0;
@@ -56,7 +56,7 @@ export function searchKb(
       snippet = doc.content.slice(start, end);
     }
     snippet = highlight(snippet, qTokens);
-    return { doc, score: (r as any).score, snippet };
+    return { doc, score: r.score, snippet };
   });
 }
 

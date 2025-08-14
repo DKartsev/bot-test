@@ -1,5 +1,5 @@
-import { AppError } from "../../../http/errors.js";
-import type { IUserRepo, User } from "../domain/User.js";
+import { AppError } from "../../../utils/errorHandler.js";
+import type { IUserRepo, User } from "@app/shared";
 export class UserService {
   constructor(private readonly repo: IUserRepo) {}
   async register(email: string, name: string): Promise<User> {

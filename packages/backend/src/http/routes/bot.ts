@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyPluginAsync } from "fastify";
+import { FastifyInstance, FastifyPluginCallback } from "fastify";
 import { z } from "zod";
 import { refineDraft } from "../../app/llm/llmRefine.js";
 import type {
@@ -33,7 +33,7 @@ const BodySchema = z.object({
 
 type Body = z.infer<typeof BodySchema>;
 
-const plugin: FastifyPluginAsync = async (app: FastifyInstance, _opts) => {
+const plugin: FastifyPluginCallback = (app: FastifyInstance, _opts, done) => {
   app.post<{ Body: Body }>(
     "/api/bot/refine",
     { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
@@ -110,6 +110,7 @@ const plugin: FastifyPluginAsync = async (app: FastifyInstance, _opts) => {
       }
     },
   );
+  done();
 };
 
 export default plugin;

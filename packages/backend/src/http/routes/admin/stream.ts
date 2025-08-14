@@ -1,10 +1,15 @@
-import { FastifyPluginAsync } from "fastify";
-const adminStreamRoutes: FastifyPluginAsync = async (server, _opts) => {
+import { FastifyPluginCallback } from "fastify";
+import fp from "fastify-plugin";
+
+const adminStreamRoutes: FastifyPluginCallback = (server, _opts, done) => {
   const { eventBus } = server.deps;
 
-  server.get("/events", (request, reply) => {
-    reply.raw.setHeader("Content-Type", "text/event-stream");
-    reply.raw.setHeader("Cache-Control", "no-cache");
+  server.get(
+    "/events",
+    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    (request, reply) => {
+      reply.raw.setHeader("Content-Type", "text/event-stream");
+      reply.raw.setHeader("Cache-Control", "no-cache");
     reply.raw.setHeader("Connection", "keep-alive");
     reply.raw.flushHeaders();
 
@@ -38,6 +43,7 @@ const adminStreamRoutes: FastifyPluginAsync = async (server, _opts) => {
       server.log.info("SSE client disconnected");
     });
   });
+  done();
 };
 
 export default fp(adminStreamRoutes);

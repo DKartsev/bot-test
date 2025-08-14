@@ -1,27 +1,13 @@
-import { FastifyPluginAsync, FastifyRequest } from "fastify";
+import { FastifyPluginCallback } from "fastify";
+import { assertAdmin, HttpError } from "../../auth.js";
 
-const assertAdmin = (req: FastifyRequest) => {
-  const hdr = (req.headers["authorization"] as string) || "";
-  const bearer = hdr.startsWith("Bearer ") ? hdr.slice(7) : undefined;
-  const x = (req.headers["x-admin-token"] as string) || bearer;
-  const tokens = (process.env.ADMIN_API_TOKENS || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (!x || !tokens.includes(x)) {
-    const e = new Error("unauthorized");
-    (e as any).statusCode = 401;
-    throw e;
-  }
-};
-
-const plugin: FastifyPluginAsync = async (app, _opts) => {
+const plugin: FastifyPluginCallback = (app, _opts, done) => {
   app.get("/api/admin/db/ping", async (req, reply) => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       assertAdmin(req);
-    } catch {
-      void reply.code(401);
+    } catch (e) {
+      const err = e as HttpError;
+      void reply.code(err.statusCode || 401);
       return { error: "Unauthorized" };
     }
     try {
@@ -34,5 +20,6 @@ const plugin: FastifyPluginAsync = async (app, _opts) => {
       return { error: "InternalError" };
     }
   });
+  done();
 };
 export default plugin;
