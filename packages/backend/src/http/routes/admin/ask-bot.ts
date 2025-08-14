@@ -18,6 +18,9 @@ const adminAskBotRoutes: FastifyPluginAsync = async (server) => {
     async (request, reply) => {
       const { qaService } = server.deps;
       const { question } = request.body as z.infer<typeof AskBodySchema>;
+    }
+  )
+}
 
 
 export default fp(adminAskBotRoutes);
