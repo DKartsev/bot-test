@@ -55,6 +55,7 @@ export const EnvSchema = z.object({
   KB_DIR: z.string().default("data/kb"),
 
   // JWT (Optional, for more advanced auth)
+  JWT_SECRET: z.string().min(32).optional(), // Optional for now
   JWT_PUBLIC_KEY: z.string().optional(),
   JWT_ISSUER: z.string().optional(),
   JWT_AUDIENCE: z.string().optional(),

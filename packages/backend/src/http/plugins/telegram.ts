@@ -56,8 +56,12 @@ const telegramPlugin: FastifyPluginAsync = async (server, _opts) => {
   // Graceful shutdown
   server.addHook("onClose", async () => {
     server.log.info("Stopping Telegram bot...");
-    await bot.stop("SIGTERM");
-    server.log.info("Telegram bot stopped.");
+    try {
+      await bot.stop("SIGTERM");
+      server.log.info("Telegram bot stopped.");
+    } catch (err) {
+      server.log.warn({ err }, "Failed to stop Telegram bot gracefully.");
+    }
   });
 
   // Set webhook on start
