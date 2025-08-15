@@ -1,5 +1,6 @@
 import type { FastifyRequest, FastifyReply, FastifyError } from "fastify";
 import { ZodError } from "zod";
+import { logger } from "../../utils/logger.js";
 
 export class AppError extends Error {
   public readonly statusCode: number;
@@ -115,14 +116,29 @@ export function centralErrorHandler(
   });
 }
 
-export function asyncHandler<T extends (...args: any[]) => Promise<any>>(
+export function asyncHandler<T extends (...args: unknown[]) => Promise<unknown>>(
   fn: T,
 ): T {
   return ((...args: Parameters<T>) => {
     const result = fn(...args);
-    if (result && typeof result.catch === 'function') {
-      return result.catch(args[args.length - 1]); // last arg should be next function
+    if (result && typeof result.catch === 'function' && result instanceof Promise) {
+      return result.catch((error: unknown) => {
+        // Handle error appropriately
+        console.error('Async handler error:', error);
+        throw error;
+      });
     }
     return result;
   }) as T;
 }
+
+// Handle unhandled promise rejections
+process.on("unhandledRejection", (reason: unknown, promise: Promise<unknown>) => {
+  logger.error({ err: reason, promise }, "Unhandled Rejection");
+  // Don't exit the process, just log the error
+});
+
+process.on("uncaughtException", (error: Error) => {
+  logger.error({ err: error }, "Uncaught Exception");
+  process.exit(1);
+});

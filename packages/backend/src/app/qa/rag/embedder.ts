@@ -58,7 +58,7 @@ export class OpenAIEmbedder implements Embedder {
 
       // Нормализуем векторы для использования с косинусным расстоянием
       const embeddings: number[][] = response.data.map((item: Embedding) =>
-        this.normalize(item.embedding),
+        this.normalize(item.embedding as number[]),
       );
       return embeddings;
     } catch (err) {
@@ -68,6 +68,44 @@ export class OpenAIEmbedder implements Embedder {
         new Array(this.dimension).fill(0),
       );
       return emptyVectors;
+    }
+  }
+
+  async embedText(text: string): Promise<number[]> {
+    try {
+      const response = await this.client.embeddings.create({
+        model: "text-embedding-3-small",
+        input: text,
+        dimensions: 1536,
+      });
+
+      const embedding = response.data[0]?.embedding;
+      if (!embedding) {
+        throw new Error("No embedding returned from OpenAI");
+      }
+
+      return embedding;
+    } catch (error) {
+      throw new Error(`Failed to embed text: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async embedTexts(texts: string[]): Promise<number[][]> {
+    try {
+      const response = await this.client.embeddings.create({
+        model: "text-embedding-3-small",
+        input: texts,
+        dimensions: 1536,
+      });
+
+      const embeddings = response.data.map(item => item.embedding as number[]);
+      if (!embeddings.length) {
+        throw new Error("No embeddings returned from OpenAI");
+      }
+
+      return embeddings;
+    } catch (error) {
+      throw new Error(`Failed to embed texts: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

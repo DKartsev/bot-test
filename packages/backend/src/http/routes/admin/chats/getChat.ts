@@ -1,15 +1,17 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 
-const getChatRoute: FastifyPluginAsync = async (server, _opts) => {
+const getChatRoute: FastifyPluginAsync = (server, _opts) => {
   server.get(
     "/chats/:id",
     { preHandler: [server.authenticate, server.authorize(["admin"])] },
-    async (req, _reply) => {
-      // TODO: Implement chat retrieval logic
+    async (_req, _reply) => {
+      // TODO: Implement chat retrieval
       return { chat: {} };
     },
   );
+
+  return Promise.resolve();
 };
 
-export default fp(getChatRoute as any);
+export default fp(getChatRoute);

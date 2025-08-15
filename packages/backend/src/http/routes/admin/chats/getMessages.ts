@@ -1,15 +1,17 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 
-const getMessagesRoute: FastifyPluginAsync = async (server, _opts) => {
+const getMessagesRoute: FastifyPluginAsync = (server, _opts) => {
   server.get(
     "/chats/:id/messages",
     { preHandler: [server.authenticate, server.authorize(["admin"])] },
-    async (req, _reply) => {
-      // TODO: Implement message listing logic
+    async (_req, _reply) => {
+      // TODO: Implement messages listing
       return { messages: [] };
     },
   );
+
+  return Promise.resolve();
 };
 
-export default fp(getMessagesRoute as any);
+export default fp(getMessagesRoute);

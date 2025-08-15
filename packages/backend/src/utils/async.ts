@@ -8,7 +8,7 @@ export class AsyncFileOperations {
   static async readJSON<T>(filePath: string): Promise<T | null> {
     try {
       const content = await fs.readFile(filePath, "utf8");
-      return JSON.parse(content);
+      return JSON.parse(content) as T;
     } catch (error: unknown) {
       if (error instanceof Error && "code" in error && error.code === "ENOENT") {
         return null;
@@ -111,4 +111,17 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
       func(...args);
     }
   };
+}
+
+export function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  errorMessage = "Operation timed out",
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMessage)), timeoutMs),
+    ),
+  ]);
 }

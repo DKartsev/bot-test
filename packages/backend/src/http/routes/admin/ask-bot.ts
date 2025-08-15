@@ -1,26 +1,29 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
-import { z } from "zod";
 
-const AskBodySchema = z.object({
-  question: z.string().min(1),
-});
-
-const adminAskBotRoutes: FastifyPluginAsync = async (server) => {
+const adminAskBotRoutes: FastifyPluginAsync = (server, _opts) => {
+  // POST /ask-bot
   server.post(
     "/ask-bot",
-    {
-      schema: {
-        body: AskBodySchema,
-      },
-      preHandler: [server.authenticate, server.authorize(["admin"])],
-    },
-    async (request, reply) => {
+    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    async (req, reply) => {
       const { qaService } = server.deps;
-      const { question } = request.body as z.infer<typeof AskBodySchema>;
-    }
-  )
-}
+      const { question } = req.body as { question: string };
 
+      try {
+        // TODO: Implement bot asking logic
+        const result = await qaService.ask(question, "ru");
+        return reply.send(result);
+      } catch (err) {
+        req.log.error({ err }, "Error in ask-bot route");
+        return reply
+          .code(500)
+          .send({ error: "Failed to process your question." });
+      }
+    },
+  );
 
-export default fp(adminAskBotRoutes as any);
+  return Promise.resolve();
+};
+
+export default fp(adminAskBotRoutes);

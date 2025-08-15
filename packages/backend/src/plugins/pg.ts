@@ -1,6 +1,6 @@
 import fp from "fastify-plugin";
-import type { FastifyPluginAsync } from "fastify";
-import { Pool, type PoolClient, type QueryResultRow } from "pg";
+import { FastifyPluginAsync } from "fastify";
+import { Pool, PoolClient } from "pg";
 import { readFileSync } from "node:fs";
 
 function buildSSL(): false | { rejectUnauthorized?: boolean; ca?: string } {
@@ -48,10 +48,10 @@ function buildSSL(): false | { rejectUnauthorized?: boolean; ca?: string } {
   return ssl;
 }
 
-const pgPlugin: FastifyPluginAsync = async (app) => {
+const pgPlugin: FastifyPluginAsync = (fastify, _opts) => {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-      app.log.warn(
+      fastify.log.warn(
         "DATABASE_URL is not set; pg pool will be created with undefined connectionString",
       );
     }
@@ -77,26 +77,24 @@ const pgPlugin: FastifyPluginAsync = async (app) => {
     });
 
     pool.on("error", (err) => {
-      app.log.error({ err }, "pg pool error");
+      fastify.log.error({ err }, "pg pool error");
     });
 
-    app.decorate("pg", {
+    fastify.decorate("pg", {
       pool,
       async connect(): Promise<PoolClient> {
         return pool.connect();
       },
-      async query<T = any>(
-        q: string,
-        values?: (string | number | boolean | null | Date | Buffer)[],
-      ): Promise<{ rows: T[] }> {
+      async query<T = unknown>(q: string, values?: unknown[]): Promise<{ rows: T[] }> {
         const res = await pool.query(q, values);
         return { rows: res.rows as T[] };
       },
     });
 
-    app.addHook("onClose", async () => {
+    fastify.addHook("onClose", async () => {
       await pool.end().catch(() => undefined);
     });
-  };
+  return Promise.resolve();
+};
 
-export default fp(pgPlugin as any);
+export default fp(pgPlugin);

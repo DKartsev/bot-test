@@ -1,8 +1,4 @@
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
-<<<<<<< HEAD
-=======
-import fp from "fastify-plugin";
->>>>>>> 5524c501951c1608ff853d8f0341a899e49adbe1
 import rateLimit from "@fastify/rate-limit";
 import { env } from "../../config/env.js";
 
@@ -19,6 +15,7 @@ import usersRoutes from "../routes/admin/users.js";
 
 const { ADMIN_IP_ALLOWLIST, ADMIN_RATE_LIMIT_MAX } = env;
 
+// --- IP Allowlist Logic ---
 function ipToInt(ip: string): number {
   return ip.split(".").reduce((acc, oct) => (acc << 8) + Number(oct), 0) >>> 0;
 }
@@ -37,7 +34,6 @@ function matchIp(ip: string, rule: string): boolean {
   return ip === rule;
 }
 
-<<<<<<< HEAD
 // Define User interface locally
 interface User {
   id: string;
@@ -45,28 +41,20 @@ interface User {
   name: string;
   role?: "admin" | "operator";
 }
-=======
-import type { User } from "@app/shared";
->>>>>>> 5524c501951c1608ff853d8f0341a899e49adbe1
 
 declare module "fastify" {
   interface FastifyRequest {
     user?: User & { role: "admin" | "operator" };
   }
-  interface FastifyInstance {
-    authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    authorize: (roles: string[]) => (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
-  }
 }
 
-<<<<<<< HEAD
 // --- The Plugin ---
 const adminPlugin: FastifyPluginAsync = async (server, _opts) => {
   // 1. Authentication and Authorization Hooks
   // This hook verifies the JWT and decorates the request with the user payload.
   server.decorate(
     "authenticate",
-    async (req: FastifyRequest, reply: FastifyReply) => {
+    async (req: FastifyRequest, _reply: FastifyReply) => {
       // TODO: Implement JWT verification
       req.log.warn("JWT verification not implemented yet");
     },
@@ -76,40 +64,6 @@ const adminPlugin: FastifyPluginAsync = async (server, _opts) => {
   server.decorate(
     "authorize",
     (allowedRoles: ("admin" | "operator")[]) =>
-=======
-const adminPlugin: FastifyPluginAsync = async (server) => {
-  // 1. Authentication decorator
-  server.decorate(
-    "authenticate",
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const authHeader = req.headers.authorization;
-      const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : 
-                   req.headers['x-admin-token'] as string;
-      
-      if (!token) {
-        return reply.code(401).send({ error: "Missing authentication token" });
-      }
-      
-      const validTokens = env.ADMIN_API_TOKENS;
-      if (!validTokens.includes(token)) {
-        return reply.code(401).send({ error: "Invalid authentication token" });
-      }
-      
-      // Mock user for now - in real app this would decode JWT
-      req.user = {
-        id: "admin-user",
-        email: "admin@example.com", 
-        name: "Admin User",
-        role: "admin"
-      };
-    },
-  );
-
-  // 2. Authorization decorator
-  server.decorate(
-    "authorize",
-    (allowedRoles: string[]) =>
->>>>>>> 5524c501951c1608ff853d8f0341a899e49adbe1
       async (req: FastifyRequest, reply: FastifyReply) => {
         if (!req.user || typeof req.user.role !== "string") {
           return reply.code(403).send({ error: "Forbidden: Missing role" });
@@ -122,23 +76,14 @@ const adminPlugin: FastifyPluginAsync = async (server) => {
       },
   );
 
-<<<<<<< HEAD
   // 2. Register Admin-specific Rate Limiting
-  await server.register(rateLimit as any, {
-=======
-  // 3. Register Admin-specific Rate Limiting
   await server.register(rateLimit, {
->>>>>>> 5524c501951c1608ff853d8f0341a899e49adbe1
     max: ADMIN_RATE_LIMIT_MAX,
     timeWindow: "1 minute",
     keyGenerator: (req: FastifyRequest) => req.user?.id || req.ip,
   });
 
-<<<<<<< HEAD
   // 3. Add security hooks that apply to all routes registered within this plugin
-=======
-  // 4. Add security hooks
->>>>>>> 5524c501951c1608ff853d8f0341a899e49adbe1
   server.addHook(
     "onRequest",
     (req: FastifyRequest, reply: FastifyReply, done) => {
@@ -157,11 +102,7 @@ const adminPlugin: FastifyPluginAsync = async (server) => {
     },
   );
 
-<<<<<<< HEAD
   // 4. Register routes
-=======
-  // 5. Register routes
->>>>>>> 5524c501951c1608ff853d8f0341a899e49adbe1
   await server.register(askBotRoutes);
   await server.register(casesRoutes);
   await server.register(categoriesRoutes);
@@ -174,4 +115,6 @@ const adminPlugin: FastifyPluginAsync = async (server) => {
 
   server.log.info("Admin plugin registered with security hooks and routes.");
 };
+
+export default adminPlugin;
 
