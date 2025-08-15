@@ -12,6 +12,7 @@ import savedRepliesRoutes from "../routes/admin/saved-replies.js";
 import streamRoutes from "../routes/admin/stream.js";
 import chatsRoutes from "../routes/admin/chats/index.js";
 import usersRoutes from "../routes/admin/users.js";
+import telegramRoutes from "../routes/admin/telegram.js";
 
 const { ADMIN_IP_ALLOWLIST, ADMIN_RATE_LIMIT_MAX } = env;
 
@@ -86,6 +87,7 @@ const adminPlugin: FastifyPluginAsync = async (server, _opts) => {
   await server.register(streamRoutes);
   await server.register(chatsRoutes);
   await server.register(usersRoutes);
+  await server.register(telegramRoutes);
 
   server.log.info("Admin plugin registered with security hooks and routes.");
 };
