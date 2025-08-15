@@ -1,3 +1,4 @@
+#!/usr/bin/env sh
 cd -- "$(git rev-parse --show-toplevel)"
 
 # Не выполнять хук в CI или если явно отключили
