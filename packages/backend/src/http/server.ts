@@ -12,6 +12,7 @@ import telegramPlugin from "./plugins/telegram.js";
 import adminPlugin from "./plugins/admin.js";
 import apiPlugin from "./plugins/api.js";
 import usersPlugin from "./plugins/users.js";
+import authPlugin from "./plugins/auth.js";
 import { centralErrorHandler } from "../utils/errorHandler.js";
 
 interface User {
@@ -42,30 +43,6 @@ export async function buildServer(deps: AppDeps): Promise<import('fastify').Fast
       level: env.LOG_LEVEL,
     },
   });
-
-  // Register authentication and authorization functions FIRST, before any plugins
-  app.decorate(
-    "authenticate",
-    async (req: import("fastify").FastifyRequest, _reply: import("fastify").FastifyReply) => {
-      // TODO: Implement JWT verification
-      req.log.warn("JWT verification not implemented yet");
-    },
-  );
-
-  app.decorate(
-    "authorize",
-    (allowedRoles: ("admin" | "operator")[]) =>
-      async (req: import("fastify").FastifyRequest, reply: import("fastify").FastifyReply) => {
-        if (!req.user || typeof req.user.role !== "string") {
-          return reply.code(403).send({ error: "Forbidden: Missing role" });
-        }
-        if (!allowedRoles.includes(req.user.role)) {
-          return reply
-            .code(403)
-            .send({ error: "Forbidden: Insufficient permissions" });
-        }
-      },
-  );
 
   // Decorate the app instance with our dependencies, so they are available in routes
   app.decorate("deps", deps);
@@ -118,6 +95,9 @@ export async function buildServer(deps: AppDeps): Promise<import('fastify').Fast
     repo: deps.userRepo,
   });
   await app.register(telegramPlugin);
+
+  // Register auth plugin BEFORE admin plugin to ensure decorators are available
+  await app.register(authPlugin as any);
 
   await app.register(adminPlugin as any, { prefix: "/api/admin" });
   await app.register(apiPlugin as any, { prefix: "/api" });
