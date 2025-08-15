@@ -119,6 +119,9 @@ export async function buildServer(deps: AppDeps): Promise<import('fastify').Fast
       },
   );
 
+  // Ensure decorators are ready before registering admin plugin
+  await app.ready();
+
   await app.register(adminPlugin as any, { prefix: "/api/admin" });
   await app.register(apiPlugin as any, { prefix: "/api" });
 
