@@ -1,11 +1,12 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
+import { checkAdminRole } from "../../middlewares/authMiddleware.js";
 
 const plugin: FastifyPluginAsync = (server, _opts) => {
   // GET /feedback
   server.get(
     "/feedback",
-    { preHandler: [server.authenticate, server.authorize(["admin"])] },
+    { preHandler: [server.authenticate, checkAdminRole] },
     async (_req, _reply) => {
       // TODO: Implement feedback listing
       return { feedback: [] };
