@@ -1,12 +1,23 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
-import { checkAdmin } from "../../middlewares/authMiddleware.js";
 
 const adminAskBotRoutes: FastifyPluginAsync = async (server, _opts) => {
   // GET /ask-bot
   server.get(
     "/ask-bot",
-    { preHandler: [server.authenticate, checkAdmin] },
+    { 
+      preHandler: [
+        server.authenticate, 
+        (req, reply, done) => {
+          const userRole = (req.headers["x-user-role"] as string) || "";
+          if (userRole !== "admin") {
+            reply.status(403).send({ error: "Forbidden" });
+            return;
+          }
+          done();
+        }
+      ] 
+    },
     async (_req, _reply) => {
       // TODO: Implement ask bot functionality
       return { message: "Ask bot endpoint" };
@@ -16,7 +27,19 @@ const adminAskBotRoutes: FastifyPluginAsync = async (server, _opts) => {
   // POST /ask-bot
   server.post(
     "/ask-bot",
-    { preHandler: [server.authenticate, checkAdmin] },
+    { 
+      preHandler: [
+        server.authenticate, 
+        (req, reply, done) => {
+          const userRole = (req.headers["x-user-role"] as string) || "";
+          if (userRole !== "admin") {
+            reply.status(403).send({ error: "Forbidden" });
+            return;
+          }
+          done();
+        }
+      ] 
+    },
     async (_req, _reply) => {
       // TODO: Implement ask bot functionality
       return { message: "Ask bot endpoint" };
@@ -26,7 +49,19 @@ const adminAskBotRoutes: FastifyPluginAsync = async (server, _opts) => {
   // PUT /ask-bot/:id
   server.put(
     "/ask-bot/:id",
-    { preHandler: [server.authenticate, checkAdmin] },
+    { 
+      preHandler: [
+        server.authenticate, 
+        (req, reply, done) => {
+          const userRole = (req.headers["x-user-role"] as string) || "";
+          if (userRole !== "admin") {
+            reply.status(403).send({ error: "Forbidden" });
+            return;
+          }
+          done();
+        }
+      ] 
+    },
     async (_req, _reply) => {
       // TODO: Implement ask bot functionality
       return { message: "Ask bot endpoint" };
@@ -36,7 +71,19 @@ const adminAskBotRoutes: FastifyPluginAsync = async (server, _opts) => {
   // DELETE /ask-bot/:id
   server.delete(
     "/ask-bot/:id",
-    { preHandler: [server.authenticate, checkAdmin] },
+    { 
+      preHandler: [
+        server.authenticate, 
+        (req, reply, done) => {
+          const userRole = (req.headers["x-user-role"] as string) || "";
+          if (userRole !== "admin") {
+            reply.status(403).send({ error: "Forbidden" });
+            return;
+          }
+          done();
+        }
+      ] 
+    },
     async (_req, _reply) => {
       // TODO: Implement ask bot functionality
       return { message: "Ask bot endpoint" };
