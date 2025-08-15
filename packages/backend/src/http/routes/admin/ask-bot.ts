@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
+import { checkAuth } from "../../middlewares/authMiddleware.js";
 
 const adminAskBotRoutes: FastifyPluginAsync = async (server, _opts) => {
   // GET /ask-bot
@@ -7,7 +8,7 @@ const adminAskBotRoutes: FastifyPluginAsync = async (server, _opts) => {
     "/ask-bot",
     { 
       preHandler: [
-        server.authenticate, 
+        checkAuth, 
         (req, reply, done) => {
           const userRole = (req.headers["x-user-role"] as string) || "";
           if (userRole !== "admin") {
@@ -29,7 +30,7 @@ const adminAskBotRoutes: FastifyPluginAsync = async (server, _opts) => {
     "/ask-bot",
     { 
       preHandler: [
-        server.authenticate, 
+        checkAuth, 
         (req, reply, done) => {
           const userRole = (req.headers["x-user-role"] as string) || "";
           if (userRole !== "admin") {
@@ -51,7 +52,7 @@ const adminAskBotRoutes: FastifyPluginAsync = async (server, _opts) => {
     "/ask-bot/:id",
     { 
       preHandler: [
-        server.authenticate, 
+        checkAuth, 
         (req, reply, done) => {
           const userRole = (req.headers["x-user-role"] as string) || "";
           if (userRole !== "admin") {
@@ -73,7 +74,7 @@ const adminAskBotRoutes: FastifyPluginAsync = async (server, _opts) => {
     "/ask-bot/:id",
     { 
       preHandler: [
-        server.authenticate, 
+        checkAuth, 
         (req, reply, done) => {
           const userRole = (req.headers["x-user-role"] as string) || "";
           if (userRole !== "admin") {

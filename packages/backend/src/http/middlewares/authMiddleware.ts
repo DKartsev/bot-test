@@ -29,3 +29,11 @@ export function checkAdminRole(req: FastifyRequest, reply: FastifyReply, done: (
     }
     done();
 }
+
+// Универсальная функция для замены server.authenticate
+export function checkAuth(req: FastifyRequest, reply: FastifyReply, done: () => void) {
+    // TODO: Реализовать JWT проверку
+    // Пока просто пропускаем все запросы
+    req.log.warn("JWT verification not implemented yet");
+    done();
+}

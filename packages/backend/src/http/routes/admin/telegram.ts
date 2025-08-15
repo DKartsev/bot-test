@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
+import { checkAuth, checkAdminRole } from "../../middlewares/authMiddleware.js";
 
 const plugin: FastifyPluginAsync = (server, _opts) => {
   // GET /telegram/status
@@ -7,16 +8,8 @@ const plugin: FastifyPluginAsync = (server, _opts) => {
     "/telegram/status",
     { 
       preHandler: [
-        server.authenticate, 
-        (req, reply, done) => {
-          // Встроенная проверка роли admin
-          const userRole = (req.headers["x-user-role"] as string) || "";
-          if (userRole !== "admin") {
-            reply.status(403).send({ error: "Forbidden" });
-            return;
-          }
-          done();
-        }
+        checkAuth, 
+        checkAdminRole
       ] 
     },
     async (_req, _reply) => {

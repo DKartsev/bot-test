@@ -1,12 +1,12 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
-import { checkAdminRole } from "../../middlewares/authMiddleware.js";
+import { checkAuth, checkAdminRole } from "../../middlewares/authMiddleware.js";
 
 const adminCasesRoutes: FastifyPluginAsync = (server, _opts) => {
   // GET /cases
   server.get(
     "/cases",
-    { preHandler: [server.authenticate, checkAdminRole] },
+    { preHandler: [checkAuth, checkAdminRole] },
     async (_req, _reply) => {
       // TODO: Implement cases listing
       return { cases: [] };
@@ -16,7 +16,7 @@ const adminCasesRoutes: FastifyPluginAsync = (server, _opts) => {
   // POST /cases
   server.post(
     "/cases",
-    { preHandler: [server.authenticate, checkAdminRole] },
+    { preHandler: [checkAuth, checkAdminRole] },
     async (_req, reply) => {
       // TODO: Implement case creation
       return reply.code(201).send({ message: "Case created" });
@@ -26,7 +26,7 @@ const adminCasesRoutes: FastifyPluginAsync = (server, _opts) => {
   // PATCH /cases/:id
   server.patch(
     "/cases/:id",
-    { preHandler: [server.authenticate, checkAdminRole] },
+    { preHandler: [checkAuth, checkAdminRole] },
     async (_req, _reply) => {
       // TODO: Implement case update
       return { message: "Case updated" };
@@ -36,7 +36,7 @@ const adminCasesRoutes: FastifyPluginAsync = (server, _opts) => {
   // DELETE /cases/:id
   server.delete(
     "/cases/:id",
-    { preHandler: [server.authenticate, checkAdminRole] },
+    { preHandler: [checkAuth, checkAdminRole] },
     async (_req, reply) => {
       // TODO: Implement case deletion
       return reply.code(204).send();
