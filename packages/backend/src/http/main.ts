@@ -6,6 +6,7 @@ import { Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
 import { type Update } from "telegraf/types";
 import pgPlugin from "../plugins/pg.js";
+import { ragAnswer } from "../app/pipeline/ragAnswer.js";
 
 // Локальные роуты/плагины (NodeNext/ESM → указываем .js)
 import routes from "./routes/index.js";
@@ -81,12 +82,20 @@ export async function createApp(): Promise<FastifyInstance> {
       // ignore
     }
     try {
-      // TODO: Implement ragAnswer logic
-      const answer = "Это временный ответ. Функция ragAnswer пока не реализована.";
-      const escalate = false;
+      // Вызываем ragAnswer для получения ответа
+      const result = await ragAnswer({
+        text,
+        lang: "ru",
+        logger: app.log,
+        pg: app.pg,
+      });
+
+      const answer = result.answer;
+      const escalate = result.escalate;
       const tail = escalate
         ? "\n\nЕсли нужно — могу подключить оператора поддержки."
         : "";
+      
       await ctx.reply(`${answer}${tail}`);
     } catch (err) {
       app.log.error({ err }, "ragAnswer/reply failed");
