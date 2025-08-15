@@ -1,25 +1,45 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
+import { checkAdmin } from "../../middlewares/authMiddleware.js";
 
-const adminAskBotRoutes: FastifyPluginAsync = (server, _opts) => {
+const adminAskBotRoutes: FastifyPluginAsync = async (server, _opts) => {
+  // GET /ask-bot
+  server.get(
+    "/ask-bot",
+    { preHandler: [server.authenticate, checkAdmin] },
+    async (_req, _reply) => {
+      // TODO: Implement ask bot functionality
+      return { message: "Ask bot endpoint" };
+    },
+  );
+
   // POST /ask-bot
   server.post(
     "/ask-bot",
-    { preHandler: [server.authenticate, server.authorize(["admin"])] },
-    async (req, reply) => {
-      const { qaService } = server.deps;
-      const { question } = req.body as { question: string };
+    { preHandler: [server.authenticate, checkAdmin] },
+    async (_req, _reply) => {
+      // TODO: Implement ask bot functionality
+      return { message: "Ask bot endpoint" };
+    },
+  );
 
-      try {
-        // TODO: Implement bot asking logic
-        const result = await qaService.ask(question, "ru");
-        return reply.send(result);
-      } catch (err) {
-        req.log.error({ err }, "Error in ask-bot route");
-        return reply
-          .code(500)
-          .send({ error: "Failed to process your question." });
-      }
+  // PUT /ask-bot/:id
+  server.put(
+    "/ask-bot/:id",
+    { preHandler: [server.authenticate, checkAdmin] },
+    async (_req, _reply) => {
+      // TODO: Implement ask bot functionality
+      return { message: "Ask bot endpoint" };
+    },
+  );
+
+  // DELETE /ask-bot/:id
+  server.delete(
+    "/ask-bot/:id",
+    { preHandler: [server.authenticate, checkAdmin] },
+    async (_req, _reply) => {
+      // TODO: Implement ask bot functionality
+      return { message: "Ask bot endpoint" };
     },
   );
 
