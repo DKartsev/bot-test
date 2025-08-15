@@ -50,34 +50,8 @@ declare module "fastify" {
 
 // --- The Plugin ---
 const adminPlugin: FastifyPluginAsync = async (server, _opts) => {
-  // 1. Authentication and Authorization Hooks
-  // This hook verifies the JWT and decorates the request with the user payload.
-  server.decorate(
-    "authenticate",
-    async (req: FastifyRequest, _reply: FastifyReply) => {
-      // TODO: Implement JWT verification
-      req.log.warn("JWT verification not implemented yet");
-    },
-  );
-
-  // This hook checks if the user has the required role.
-  server.decorate(
-    "authorize",
-    (allowedRoles: ("admin" | "operator")[]) =>
-      async (req: FastifyRequest, reply: FastifyReply) => {
-        if (!req.user || typeof req.user.role !== "string") {
-          return reply.code(403).send({ error: "Forbidden: Missing role" });
-        }
-        if (!allowedRoles.includes(req.user.role)) {
-          return reply
-            .code(403)
-            .send({ error: "Forbidden: Insufficient permissions" });
-        }
-      },
-  );
-
   // 2. Register Admin-specific Rate Limiting
-  await server.register(rateLimit, {
+  await server.register(rateLimit as any, {
     max: ADMIN_RATE_LIMIT_MAX,
     timeWindow: "1 minute",
     keyGenerator: (req: FastifyRequest) => req.user?.id || req.ip,
