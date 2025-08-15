@@ -15,4 +15,4 @@ const plugin: FastifyPluginAsync = (server, _opts) => {
   return Promise.resolve();
 };
 
-export default fp(plugin);
+export default plugin;
