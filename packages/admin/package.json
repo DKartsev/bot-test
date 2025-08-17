@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "clean": "rimraf .next admin-out out",
+    "dev": "next dev",
     "build": "next build",
-    "export": "next export"
+    "start": "next start",
+    "export": "next export",
+    "lint": "next lint"
   },
   "dependencies": {
     "@app/shared": "file:../shared",
