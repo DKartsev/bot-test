@@ -55,17 +55,17 @@ describe("ragAnswer", () => {
 
   it("should fallback to text-only search when OpenAI embedding fails and return results", async () => {
     // Mock successful text-only search
-    const mockSources: SearchSource[] = [
+    const mockSources = [
       {
-        id: "1",
+        article_id: "1",
         title: "Test Document",
-        snippet: "This is a test document content",
+        excerpt: "This is a test document content",
         score: 0.95,
       },
     ];
 
     mockQuery.mockResolvedValue({
-      rows: [{ sources: mockSources }],
+      rows: [{ kb_search_json: mockSources }],
     });
 
     // Mock LLM refine result
@@ -79,7 +79,7 @@ describe("ragAnswer", () => {
 
     // Mock successful database insert
     mockQuery.mockResolvedValueOnce({
-      rows: [{ sources: mockSources }],
+      rows: [{ kb_search_json: mockSources }],
     }).mockResolvedValueOnce({
       rows: [],
     });
@@ -99,7 +99,7 @@ describe("ragAnswer", () => {
 
     // Verify text-only search was called with NULL::real[]
     expect(mockQuery).toHaveBeenCalledWith(
-      "select sources from public.kb_search_json($1, NULL::real[], 10)",
+      "select kb_search_json($1, NULL::real[], 10, 0.0, 1.0)",
       ["test query"]
     );
 
@@ -121,6 +121,66 @@ describe("ragAnswer", () => {
     });
   });
 
+  it("should fallback to direct SQL when kb_search_json function is not available", async () => {
+    // Mock OpenAI embedding failure
+    const { default: OpenAI } = await import("openai");
+    vi.mocked(OpenAI).mockImplementation(() => ({
+      embeddings: {
+        create: vi.fn().mockRejectedValue(new Error("OpenAI API error")),
+      },
+    }) as any);
+
+    // Mock kb_search_json function not available
+    mockQuery.mockRejectedValueOnce(new Error("function kb_search_json does not exist"));
+    
+    // Mock successful direct SQL query
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: "1",
+          chunk_text: "This is a test chunk",
+          title: "Test Article",
+        },
+      ],
+    });
+
+    // Mock LLM refine result
+    const { refineDraft } = await import("../llm/llmRefine.js");
+    vi.mocked(refineDraft).mockResolvedValue({
+      answer: "Test answer",
+      confidence: 0.8,
+      escalate: false,
+      citations: [{ id: "1" }],
+    });
+
+    const result = await ragAnswer({
+      text: "test query",
+      lang: "ru",
+      logger: mockLogger,
+      pg: mockPg,
+    });
+
+    // Verify fallback to direct SQL was logged
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ err: expect.any(Error) }),
+      "kb_search_json function not available, using direct SQL query for text search"
+    );
+
+    // Verify direct SQL query was executed
+    expect(mockQuery).toHaveBeenNthCalledWith(2,
+      expect.stringContaining("SELECT"),
+      ["%test query%"]
+    );
+
+    // Verify result
+    expect(result).toEqual({
+      answer: "Test answer",
+      confidence: 0.8,
+      escalate: false,
+      citations: [{ id: "1" }],
+    });
+  });
+
   it("should use embedding when OpenAI succeeds", async () => {
     // Mock successful OpenAI embedding
     const { default: OpenAI } = await import("openai");
@@ -132,17 +192,17 @@ describe("ragAnswer", () => {
       },
     }) as any);
 
-    const mockSources: SearchSource[] = [
+    const mockSources = [
       {
-        id: "1",
+        article_id: "1",
         title: "Test Document",
-        snippet: "This is a test document content",
+        excerpt: "This is a test document content",
         score: 0.95,
       },
     ];
 
     mockQuery.mockResolvedValue({
-      rows: [{ sources: mockSources }],
+      rows: [{ kb_search_json: mockSources }],
     });
 
     const { refineDraft } = await import("../llm/llmRefine.js");
@@ -162,7 +222,7 @@ describe("ragAnswer", () => {
 
     // Verify embedding was used
     expect(mockQuery).toHaveBeenCalledWith(
-      "select sources from public.kb_search_json($1, $2, 10)",
+      "select kb_search_json($1, $2, 10, 0.75, 0.25)",
       ["test query", [0.1, 0.2, 0.3]]
     );
 
@@ -178,7 +238,7 @@ describe("ragAnswer", () => {
   it("should fallback to FAQ when KB search returns empty results", async () => {
     // Mock empty KB search results
     mockQuery.mockResolvedValue({
-      rows: [{ sources: [] }],
+      rows: [{ kb_search_json: [] }],
     });
 
     // Mock successful FAQ exact match
@@ -217,7 +277,7 @@ describe("ragAnswer", () => {
   });
 
   it("should handle database errors gracefully", async () => {
-    // Mock database error
+    // Mock database error for both kb_search_json and direct SQL
     mockQuery.mockRejectedValue(new Error("Database connection failed"));
 
     // Mock empty FAQ results
@@ -245,7 +305,7 @@ describe("ragAnswer", () => {
     // Verify error was logged
     expect(mockLogger.error).toHaveBeenCalledWith(
       expect.objectContaining({ err: expect.any(Error) }),
-      "kb_search_text_only failed"
+      "Direct SQL query also failed"
     );
 
     // Verify LLM fallback was used

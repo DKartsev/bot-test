@@ -45,31 +45,61 @@ export async function ragAnswer({ text, lang, logger, pg }: RagParams) {
     if (embedding && embedding.length > 0) {
       embeddingUsed = true;
       
-      // Вызываем kb_search_json с embedding
-      const q = await pg.query<{ sources?: SearchSource[] }>(
-        "select sources from public.kb_search_json($1, $2, 10)",
-        [text, embedding]
-      );
-      
-      const row = q.rows?.[0];
-      if (row && Array.isArray(row.sources)) {
-        kbResults = row.sources
-          .filter((s) => s)
-          .map((s) => ({
-            id: String(s.id),
-            ...(s.title !== undefined ? { title: s.title } : {}),
-            ...(s.url !== undefined ? { url: s.url } : {}),
-            ...(s.snippet !== undefined ? { snippet: s.snippet } : {}),
-            ...(s.score !== undefined ? { score: Number(s.score) } : {}),
-          }));
+      // Сначала пробуем вызвать kb_search_json с embedding
+      try {
+        const q = await pg.query<{ kb_search_json?: any[] }>(
+          "select kb_search_json($1, $2, 10, 0.75, 0.25)",
+          [text, embedding]
+        );
+        
+        const row = q.rows?.[0];
+        if (row && Array.isArray(row.kb_search_json)) {
+          kbResults = row.kb_search_json
+            .filter((s) => s)
+            .map((s) => ({
+              id: String(s.article_id),
+              title: s.title,
+              snippet: s.excerpt,
+              score: Number(s.score),
+            }));
+        }
+        
+        logger.info({
+          stage: "kb_search_with_embedding",
+          ms: Date.now() - start,
+          hits: kbResults.length,
+          embeddingUsed: true,
+        });
+      } catch (err) {
+        // Если kb_search_json недоступна, используем прямой SQL-запрос
+        logger.warn({ err }, "kb_search_json function not available, using direct SQL query");
+        
+        const q = await pg.query<{ id: string; chunk_text: string; title: string }>(
+          `SELECT 
+            kc.id,
+            kc.chunk_text as snippet,
+            ka.title
+          FROM kb_chunks kc
+          JOIN kb_articles ka ON kc.article_id = ka.id
+          ORDER BY kc.embedding <=> $1
+          LIMIT 10`,
+          [embedding]
+        );
+        
+        kbResults = q.rows.map((row) => ({
+          id: row.id,
+          title: row.title,
+          snippet: row.chunk_text,
+          score: 0.9,
+        }));
+        
+        logger.info({
+          stage: "kb_search_direct_sql",
+          ms: Date.now() - start,
+          hits: kbResults.length,
+          embeddingUsed: true,
+        });
       }
-      
-      logger.info({
-        stage: "kb_search_with_embedding",
-        ms: Date.now() - start,
-        hits: kbResults.length,
-        embeddingUsed: true,
-      });
     }
   } catch (err) {
     logger.warn({ err }, "OpenAI embedding failed, falling back to text-only search");
@@ -79,21 +109,21 @@ export async function ragAnswer({ text, lang, logger, pg }: RagParams) {
   // Если embedding недоступен или произошла ошибка, используем text-only поиск
   if (!embeddingUsed || kbResults.length === 0) {
     try {
-      const q = await pg.query<{ sources?: SearchSource[] }>(
-        "select sources from public.kb_search_json($1, NULL::real[], 10)",
+      // Сначала пробуем kb_search_json
+      const q = await pg.query<{ kb_search_json?: any[] }>(
+        "select kb_search_json($1, NULL::real[], 10, 0.0, 1.0)",
         [text]
       );
       
       const row = q.rows?.[0];
-      if (row && Array.isArray(row.sources)) {
-        kbResults = row.sources
+      if (row && Array.isArray(row.kb_search_json)) {
+        kbResults = row.kb_search_json
           .filter((s) => s)
           .map((s) => ({
-            id: String(s.id),
-            ...(s.title !== undefined ? { title: s.title } : {}),
-            ...(s.url !== undefined ? { url: s.url } : {}),
-            ...(s.snippet !== undefined ? { snippet: s.snippet } : {}),
-            ...(s.score !== undefined ? { score: Number(s.score) } : {}),
+            id: String(s.article_id),
+            title: s.title,
+            snippet: s.excerpt,
+            score: Number(s.score),
           }));
       }
       
@@ -104,13 +134,46 @@ export async function ragAnswer({ text, lang, logger, pg }: RagParams) {
         embeddingUsed: false,
       });
     } catch (err) {
-      logger.error({ err }, "kb_search_text_only failed");
-      logger.info({ 
-        stage: "kb_search_text_only", 
-        ms: Date.now() - start, 
-        hits: 0,
-        embeddingUsed: false 
-      });
+      // Если kb_search_json недоступна, используем прямой SQL-запрос
+      logger.warn({ err }, "kb_search_json function not available, using direct SQL query for text search");
+      
+      try {
+        const q = await pg.query<{ id: string; chunk_text: string; title: string }>(
+          `SELECT 
+            kc.id,
+            kc.chunk_text as snippet,
+            ka.title
+          FROM kb_chunks kc
+          JOIN kb_articles ka ON kc.article_id = ka.id
+          WHERE 
+            kc.chunk_text ILIKE $1
+            OR ka.title ILIKE $1
+          LIMIT 10`,
+          [`%${text}%`]
+        );
+        
+        kbResults = q.rows.map((row) => ({
+          id: row.id,
+          title: row.title,
+          snippet: row.chunk_text,
+          score: 0.5,
+        }));
+        
+        logger.info({
+          stage: "kb_search_direct_sql_text",
+          ms: Date.now() - start,
+          hits: kbResults.length,
+          embeddingUsed: false,
+        });
+      } catch (directErr) {
+        logger.error({ err: directErr }, "Direct SQL query also failed");
+        logger.info({ 
+          stage: "kb_search_direct_sql_text", 
+          ms: Date.now() - start, 
+          hits: 0,
+          embeddingUsed: false 
+        });
+      }
     }
   }
 
