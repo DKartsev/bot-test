@@ -7,10 +7,16 @@ import { message } from "telegraf/filters";
 import { type Update } from "telegraf/types";
 import pgPlugin from "../plugins/pg.js";
 import { ragAnswer } from "../app/pipeline/ragAnswer.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 // Локальные роуты/плагины (NodeNext/ESM → указываем .js)
 import routes from "./routes/index.js";
 import adminTelegram from "./routes/admin/telegram.js";
+
+// Получаем путь к директории
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Создание Fastify-приложения.
@@ -45,27 +51,36 @@ export async function createApp(): Promise<FastifyInstance> {
   // В продакшене обслуживаем статические файлы operator-admin
   if (process.env.NODE_ENV === "production") {
     try {
-      // Роут для проверки доступности admin панели (без trailing slash)
-      app.get("/admin", (req, reply) => {
-        reply.send({ 
+      // Путь к собранным статическим файлам operator-admin
+      const adminStaticPath = path.join(__dirname, "../../../operator-admin/.next");
+      
+      // Регистрируем статические файлы для operator-admin
+      await app.register(require("@fastify/static"), {
+        root: adminStaticPath,
+        prefix: "/admin",
+        decorateReply: false,
+      });
+      
+      // SPA fallback для admin роутов (должен быть после регистрации статики)
+      app.get("/admin", async (req, reply) => {
+        return reply.send({ 
           status: "ok", 
           message: "Operator admin panel is available",
-          note: "This is a backend route. Frontend should be served separately."
+          note: "Static files registered, check /admin/ for frontend"
         });
       });
       
-      // Роут для проверки доступности admin панели (с trailing slash)
-      app.get("/admin/", (req, reply) => {
-        reply.send({ 
+      app.get("/admin/", async (req, reply) => {
+        return reply.send({ 
           status: "ok", 
           message: "Operator admin panel is available",
-          note: "This is a backend route. Frontend should be served separately."
+          note: "Static files registered, frontend should load automatically"
         });
       });
       
-      app.log.info("Operator admin panel routes registered");
+      app.log.info("Operator admin panel static files registered");
     } catch (err) {
-      app.log.warn({ err }, "Failed to register operator admin panel routes");
+      app.log.warn({ err }, "Failed to register operator admin panel static files");
     }
   }
 
