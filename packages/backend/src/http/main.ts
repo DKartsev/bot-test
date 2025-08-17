@@ -82,23 +82,39 @@ export async function createApp(): Promise<FastifyInstance> {
     });
     app.log.info("Static files plugin registered");
     
-    // SPA fallback для admin роутов (должен быть после регистрации статики)
+    // SPA fallback для admin роутов - должен быть ПОСЛЕ регистрации статики
     app.get("/admin", async (req, reply) => {
-      app.log.info("Admin route /admin accessed");
-      return reply.send({ 
-        status: "ok", 
-        message: "Operator admin panel is available",
-        note: "Static files registered, check /admin/ for frontend"
-      });
+      app.log.info("Admin route /admin accessed - redirecting to /admin/");
+      return reply.redirect("/admin/");
     });
     
     app.get("/admin/", async (req, reply) => {
-      app.log.info("Admin route /admin/ accessed");
-      return reply.send({ 
-        status: "ok", 
-        message: "Operator admin panel is available",
-        note: "Static files registered, frontend should load automatically"
-      });
+      app.log.info("Admin route /admin/ accessed - serving index.html");
+      try {
+        const fs = await import("fs");
+        const indexPath = path.join(adminStaticPath, "index.html");
+        const html = fs.readFileSync(indexPath, "utf8");
+        reply.type("text/html");
+        return reply.send(html);
+      } catch (err) {
+        app.log.error({ err }, "Failed to serve index.html");
+        return reply.code(500).send("Internal Server Error");
+      }
+    });
+    
+    // Общий fallback для всех admin роутов (SPA)
+    app.get("/admin/*", async (req, reply) => {
+      app.log.info({ url: req.url }, "Admin SPA fallback - serving index.html");
+      try {
+        const fs = await import("fs");
+        const indexPath = path.join(adminStaticPath, "index.html");
+        const html = fs.readFileSync(indexPath, "utf8");
+        reply.type("text/html");
+        return reply.send(html);
+      } catch (err) {
+        app.log.error({ err }, "Failed to serve index.html");
+        return reply.code(500).send("Internal Server Error");
+      }
     });
     
     app.log.info("Operator admin panel static files registered successfully");
