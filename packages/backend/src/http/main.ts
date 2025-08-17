@@ -48,40 +48,44 @@ export async function createApp(): Promise<FastifyInstance> {
   await app.register(adminTelegram);
 
   // -------- Operator Admin Panel (Static Files) --------
-  // В продакшене обслуживаем статические файлы operator-admin
-  if (process.env.NODE_ENV === "production") {
-    try {
-      // Путь к собранным статическим файлам operator-admin
-      const adminStaticPath = path.join(__dirname, "../../../operator-admin/.next");
-      
-      // Регистрируем статические файлы для operator-admin
-      await app.register(require("@fastify/static"), {
-        root: adminStaticPath,
-        prefix: "/admin",
-        decorateReply: false,
+  // Обслуживаем статические файлы operator-admin
+  try {
+    app.log.info("Starting operator admin panel setup...");
+    
+    // Путь к собранным статическим файлам operator-admin
+    const adminStaticPath = path.join(__dirname, "../../../operator-admin/.next");
+    app.log.info({ adminStaticPath }, "Admin static path resolved");
+    
+    // Регистрируем статические файлы для operator-admin
+    await app.register(require("@fastify/static"), {
+      root: adminStaticPath,
+      prefix: "/admin",
+      decorateReply: false,
+    });
+    app.log.info("Static files plugin registered");
+    
+    // SPA fallback для admin роутов (должен быть после регистрации статики)
+    app.get("/admin", async (req, reply) => {
+      app.log.info("Admin route /admin accessed");
+      return reply.send({ 
+        status: "ok", 
+        message: "Operator admin panel is available",
+        note: "Static files registered, check /admin/ for frontend"
       });
-      
-      // SPA fallback для admin роутов (должен быть после регистрации статики)
-      app.get("/admin", async (req, reply) => {
-        return reply.send({ 
-          status: "ok", 
-          message: "Operator admin panel is available",
-          note: "Static files registered, check /admin/ for frontend"
-        });
+    });
+    
+    app.get("/admin/", async (req, reply) => {
+      app.log.info("Admin route /admin/ accessed");
+      return reply.send({ 
+        status: "ok", 
+        message: "Operator admin panel is available",
+        note: "Static files registered, frontend should load automatically"
       });
-      
-      app.get("/admin/", async (req, reply) => {
-        return reply.send({ 
-          status: "ok", 
-          message: "Operator admin panel is available",
-          note: "Static files registered, frontend should load automatically"
-        });
-      });
-      
-      app.log.info("Operator admin panel static files registered");
-    } catch (err) {
-      app.log.warn({ err }, "Failed to register operator admin panel static files");
-    }
+    });
+    
+    app.log.info("Operator admin panel static files registered successfully");
+  } catch (err) {
+    app.log.error({ err }, "Failed to register operator admin panel static files");
   }
 
   // -------- Telegram / Webhook --------
