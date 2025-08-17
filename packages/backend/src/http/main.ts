@@ -9,6 +9,7 @@ import pgPlugin from "../plugins/pg.js";
 import { ragAnswer } from "../app/pipeline/ragAnswer.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import fastifyStatic from "@fastify/static";
 
 // Локальные роуты/плагины (NodeNext/ESM → указываем .js)
 import routes from "./routes/index.js";
@@ -57,7 +58,7 @@ export async function createApp(): Promise<FastifyInstance> {
     app.log.info({ adminStaticPath }, "Admin static path resolved");
     
     // Регистрируем статические файлы для operator-admin
-    await app.register(require("@fastify/static"), {
+    await app.register(fastifyStatic, {
       root: adminStaticPath,
       prefix: "/admin",
       decorateReply: false,
