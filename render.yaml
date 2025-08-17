@@ -1,15 +1,32 @@
 services:
   - type: web
-    name: bot-test-front
+    name: bot-test-unified
     env: node
-    buildCommand: npm ci && npm run build -w packages/operator-admin
-    startCommand: npm run start -w packages/operator-admin
+    buildCommand: npm ci && npm run build -w packages/backend && npm run build -w packages/operator-admin
+    startCommand: npm run start -w packages/backend
     envVars:
       - key: NODE_VERSION
         value: 20
       - key: NPM_VERSION
         value: 10
-      - key: NEXT_PUBLIC_BASE_PATH
-        value: /admin
       - key: PORT
         value: 10000
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_BASE_PATH
+        value: /admin
+      - key: NEXT_PUBLIC_API_URL
+        value: https://bot-test-6gsg.onrender.com
+      - key: NEXT_PUBLIC_API_BASE
+        value: https://bot-test-6gsg.onrender.com
+      - key: PUBLIC_URL
+        value: https://bot-test-6gsg.onrender.com
+      - key: CORS_ORIGIN
+        value: https://bot-test-6gsg.onrender.com
+    # Переменные для backend (будут установлены в Render Dashboard)
+    # DATABASE_URL
+    # OPENAI_API_KEY
+    # TELEGRAM_BOT_TOKEN
+    # SUPABASE_URL
+    # SUPABASE_KEY
+    # SUPABASE_SERVICE_ROLE_KEY

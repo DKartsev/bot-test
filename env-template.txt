@@ -1,0 +1,90 @@
+# ========================================
+# BOT TEST - Объединенный сервис на Render
+# ========================================
+# URL: https://bot-test-6gsg.onrender.com
+
+# ========================================
+# Node.js настройки
+# ========================================
+NODE_ENV=production
+NODE_VERSION=20
+NPM_VERSION=10
+PORT=10000
+LOG_LEVEL=info
+
+# ========================================
+# Backend API настройки
+# ========================================
+# Основной URL сервиса
+PUBLIC_URL=https://bot-test-6gsg.onrender.com
+CORS_ORIGIN=https://bot-test-6gsg.onrender.com
+
+# ========================================
+# База данных
+# ========================================
+# PostgreSQL connection string (Supabase)
+DATABASE_URL=postgresql://postgres:[YOUR_PASSWORD]@db.[YOUR_PROJECT_REF].supabase.co:5432/postgres
+
+# ========================================
+# Supabase (если используется)
+# ========================================
+SUPABASE_URL=https://[YOUR_PROJECT_REF].supabase.co
+SUPABASE_KEY=[YOUR_SUPABASE_ANON_KEY]
+SUPABASE_SERVICE_ROLE_KEY=[YOUR_SUPABASE_SERVICE_ROLE_KEY]
+
+# ========================================
+# OpenAI API
+# ========================================
+OPENAI_API_KEY=[YOUR_OPENAI_API_KEY]
+
+# ========================================
+# Telegram Bot
+# ========================================
+TELEGRAM_BOT_TOKEN=[YOUR_TELEGRAM_BOT_TOKEN]
+TG_WEBHOOK_PATH=/webhooks/telegram
+TG_WEBHOOK_SECRET=[YOUR_WEBHOOK_SECRET]
+TELEGRAM_SET_WEBHOOK_ON_START=true
+CASES_TELEGRAM_CHAT_ID=[YOUR_TELEGRAM_CHAT_ID]
+
+# ========================================
+# RAG система
+# ========================================
+FAQ_PATH=data/qa/faq.json
+KB_DIR=data/kb
+MIN_CONFIDENCE_TO_ESCALATE=0.55
+
+# ========================================
+# Frontend (Operator Admin Panel)
+# ========================================
+NEXT_PUBLIC_BASE_PATH=/admin
+NEXT_PUBLIC_API_URL=https://bot-test-6gsg.onrender.com
+NEXT_PUBLIC_API_BASE=https://bot-test-6gsg.onrender.com
+
+# ========================================
+# Безопасность
+# ========================================
+# API токены для админки (разделенные запятыми)
+ADMIN_API_TOKENS=[YOUR_ADMIN_TOKEN_1],[YOUR_ADMIN_TOKEN_2]
+ADMIN_IP_ALLOWLIST=0.0.0.0/0
+ADMIN_RATE_LIMIT_MAX=100
+
+# JWT (опционально)
+JWT_SECRET=[YOUR_JWT_SECRET_32_CHARS_MIN]
+JWT_ISSUER=bot-test
+JWT_AUDIENCE=bot-test-users
+
+# ========================================
+# Дополнительные настройки
+# ========================================
+ENABLE_DOCS=true
+ENCRYPTION_KEY_BASE64=[YOUR_ENCRYPTION_KEY_BASE64]
+
+# ========================================
+# Локальная разработка (закомментировать для продакшена)
+# ========================================
+# NODE_ENV=development
+# PORT=3000
+# CORS_ORIGIN=http://localhost:3000
+# PUBLIC_URL=http://localhost:3000
+# NEXT_PUBLIC_API_URL=http://localhost:3000
+# NEXT_PUBLIC_API_BASE=http://localhost:3000

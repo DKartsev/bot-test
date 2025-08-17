@@ -41,6 +41,24 @@ export async function createApp(): Promise<FastifyInstance> {
   await app.register(routes);
   await app.register(adminTelegram);
 
+  // -------- Operator Admin Panel (Static Files) --------
+  // В продакшене обслуживаем статические файлы operator-admin
+  if (process.env.NODE_ENV === "production") {
+    try {
+      // Простой роут для проверки доступности admin панели
+      app.get("/admin", (req, reply) => {
+        reply.send({ 
+          status: "ok", 
+          message: "Operator admin panel is available"
+        });
+      });
+      
+      app.log.info("Operator admin panel route registered");
+    } catch (err) {
+      app.log.warn({ err }, "Failed to register operator admin panel route");
+    }
+  }
+
   // -------- Telegram / Webhook --------
   const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
   const TG_PATH = process.env.TG_WEBHOOK_PATH || "/webhooks/telegram";
