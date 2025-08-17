@@ -89,34 +89,49 @@ export async function createApp(): Promise<FastifyInstance> {
     });
     
     app.get("/admin/", async (req, reply) => {
-      app.log.info("Admin route /admin/ accessed - serving index.html");
+      app.log.info("Admin route /admin/ accessed - serving SPA");
       try {
         const fs = await import("fs");
-        const indexPath = path.join(adminStaticPath, "index.html");
-        const html = fs.readFileSync(indexPath, "utf8");
-        reply.type("text/html");
-        return reply.send(html);
+        
+        // В Next.js App Router ищем index.html в разных местах
+        let indexPath = path.join(adminStaticPath, "index.html");
+        if (!fs.existsSync(indexPath)) {
+          // Пробуем найти в app директории
+          indexPath = path.join(adminStaticPath, "app", "page.html");
+        }
+        if (!fs.existsSync(indexPath)) {
+          // Пробуем найти в pages директории (Pages Router)
+          indexPath = path.join(adminStaticPath, "pages", "index.html");
+        }
+        
+        if (fs.existsSync(indexPath)) {
+          const html = fs.readFileSync(indexPath, "utf8");
+          reply.type("text/html");
+          return reply.send(html);
+        } else {
+          // Если HTML не найден, возвращаем простую страницу с редиректом
+          app.log.warn("No HTML file found, serving fallback page");
+          const fallbackHtml = `
+            <!DOCTYPE html>
+            <html>
+              <head><title>Operator Admin</title></head>
+              <body>
+                <h1>Operator Admin Panel</h1>
+                <p>Loading...</p>
+                <script>window.location.href = '/admin/static/';</script>
+              </body>
+            </html>
+          `;
+          reply.type("text/html");
+          return reply.send(fallbackHtml);
+        }
       } catch (err) {
-        app.log.error({ err }, "Failed to serve index.html");
+        app.log.error({ err }, "Failed to serve admin page");
         return reply.code(500).send("Internal Server Error");
       }
     });
     
-    // Общий fallback для всех admin роутов (SPA)
-    app.get("/admin/*", async (req, reply) => {
-      app.log.info({ url: req.url }, "Admin SPA fallback - serving index.html");
-      try {
-        const fs = await import("fs");
-        const indexPath = path.join(adminStaticPath, "index.html");
-        const html = fs.readFileSync(indexPath, "utf8");
-        reply.type("text/html");
-        return reply.send(html);
-      } catch (err) {
-        app.log.error({ err }, "Failed to serve index.html");
-        return reply.code(500).send("Internal Server Error");
-      }
-    });
-    
+    // Убираем дублирующий роут /admin/* - fastifyStatic уже обрабатывает его
     app.log.info("Operator admin panel static files registered successfully");
   } catch (err) {
     app.log.error({ err }, "Failed to register operator admin panel static files");
