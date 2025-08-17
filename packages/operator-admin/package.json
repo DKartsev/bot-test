@@ -2,13 +2,14 @@
   "name": "operator-admin",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "echo \"No tests specified\"",
-    "export": "next export"
+    "clean": "rimraf .next admin-out out"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",

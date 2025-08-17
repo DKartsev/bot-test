@@ -1,15 +1,15 @@
 services:
   - type: web
     name: bot-test-front
-    env: static
-    buildCommand: npm ci && npm run build -w packages/admin
-    staticPublishPath: packages/admin/admin-out
+    env: node
+    buildCommand: npm ci && npm run build -w packages/operator-admin
+    startCommand: npm run start -w packages/operator-admin
     envVars:
       - key: NODE_VERSION
         value: 20
       - key: NPM_VERSION
         value: 10
-    routes:
-      - type: rewrite
-        source: /admin/*
-        destination: /admin/index.html
+      - key: NEXT_PUBLIC_BASE_PATH
+        value: /admin
+      - key: PORT
+        value: 10000
