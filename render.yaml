@@ -2,7 +2,7 @@ services:
   - type: web
     name: bot-test-unified
     env: node
-    buildCommand: npm ci && npm run build -w packages/backend && npm run build -w packages/operator-admin && cp -r packages/operator-admin/.next packages/backend/
+    buildCommand: npm ci && npm run build -w packages/backend && npm run build -w packages/operator-admin && mkdir -p packages/backend/.next && cp -r packages/operator-admin/.next/* packages/backend/.next/
     startCommand: npm run start -w packages/backend
     envVars:
       - key: NODE_VERSION

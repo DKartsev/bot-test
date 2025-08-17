@@ -57,6 +57,23 @@ export async function createApp(): Promise<FastifyInstance> {
     const adminStaticPath = path.join(__dirname, "../../.next");
     app.log.info({ adminStaticPath }, "Admin static path resolved");
     
+    // Проверяем существование папки
+    const fs = await import("fs");
+    try {
+      const stats = fs.statSync(adminStaticPath);
+      app.log.info({ 
+        exists: true, 
+        isDirectory: stats.isDirectory(),
+        size: stats.size 
+      }, "Admin static path exists");
+      
+      // Проверяем содержимое папки
+      const files = fs.readdirSync(adminStaticPath);
+      app.log.info({ files: files.slice(0, 10) }, "Admin static folder contents");
+    } catch (fsErr) {
+      app.log.warn({ fsErr }, "Admin static path does not exist or not accessible");
+    }
+    
     // Регистрируем статические файлы для operator-admin
     await app.register(fastifyStatic, {
       root: adminStaticPath,
