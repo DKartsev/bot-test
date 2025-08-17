@@ -53,8 +53,8 @@ export async function createApp(): Promise<FastifyInstance> {
   try {
     app.log.info("Starting operator admin panel setup...");
     
-    // Путь к собранным статическим файлам operator-admin (скопированным в backend)
-    const adminStaticPath = path.join(__dirname, "../../.next");
+    // Путь к собранным статическим файлам operator-admin
+    const adminStaticPath = path.join(__dirname, "../../../operator-admin/.next");
     app.log.info({ adminStaticPath }, "Admin static path resolved");
     
     // Проверяем существование папки
