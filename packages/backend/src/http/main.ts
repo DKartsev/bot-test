@@ -45,17 +45,27 @@ export async function createApp(): Promise<FastifyInstance> {
   // В продакшене обслуживаем статические файлы operator-admin
   if (process.env.NODE_ENV === "production") {
     try {
-      // Простой роут для проверки доступности admin панели
+      // Роут для проверки доступности admin панели (без trailing slash)
       app.get("/admin", (req, reply) => {
         reply.send({ 
           status: "ok", 
-          message: "Operator admin panel is available"
+          message: "Operator admin panel is available",
+          note: "This is a backend route. Frontend should be served separately."
         });
       });
       
-      app.log.info("Operator admin panel route registered");
+      // Роут для проверки доступности admin панели (с trailing slash)
+      app.get("/admin/", (req, reply) => {
+        reply.send({ 
+          status: "ok", 
+          message: "Operator admin panel is available",
+          note: "This is a backend route. Frontend should be served separately."
+        });
+      });
+      
+      app.log.info("Operator admin panel routes registered");
     } catch (err) {
-      app.log.warn({ err }, "Failed to register operator admin panel route");
+      app.log.warn({ err }, "Failed to register operator admin panel routes");
     }
   }
 
