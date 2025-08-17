@@ -70,6 +70,61 @@ export async function createApp(): Promise<FastifyInstance> {
       // Проверяем содержимое папки
       const files = fs.readdirSync(adminStaticPath);
       app.log.info({ files: files.slice(0, 10) }, "Admin static folder contents");
+      
+      // Исследуем структуру .next папки для поиска HTML файлов
+      app.log.info("Investigating .next folder structure for HTML files...");
+      
+      // Проверяем подпапки
+      const subfolders = files.filter(file => {
+        try {
+          return fs.statSync(path.join(adminStaticPath, file)).isDirectory();
+        } catch {
+          return false;
+        }
+      });
+      app.log.info({ subfolders }, "Subfolders found in .next");
+      
+      // Ищем HTML файлы в разных местах
+      const htmlFiles = [];
+      const searchPaths = [
+        "index.html",
+        "app/page.html",
+        "pages/index.html",
+        "static/index.html"
+      ];
+      
+      for (const searchPath of searchPaths) {
+        const fullPath = path.join(adminStaticPath, searchPath);
+        try {
+          if (fs.existsSync(fullPath)) {
+            const stats = fs.statSync(fullPath);
+            htmlFiles.push({ path: searchPath, exists: true, size: stats.size });
+          } else {
+            htmlFiles.push({ path: searchPath, exists: false });
+          }
+        } catch (err) {
+          htmlFiles.push({ path: searchPath, exists: false, error: String(err) });
+        }
+      }
+      
+      app.log.info({ htmlFiles }, "HTML file search results");
+      
+      // Проверяем app директорию если она есть
+      if (subfolders.includes("app")) {
+        try {
+          const appPath = path.join(adminStaticPath, "app");
+          const appFiles = fs.readdirSync(appPath);
+          app.log.info({ appFiles }, "App directory contents");
+          
+          // Ищем page.html или другие HTML файлы в app
+          const appHtmlFiles = appFiles.filter(file => file.endsWith('.html'));
+          if (appHtmlFiles.length > 0) {
+            app.log.info({ appHtmlFiles }, "HTML files found in app directory");
+          }
+        } catch (err) {
+          app.log.warn({ err }, "Failed to read app directory");
+        }
+      }
     } catch (fsErr) {
       app.log.warn({ fsErr }, "Admin static path does not exist or not accessible");
     }
@@ -111,6 +166,12 @@ export async function createApp(): Promise<FastifyInstance> {
         } else {
           // Если HTML не найден, возвращаем простую страницу с редиректом
           app.log.warn("No HTML file found, serving fallback page");
+          
+          // Отключаем кэширование fallback страницы
+          reply.header("Cache-Control", "no-cache, no-store, must-revalidate");
+          reply.header("Pragma", "no-cache");
+          reply.header("Expires", "0");
+          
           const fallbackHtml = `
             <!DOCTYPE html>
             <html>
