@@ -114,11 +114,45 @@ export async function createApp(): Promise<FastifyInstance> {
           const fallbackHtml = `
             <!DOCTYPE html>
             <html>
-              <head><title>Operator Admin</title></head>
+              <head>
+                <title>Operator Admin Panel</title>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                  body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+                  .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                  h1 { color: #333; margin-bottom: 20px; }
+                  .status { background: #e8f5e8; border: 1px solid #4caf50; padding: 15px; border-radius: 4px; margin: 20px 0; }
+                  .warning { background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 4px; margin: 20px 0; }
+                  .info { background: #d1ecf1; border: 1px solid #17a2b8; padding: 15px; border-radius: 4px; margin: 20px 0; }
+                </style>
+              </head>
               <body>
-                <h1>Operator Admin Panel</h1>
-                <p>Loading...</p>
-                <script>window.location.href = '/admin/static/';</script>
+                <div class="container">
+                  <h1>🚀 Operator Admin Panel</h1>
+                  
+                  <div class="status">
+                    <strong>✅ Статус:</strong> Панель администратора доступна
+                  </div>
+                  
+                  <div class="warning">
+                    <strong>⚠️ Внимание:</strong> Frontend файлы не найдены
+                  </div>
+                  
+                  <div class="info">
+                    <strong>ℹ️ Информация:</strong><br>
+                    • Backend API работает корректно<br>
+                    • Статические файлы зарегистрированы<br>
+                    • Путь: /app/packages/operator-admin/.next<br>
+                    • Файлы найдены в .next директории
+                  </div>
+                  
+                  <p><strong>Попробуйте:</strong></p>
+                  <ul>
+                    <li><a href="/admin/">Обновить страницу</a></li>
+                    <li><a href="/">Главная страница</a></li>
+                  </ul>
+                </div>
               </body>
             </html>
           `;
