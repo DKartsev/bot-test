@@ -2,9 +2,15 @@ services:
   - type: web
     name: bot-test-backend
     env: node
-    buildCommand: npm ci --include=dev && npm run build -w packages/backend
+    buildCommand: |
+      # Устанавливаем системные зависимости для компиляции нативных модулей
+      apt-get update && apt-get install -y python3 make g++ libgomp1
+      # Устанавливаем npm пакеты
+      npm ci --include=dev
+      # Собираем backend
+      npm run build -w packages/backend
     startCommand: npm run start -w packages/backend
-    healthCheckPath: /health
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
         value: 20
