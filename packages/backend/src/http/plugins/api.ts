@@ -1,26 +1,28 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
-import { z } from "zod";
-
-const AskBodySchema = z.object({
-  question: z.string().min(1, "Question cannot be empty."),
-  lang: z.string().optional().default("ru"),
-});
 
 const apiPlugin: FastifyPluginAsync = (server, _opts) => {
   server.post(
     "/ask",
     {
       schema: {
-        body: AskBodySchema,
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["question"],
+          properties: {
+            question: { type: "string", minLength: 1 },
+            lang: { type: "string" },
+          },
+        },
       },
     },
     async (request, reply) => {
       const { qaService } = server.deps;
-      const { question, lang } = request.body as z.infer<typeof AskBodySchema>;
+      const { question, lang } = (request.body as { question: string; lang?: string }) ?? {};
 
       try {
-        const result = await qaService.ask(question, lang);
+        const result = await qaService.ask(question, lang ?? "ru");
         return reply.send(result);
       } catch (err) {
         request.log.error({ err }, "Error in /ask route");
