@@ -3,10 +3,12 @@ services:
     name: bot-test-backend
     env: node
     buildCommand: |
-      # Устанавливаем системные зависимости для компиляции нативных модулей
-      apt-get update && apt-get install -y python3 make g++ libgomp1
+      # Устанавливаем системные зависимости
+      apt-get update && apt-get install -y python3 make g++ libgomp1 build-essential
       # Устанавливаем npm пакеты
       npm ci --include=dev
+      # Пытаемся установить hnswlib-node
+      npm install hnswlib-node || echo "hnswlib-node installation failed, continuing without it"
       # Собираем backend
       npm run build -w packages/backend
     startCommand: npm run start -w packages/backend
