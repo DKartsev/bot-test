@@ -2,8 +2,9 @@ services:
   - type: web
     name: bot-test-backend
     env: node
-    buildCommand: npm ci && npm run build -w packages/backend
+    buildCommand: npm ci --include=dev && npm run build -w packages/backend
     startCommand: npm run start -w packages/backend
+    healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
         value: 20
