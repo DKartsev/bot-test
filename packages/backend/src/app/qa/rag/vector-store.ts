@@ -83,7 +83,17 @@ export class VectorStore {
       }
       this.hnswAvailable = true;
     } catch (err) {
-      logger.warn({ err }, "⚠️ hnswlib-node недоступен. Векторный поиск будет отключён.");
+      const code = (err as any)?.code;
+      if (code === "ERR_MODULE_NOT_FOUND") {
+        logger.info(
+          "ℹ️ Векторный поиск отключён: модуль hnswlib-node не установлен (ожидаемо на Render).",
+        );
+      } else {
+        logger.warn(
+          { err },
+          "⚠️ hnswlib-node недоступен. Векторный поиск будет отключён.",
+        );
+      }
       this.hnswAvailable = false;
       this.isInitialized = true;
       return;
