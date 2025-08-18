@@ -82,6 +82,7 @@ export class VectorStore {
         throw new Error("HierarchicalNSW export not found");
       }
       this.hnswAvailable = true;
+      logger.info("✅ hnswlib-node успешно загружен. Векторный поиск включен.");
     } catch (err) {
       const code = (err as any)?.code;
       if (code === "ERR_MODULE_NOT_FOUND") {

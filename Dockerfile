@@ -2,6 +2,13 @@
 FROM node:20-bookworm-slim AS backend_deps
 WORKDIR /app
 
+# Устанавливаем системные зависимости для компиляции нативных модулей
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 # корневой lockfile обязателен для npm workspaces
 COPY package*.json ./
 # метаданные воркспейсов
@@ -14,6 +21,13 @@ RUN npm ci --include=dev -w packages/shared -w packages/backend --ignore-scripts
 # ---------- build: используем node_modules из deps ----------
 FROM node:20-bookworm-slim AS backend_build
 WORKDIR /app
+
+# Устанавливаем системные зависимости для компиляции
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 # корневой node_modules + (на всякий) backend/node_modules
 COPY --from=backend_deps /app/node_modules                          ./node_modules
@@ -34,6 +48,11 @@ RUN npm --prefix packages/backend run build
 FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+
+# Устанавливаем runtime зависимости для hnswlib-node
+RUN apt-get update && apt-get install -y \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
 
 # для npm workspaces ОБЯЗАТЕЛЕН корневой package.json
 COPY package*.json ./
