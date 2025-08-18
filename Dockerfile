@@ -7,10 +7,9 @@ COPY package*.json ./
 # метаданные воркспейсов
 COPY packages/backend/package*.json ./packages/backend/
 COPY packages/shared/package*.json  ./packages/shared/
-COPY packages/operator-admin/package*.json ./packages/operator-admin/
 
-# ставим prod+dev зависимости трех воркспейсов и вырубаем prepare/postinstall (husky)
-RUN npm ci --include=dev -w packages/shared -w packages/backend -w packages/operator-admin --ignore-scripts
+# ставим prod+dev зависимости двух воркспейсов и вырубаем prepare/postinstall (husky)
+RUN npm ci --include=dev -w packages/shared -w packages/backend --ignore-scripts
 
 # ---------- build: используем node_modules из deps ----------
 FROM node:20-bookworm-slim AS backend_build
@@ -23,15 +22,13 @@ COPY --from=backend_deps /app/packages/backend/node_modules         ./packages/b
 # исходники
 COPY packages/shared ./packages/shared
 COPY packages/backend ./packages/backend
-COPY packages/operator-admin ./packages/operator-admin
 
 # корневые tsconfig* нужны, т.к. пакеты делают extends на tsconfig.base.json
 COPY tsconfig*.json ./
 
-# СНАЧАЛА собираем shared, потом backend, потом operator-admin
+# СНАЧАЛА собираем shared, потом backend
 RUN npm --prefix packages/shared run build
 RUN npm --prefix packages/backend run build
-RUN npm --prefix packages/operator-admin run build
 
 # ---------- runtime ----------
 FROM node:20-bookworm-slim AS runtime
@@ -42,15 +39,13 @@ ENV NODE_ENV=production
 COPY package*.json ./
 COPY packages/shared/package*.json  ./packages/shared/
 COPY packages/backend/package*.json ./packages/backend/
-COPY packages/operator-admin/package*.json ./packages/operator-admin/
 
 # ставим только prod зависимости и без скриптов (чтобы не вызывался prepare:husky)
-RUN npm ci --omit=dev -w packages/shared -w packages/backend -w packages/operator-admin --ignore-scripts
+RUN npm ci --omit=dev -w packages/shared -w packages/backend --ignore-scripts
 
 # копируем билд-артефакты
 COPY --from=backend_build /app/packages/shared/dist   ./packages/shared/dist
 COPY --from=backend_build /app/packages/backend/dist ./packages/backend/dist
-COPY --from=backend_build /app/packages/operator-admin/.next ./packages/operator-admin/.next
 
 # copy data files
 COPY data/qa/faq.json        ./data/qa/faq.json

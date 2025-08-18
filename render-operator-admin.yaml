@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: bot-test-operator-admin
+    env: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: NEXT_PUBLIC_BASE_PATH
+        value: ""
+      - key: NEXT_PUBLIC_API_URL
+        value: https://bot-test-backend.onrender.com
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: ${SUPABASE_URL}
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        value: ${SUPABASE_ANON_KEY}
+    healthCheckPath: /
+    autoDeploy: true

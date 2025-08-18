@@ -7,17 +7,16 @@ import { message } from "telegraf/filters";
 import { type Update } from "telegraf/types";
 import pgPlugin from "../plugins/pg.js";
 import { ragAnswer } from "../app/pipeline/ragAnswer.js";
-import path from "path";
-import { fileURLToPath } from "url";
-import fastifyStatic from "@fastify/static";
 
 // Локальные роуты/плагины (NodeNext/ESM → указываем .js)
 import routes from "./routes/index.js";
 import adminTelegram from "./routes/admin/telegram.js";
-
-// Получаем путь к директории
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import adminConversations from "./routes/admin/conversations.js";
+import adminMetrics from "./routes/admin/metrics.js";
+import adminFAQ from "./routes/admin/faq.js";
+import adminUsers from "./routes/admin/users.js";
+import adminCategories from "./routes/admin/categories.js";
+import adminNotes from "./routes/admin/notes.js";
 
 /**
  * Создание Fastify-приложения.
@@ -44,193 +43,54 @@ export async function createApp(): Promise<FastifyInstance> {
     time: new Date().toISOString(),
   }));
 
+  // -------- Health Check для интеграции --------
+  app.get("/health", () => ({
+    status: "ok",
+    service: "bot-test-backend",
+    version: "1.0.0",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    environment: process.env.NODE_ENV || "development",
+  }));
+
+  // -------- Status для operator-admin --------
+  app.get("/admin/status", () => ({
+    status: "ok",
+    service: "bot-test-backend",
+    endpoints: {
+      health: "/health",
+      conversations: "/admin/conversations",
+      messages: "/admin/conversations/:id/messages",
+      metrics: "/admin/metrics",
+      faq: "/admin/faq",
+    },
+    timestamp: new Date().toISOString(),
+  }));
+
   // -------- Регистрация внутренних роутов --------
   await app.register(routes);
   await app.register(adminTelegram);
+  await app.register(adminConversations);
+  await app.register(adminMetrics);
+  await app.register(adminFAQ);
+  await app.register(adminUsers);
+  await app.register(adminCategories);
+  await app.register(adminNotes);
 
-  // -------- Operator Admin Panel (Static Files) --------
-  // Обслуживаем статические файлы operator-admin
-  try {
-    app.log.info("Starting operator admin panel setup...");
+  // -------- CORS настройки для operator-admin --------
+  app.addHook('onRequest', async (request, reply) => {
+    // Разрешаем запросы от operator-admin
+    reply.header('Access-Control-Allow-Origin', 'https://bot-test-operator-admin.onrender.com');
+    reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
-    // Путь к собранным статическим файлам operator-admin
-    const adminStaticPath = path.join(__dirname, "../../../operator-admin/.next");
-    app.log.info({ adminStaticPath }, "Admin static path resolved");
-    
-    // Проверяем существование папки
-    const fs = await import("fs");
-    try {
-      const stats = fs.statSync(adminStaticPath);
-      app.log.info({ 
-        exists: true, 
-        isDirectory: stats.isDirectory(),
-        size: stats.size 
-      }, "Admin static path exists");
-      
-      // Проверяем содержимое папки
-      const files = fs.readdirSync(adminStaticPath);
-      app.log.info({ files: files.slice(0, 10) }, "Admin static folder contents");
-      
-      // Исследуем структуру .next папки для поиска HTML файлов
-      app.log.info("Investigating .next folder structure for HTML files...");
-      
-      // Проверяем подпапки
-      const subfolders = files.filter(file => {
-        try {
-          return fs.statSync(path.join(adminStaticPath, file)).isDirectory();
-        } catch {
-          return false;
-        }
-      });
-      app.log.info({ subfolders }, "Subfolders found in .next");
-      
-      // Ищем HTML файлы в разных местах
-      const htmlFiles = [];
-      const searchPaths = [
-        "index.html",
-        "app/page.html",
-        "pages/index.html",
-        "static/index.html"
-      ];
-      
-      for (const searchPath of searchPaths) {
-        const fullPath = path.join(adminStaticPath, searchPath);
-        try {
-          if (fs.existsSync(fullPath)) {
-            const stats = fs.statSync(fullPath);
-            htmlFiles.push({ path: searchPath, exists: true, size: stats.size });
-          } else {
-            htmlFiles.push({ path: searchPath, exists: false });
-          }
-        } catch (err) {
-          htmlFiles.push({ path: searchPath, exists: false, error: String(err) });
-        }
-      }
-      
-      app.log.info({ htmlFiles }, "HTML file search results");
-      
-      // Проверяем app директорию если она есть
-      if (subfolders.includes("app")) {
-        try {
-          const appPath = path.join(adminStaticPath, "app");
-          const appFiles = fs.readdirSync(appPath);
-          app.log.info({ appFiles }, "App directory contents");
-          
-          // Ищем page.html или другие HTML файлы в app
-          const appHtmlFiles = appFiles.filter(file => file.endsWith('.html'));
-          if (appHtmlFiles.length > 0) {
-            app.log.info({ appHtmlFiles }, "HTML files found in app directory");
-          }
-        } catch (err) {
-          app.log.warn({ err }, "Failed to read app directory");
-        }
-      }
-    } catch (fsErr) {
-      app.log.warn({ fsErr }, "Admin static path does not exist or not accessible");
+    if (request.method === 'OPTIONS') {
+      reply.send();
     }
-    
-    // Регистрируем статические файлы для operator-admin
-    await app.register(fastifyStatic, {
-      root: adminStaticPath,
-      prefix: "/admin",
-      decorateReply: false,
-    });
-    app.log.info("Static files plugin registered");
-    
-    // SPA fallback для admin роутов - должен быть ПОСЛЕ регистрации статики
-    app.get("/admin", async (req, reply) => {
-      app.log.info("Admin route /admin accessed - redirecting to /admin/");
-      return reply.redirect("/admin/");
-    });
-    
-    app.get("/admin/", async (req, reply) => {
-      app.log.info("Admin route /admin/ accessed - serving SPA");
-      try {
-        const fs = await import("fs");
-        
-        // В Next.js App Router ищем index.html в разных местах
-        let indexPath = path.join(adminStaticPath, "index.html");
-        if (!fs.existsSync(indexPath)) {
-          // Пробуем найти в app директории
-          indexPath = path.join(adminStaticPath, "app", "page.html");
-        }
-        if (!fs.existsSync(indexPath)) {
-          // Пробуем найти в pages директории (Pages Router)
-          indexPath = path.join(adminStaticPath, "pages", "index.html");
-        }
-        
-        if (fs.existsSync(indexPath)) {
-          const html = fs.readFileSync(indexPath, "utf8");
-          reply.type("text/html");
-          return reply.send(html);
-        } else {
-          // Если HTML не найден, возвращаем простую страницу с редиректом
-          app.log.warn("No HTML file found, serving fallback page");
-          
-          // Отключаем кэширование fallback страницы
-          reply.header("Cache-Control", "no-cache, no-store, must-revalidate");
-          reply.header("Pragma", "no-cache");
-          reply.header("Expires", "0");
-          
-          const fallbackHtml = `
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <title>Operator Admin Panel</title>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <style>
-                  body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-                  .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                  h1 { color: #333; margin-bottom: 20px; }
-                  .status { background: #e8f5e8; border: 1px solid #4caf50; padding: 15px; border-radius: 4px; margin: 20px 0; }
-                  .warning { background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 4px; margin: 20px 0; }
-                  .info { background: #d1ecf1; border: 1px solid #17a2b8; padding: 15px; border-radius: 4px; margin: 20px 0; }
-                </style>
-              </head>
-              <body>
-                <div class="container">
-                  <h1>🚀 Operator Admin Panel</h1>
-                  
-                  <div class="status">
-                    <strong>✅ Статус:</strong> Панель администратора доступна
-                  </div>
-                  
-                  <div class="warning">
-                    <strong>⚠️ Внимание:</strong> Frontend файлы не найдены
-                  </div>
-                  
-                  <div class="info">
-                    <strong>ℹ️ Информация:</strong><br>
-                    • Backend API работает корректно<br>
-                    • Статические файлы зарегистрированы<br>
-                    • Путь: /app/packages/operator-admin/.next<br>
-                    • Файлы найдены в .next директории
-                  </div>
-                  
-                  <p><strong>Попробуйте:</strong></p>
-                  <ul>
-                    <li><a href="/admin/">Обновить страницу</a></li>
-                    <li><a href="/">Главная страница</a></li>
-                  </ul>
-                </div>
-              </body>
-            </html>
-          `;
-          reply.type("text/html");
-          return reply.send(fallbackHtml);
-        }
-      } catch (err) {
-        app.log.error({ err }, "Failed to serve admin page");
-        return reply.code(500).send("Internal Server Error");
-      }
-    });
-    
-    // Убираем дублирующий роут /admin/* - fastifyStatic уже обрабатывает его
-    app.log.info("Operator admin panel static files registered successfully");
-  } catch (err) {
-    app.log.error({ err }, "Failed to register operator admin panel static files");
-  }
+  });
+
+  app.log.info("Backend API ready for operator-admin integration");
 
   // -------- Telegram / Webhook --------
   const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
