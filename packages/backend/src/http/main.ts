@@ -19,6 +19,7 @@ import adminUsers from "./routes/admin/users.js";
 import adminCategories from "./routes/admin/categories.js";
 import adminNotes from "./routes/admin/notes.js";
 import adminStream from "./routes/admin/stream.js";
+import adminPlugin from "./plugins/admin.js";
 
 /**
  * Создание Fastify-приложения.
@@ -57,22 +58,9 @@ export async function createApp(): Promise<FastifyInstance> {
     environment: process.env.NODE_ENV || "development",
   }));
 
-  // -------- Status для operator-admin --------
-  app.get("/admin/status", () => ({
-    status: "ok",
-    service: "bot-test-backend",
-    endpoints: {
-      health: "/health",
-      conversations: "/admin/conversations",
-      messages: "/admin/conversations/:id/messages",
-      metrics: "/admin/metrics",
-      faq: "/admin/faq",
-    },
-    timestamp: new Date().toISOString(),
-  }));
-
   // -------- Регистрация внутренних роутов --------
   await app.register(routes);
+  await app.register(adminPlugin as any, { prefix: "/api" });
   await app.register(adminTelegram);
   await app.register(adminConversations);
   await app.register(adminMetrics);
