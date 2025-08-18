@@ -7,6 +7,7 @@ import { env } from "../config/env.js";
 import { QAService } from "../app/qa/QAService.js";
 import { Bot } from "../bot/bot.js";
 import { EventBus } from "../app/events.js";
+import pgPlugin from "../plugins/pg.js";
 import healthPlugin from "./plugins/health.js";
 import telegramPlugin from "./plugins/telegram.js";
 import adminPlugin from "./plugins/admin.js";
@@ -59,6 +60,7 @@ export async function buildServer(deps: AppDeps): Promise<import('fastify').Fast
   }
 
   // Core plugins
+  await app.register(pgPlugin as any);
   await app.register(cors as any, { origin: env.CORS_ORIGIN });
   await app.register(sensible as any);
 

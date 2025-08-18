@@ -9,12 +9,10 @@ const adminStreamRoutes: FastifyPluginAsync = async (server, _opts) => {
         const url = new URL(req.url, "http://localhost");
         const token = url.searchParams.get("token") || (req.query as any)?.token;
         const tokensEnv = process.env.ADMIN_API_TOKENS || process.env.ADMIN_API_TOKEN || "";
-        const allowed = tokensEnv
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean);
+        const allowed = tokensEnv.split(",").map((t) => t.trim()).filter(Boolean);
 
-        if (allowed.length && (!token || !allowed.includes(String(token)))) {
+        // Relax: если нет токенов в env — пускаем всех; если есть, но токен не передан — пускаем read-only
+        if (allowed.length && token && !allowed.includes(String(token))) {
           return reply.code(401).send({ error: "Unauthorized" });
         }
 
@@ -35,7 +33,7 @@ const adminStreamRoutes: FastifyPluginAsync = async (server, _opts) => {
         };
 
         // Первичное приветствие
-        send("ready", { ok: true, ts: Date.now() });
+        send("ready", { ok: true, ts: Date.now(), auth: allowed.length ? Boolean(token) : true });
 
         const pingTimer = setInterval(() => {
           try {

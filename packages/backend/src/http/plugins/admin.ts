@@ -89,6 +89,21 @@ const adminPlugin: FastifyPluginAsync = async (server, _opts) => {
   await server.register(usersRoutes);
   await server.register(telegramRoutes);
 
+  // Lightweight status for admin panel discovery
+  server.get("/admin/status", async () => ({
+    status: "ok",
+    service: "bot-test-backend",
+    endpoints: {
+      health: "/api/health",
+      conversations: "/api/admin/conversations",
+      messages: "/api/admin/conversations/:id/messages",
+      metrics: "/api/admin/metrics",
+      faq: "/api/admin/faq",
+      stream: "/api/admin/stream",
+    },
+    timestamp: new Date().toISOString(),
+  }));
+
   server.log.info("Admin plugin registered with security hooks and routes.");
 };
 
