@@ -60,13 +60,13 @@ export async function buildServer(deps: AppDeps): Promise<import('fastify').Fast
   }
 
   // Core plugins
-  await app.register(pgPlugin as any);
-  await app.register(cors as any, { origin: env.CORS_ORIGIN });
-  await app.register(sensible as any);
+  await app.register(pgPlugin);
+  await app.register(cors, { origin: env.CORS_ORIGIN });
+  await app.register(sensible);
 
   // Documentation plugins
   if (env.ENABLE_DOCS) {
-    await app.register(fastifySwagger as any, {
+    await app.register(fastifySwagger, {
       openapi: {
         info: {
           title: "Bot API",
@@ -81,7 +81,7 @@ export async function buildServer(deps: AppDeps): Promise<import('fastify').Fast
         ],
       },
     });
-    await app.register(fastifySwaggerUi as any, { 
+    await app.register(fastifySwaggerUi, { 
       routePrefix: "/docs",
       uiConfig: {
         docExpansion: 'list',
@@ -91,18 +91,18 @@ export async function buildServer(deps: AppDeps): Promise<import('fastify').Fast
   }
 
   // App plugins
-  await app.register(healthPlugin as any, { prefix: "/api" });
-  await app.register(usersPlugin as any, {
+  await app.register(healthPlugin, { prefix: "/api" });
+  await app.register(usersPlugin, {
     prefix: "/api",
     repo: deps.userRepo,
   });
   await app.register(telegramPlugin);
 
   // Register auth plugin BEFORE admin plugin to ensure decorators are available
-  await app.register(authPlugin as any);
+  await app.register(authPlugin);
 
-  await app.register(adminPlugin as any, { prefix: "/api/admin" });
-  await app.register(apiPlugin as any, { prefix: "/api" });
+  await app.register(adminPlugin, { prefix: "/api/admin" });
+  await app.register(apiPlugin, { prefix: "/api" });
 
   // Centralized error handler
   app.setErrorHandler(centralErrorHandler);

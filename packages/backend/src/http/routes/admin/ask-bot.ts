@@ -12,7 +12,7 @@ const adminAskBotRoutes: FastifyPluginAsync = async (server, _opts) => {
         (req, reply, done) => {
           const userRole = (req.headers["x-user-role"] as string) || "";
           if (userRole !== "admin") {
-            reply.status(403).send({ error: "Forbidden" });
+            void reply.status(403).send({ error: "Forbidden" });
             return;
           }
           done();
@@ -34,7 +34,7 @@ const adminAskBotRoutes: FastifyPluginAsync = async (server, _opts) => {
         (req, reply, done) => {
           const userRole = (req.headers["x-user-role"] as string) || "";
           if (userRole !== "admin") {
-            reply.status(403).send({ error: "Forbidden" });
+            void reply.status(403).send({ error: "Forbidden" });
             return;
           }
           done();
@@ -56,7 +56,7 @@ const adminAskBotRoutes: FastifyPluginAsync = async (server, _opts) => {
         (req, reply, done) => {
           const userRole = (req.headers["x-user-role"] as string) || "";
           if (userRole !== "admin") {
-            reply.status(403).send({ error: "Forbidden" });
+            void reply.status(403).send({ error: "Forbidden" });
             return;
           }
           done();
@@ -78,7 +78,7 @@ const adminAskBotRoutes: FastifyPluginAsync = async (server, _opts) => {
         (req, reply, done) => {
           const userRole = (req.headers["x-user-role"] as string) || "";
           if (userRole !== "admin") {
-            reply.status(403).send({ error: "Forbidden" });
+            void reply.status(403).send({ error: "Forbidden" });
             return;
           }
           done();

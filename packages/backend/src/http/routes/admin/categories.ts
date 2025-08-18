@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 
-export default async function categoriesRoutes(app: FastifyInstance) {
+export default function categoriesRoutes(app: FastifyInstance) {
   // Получение списка категорий
   app.get("/admin/categories", async (request, reply) => {
     try {

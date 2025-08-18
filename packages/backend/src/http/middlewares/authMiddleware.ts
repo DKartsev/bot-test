@@ -3,7 +3,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 export function checkAdmin(req: FastifyRequest, reply: FastifyReply, done: () => void) {
     const userRole = (req.headers["x-user-role"] as string) || ""; // или другой источник роли
     if (userRole !== "admin") {
-        reply.status(403).send({ error: "Forbidden" });
+        void reply.status(403).send({ error: "Forbidden" });
         return;
     }
     done();
@@ -13,7 +13,7 @@ export function checkRole(allowedRoles: string[]) {
     return function(req: FastifyRequest, reply: FastifyReply, done: () => void) {
         const userRole = (req.headers["x-user-role"] as string) || ""; // приводим к строке
         if (!allowedRoles.includes(userRole)) {
-            reply.status(403).send({ error: "Forbidden" });
+            void reply.status(403).send({ error: "Forbidden" });
             return;
         }
         done();
@@ -24,7 +24,7 @@ export function checkRole(allowedRoles: string[]) {
 export function checkAdminRole(req: FastifyRequest, reply: FastifyReply, done: () => void) {
     const userRole = (req.headers["x-user-role"] as string) || "";
     if (userRole !== "admin") {
-        reply.status(403).send({ error: "Forbidden: Admin access required" });
+        void reply.status(403).send({ error: "Forbidden: Admin access required" });
         return;
     }
     done();

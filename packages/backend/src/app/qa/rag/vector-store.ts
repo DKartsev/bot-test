@@ -31,6 +31,19 @@ export interface VectorSearchResult extends TextChunk {
   similarity: number;
 }
 
+interface HNSWModule {
+  HierarchicalNSW: new (space: string, dimension: number) => HNSWIndex;
+}
+
+interface HNSWIndex {
+  initIndex: (maxElements: number) => void;
+  readIndex: (filename: string) => void;
+  writeIndex: (filename: string) => void;
+  getCurrentCount: () => number;
+  addPoint: (vector: number[], id: number) => void;
+  searchKnn: (query: number[], k: number) => { neighbors: number[]; distances: number[] };
+}
+
 /**
  * Класс VectorStore управляет жизненным циклом HNSW-индекса для векторного поиска.
  * Он отвечает за создание, загрузку, сохранение индекса и поиск по нему.
@@ -38,7 +51,7 @@ export interface VectorSearchResult extends TextChunk {
  * векторный поиск будет отключён (graceful fallback), а методы будут no-op/возвращать пустые результаты.
  */
 export class VectorStore {
-  private index: any | null = null;
+  private index: HNSWIndex | null = null;
   private chunkMeta = new Map<string, TextChunk>();
   private chunkIdToIndex = new Map<string, number>();
   private indexToChunkId: string[] = [];
@@ -74,17 +87,17 @@ export class VectorStore {
     );
     await fs.mkdir(this.storePath, { recursive: true });
 
-    let HierarchicalNSWCtor: any;
+    let HierarchicalNSWCtor: new (space: string, dimension: number) => HNSWIndex;
     try {
-      const mod: any = await import("hnswlib-node");
-      HierarchicalNSWCtor = mod?.HierarchicalNSW;
+      const mod = await import("hnswlib-node") as HNSWModule;
+      HierarchicalNSWCtor = mod.HierarchicalNSW;
       if (!HierarchicalNSWCtor) {
         throw new Error("HierarchicalNSW export not found");
       }
       this.hnswAvailable = true;
       logger.info("✅ hnswlib-node успешно загружен. Векторный поиск включен.");
     } catch (err) {
-      const code = (err as any)?.code;
+      const code = (err as NodeJS.ErrnoException)?.code;
       if (code === "ERR_MODULE_NOT_FOUND") {
         logger.info(
           "ℹ️ Векторный поиск отключён: модуль hnswlib-node не установлен (ожидаемо на Render).",
@@ -108,8 +121,10 @@ export class VectorStore {
         { err },
         "⚠️ Не удалось загрузить существующий индекс. Создаётся новый.",
       );
-      this.index = new HierarchicalNSWCtor("cosine", this.dimension);
-      this.index.initIndex(0);
+      if (HierarchicalNSWCtor) {
+        this.index = new HierarchicalNSWCtor("cosine", this.dimension);
+        this.index.initIndex(0);
+      }
     }
     this.isInitialized = true;
   }
@@ -129,10 +144,10 @@ export class VectorStore {
       );
     }
 
-    const mod: any = await import("hnswlib-node");
+    const mod = await import("hnswlib-node") as HNSWModule;
     const HierarchicalNSWCtor = mod.HierarchicalNSW;
     const index = new HierarchicalNSWCtor("cosine", this.dimension);
-    await index.readIndex(this.indexFile);
+    index.readIndex(this.indexFile);
     this.index = index;
 
     this.indexToChunkId = meta.chunkIds;
@@ -152,7 +167,7 @@ export class VectorStore {
    */
   private async save(): Promise<void> {
     if (!this.hnswAvailable || !this.index) return;
-    await this.index.writeIndex(this.indexFile);
+    this.index.writeIndex(this.indexFile);
     const meta: IndexMeta = {
       dim: this.dimension,
       size: this.index.getCurrentCount(),
@@ -219,7 +234,7 @@ export class VectorStore {
    * Выполняет поиск ближайших соседей по заданному запросу.
    */
   async search(query: string, k: number): Promise<VectorSearchResult[]> {
-    if (!this.hnswAvailable || !this.index || this.index.getCurrentCount?.() === 0) return [];
+    if (!this.hnswAvailable || !this.index || !this.index.getCurrentCount || this.index.getCurrentCount() === 0) return [];
 
     const [queryVector] = await this.embedder.embed([query]);
     if (!queryVector) return [];
@@ -255,7 +270,7 @@ export class VectorStore {
     if (!this.hnswAvailable) return; // no-op
     logger.warn("Полная перестройка векторного индекса...");
 
-    const mod: any = await import("hnswlib-node");
+    const mod = await import("hnswlib-node") as HNSWModule;
     const HierarchicalNSWCtor = mod.HierarchicalNSW;
     this.index = new HierarchicalNSWCtor("cosine", this.dimension);
     this.index.initIndex(0);
@@ -272,8 +287,7 @@ export class VectorStore {
             e &&
             typeof e === "object" &&
             "code" in e &&
-            // @ts-ignore
-            e.code !== "ENOENT" &&
+            (e as NodeJS.ErrnoException).code !== "ENOENT" &&
             Promise.reject(e),
         ),
       fs
@@ -283,8 +297,7 @@ export class VectorStore {
             e &&
             typeof e === "object" &&
             "code" in e &&
-            // @ts-ignore
-            e.code !== "ENOENT" &&
+            (e as NodeJS.ErrnoException).code !== "ENOENT" &&
             Promise.reject(e),
         ),
     ]);

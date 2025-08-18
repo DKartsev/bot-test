@@ -16,4 +16,4 @@ const chatsRoutes: FastifyPluginAsync = async (server, _opts) => {
   await server.register(postStatusRoute);
 };
 
-export default fp(chatsRoutes as any);
+export default fp(chatsRoutes);

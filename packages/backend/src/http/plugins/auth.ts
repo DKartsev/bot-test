@@ -1,7 +1,6 @@
 import { FastifyPluginAsync } from "fastify";
-import fp from "fastify-plugin";
 
-const authPlugin: FastifyPluginAsync = async (server, _opts) => {
+const authPlugin: FastifyPluginAsync = (server, _opts) => {
   // Register authentication and authorization functions
   server.decorate(
     "authenticate",
@@ -29,4 +28,4 @@ const authPlugin: FastifyPluginAsync = async (server, _opts) => {
   server.log.info("🔐 Auth плагин зарегистрирован с декораторами authenticate и authorize.");
 };
 
-export default fp(authPlugin);
+export default authPlugin;

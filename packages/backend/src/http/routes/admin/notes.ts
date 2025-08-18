@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 
-export default async function notesRoutes(app: FastifyInstance) {
+export default function notesRoutes(app: FastifyInstance) {
   // Получение заметок для диалога
   app.get("/admin/conversations/:conversationId/notes", async (request, reply) => {
     try {

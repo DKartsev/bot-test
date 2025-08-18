@@ -2,7 +2,7 @@ import { FastifyInstance } from "fastify";
 import fs from 'node:fs';
 import path from 'node:path';
 
-export default async function conversationsRoutes(app: FastifyInstance) {
+export default function conversationsRoutes(app: FastifyInstance) {
   // Получение списка диалогов
   app.get("/admin/conversations", async (request, reply) => {
     try {
@@ -36,7 +36,7 @@ export default async function conversationsRoutes(app: FastifyInstance) {
         total: mockConversations.length,
       });
     } catch (error) {
-      app.log.error({ error }, "Failed to get conversations");
+      app.log.error({ error: (error as Error).message }, "Failed to get conversations");
       return reply.code(500).send({
         success: false,
         error: "Internal server error",
@@ -77,7 +77,7 @@ export default async function conversationsRoutes(app: FastifyInstance) {
         conversationId: id,
       });
     } catch (error) {
-      app.log.error({ error }, "Failed to get messages");
+      app.log.error({ error: (error as Error).message }, "Failed to get messages");
       return reply.code(500).send({
         success: false,
         error: "Internal server error",
@@ -118,7 +118,7 @@ export default async function conversationsRoutes(app: FastifyInstance) {
         data: newConversation,
       });
     } catch (error) {
-      app.log.error({ error }, "Failed to create conversation");
+      app.log.error({ error: (error as Error).message }, "Failed to create conversation");
       return reply.code(500).send({
         success: false,
         error: "Internal server error",
@@ -156,7 +156,7 @@ export default async function conversationsRoutes(app: FastifyInstance) {
         data: newMessage,
       });
     } catch (error) {
-      app.log.error({ error }, "Failed to send message");
+      app.log.error({ error: (error as Error).message }, "Failed to send message");
       return reply.code(500).send({
         success: false,
         error: "Internal server error",
@@ -189,7 +189,7 @@ export default async function conversationsRoutes(app: FastifyInstance) {
         data: updatedConversation,
       });
     } catch (error) {
-      app.log.error({ error }, "Failed to update conversation status");
+      app.log.error({ error: (error as Error).message }, "Failed to update conversation status");
       return reply.code(500).send({
         success: false,
         error: "Internal server error",
@@ -212,7 +212,7 @@ export default async function conversationsRoutes(app: FastifyInstance) {
         },
       });
     } catch (error) {
-      app.log.error({ error }, "Failed to mark conversation as read");
+      app.log.error({ error: (error as Error).message }, "Failed to mark conversation as read");
       return reply.code(500).send({ success: false, error: "Internal server error" });
     }
   });
@@ -221,11 +221,10 @@ export default async function conversationsRoutes(app: FastifyInstance) {
   app.post('/admin/conversations/:id/attachments', async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      // @ts-ignore fastify-multipart typings
-      const parts = request.parts();
+      const parts: unknown = (request as unknown as { parts: () => AsyncIterable<{ type: string; filename?: string; mimetype?: string; file: NodeJS.ReadableStream }> }).parts();
       const saved: Array<{ filename: string; mimetype: string; size: number; path: string }> = [];
 
-      for await (const part of parts) {
+      for await (const part of parts as AsyncIterable<{ type: string; filename?: string; mimetype?: string; file: NodeJS.ReadableStream }>) {
         if (part.type === 'file') {
           const filename = part.filename as string;
           const mimetype = part.mimetype as string;
@@ -236,13 +235,15 @@ export default async function conversationsRoutes(app: FastifyInstance) {
             ws.on('finish', () => resolve());
             ws.on('error', reject);
           });
-          saved.push({ filename, mimetype, size: Number(part.file.truncated ? part.file.bytesRead : part.file.bytesRead), path: dest });
+          const bytesRead = (part.file as { bytesRead?: number }).bytesRead ?? 0;
+          saved.push({ filename, mimetype, size: Number(bytesRead), path: dest });
         }
       }
 
       return reply.code(201).send({ success: true, data: { conversationId: id, files: saved } });
     } catch (error) {
-      app.log.error({ error }, 'Failed to upload attachments');
+      const err = error as Error & { file?: unknown; type?: unknown; filename?: unknown; mimetype?: unknown };
+      app.log.error({ error: err.message, type: err.type, filename: err.filename, mimetype: err.mimetype }, 'Failed to upload attachments');
       return reply.code(500).send({ success: false, error: 'Internal server error' });
     }
   });

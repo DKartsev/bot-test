@@ -3,9 +3,9 @@ import type { FastifyPluginAsync } from "fastify";
 const healthPlugin: FastifyPluginAsync = (fastify, _opts) => {
   fastify.get("/health", async (request, reply) => {
     try {
-      const hasPg = (fastify as any).pg && typeof (fastify as any).pg.query === "function";
+      const hasPg = fastify.pg && typeof fastify.pg?.query === "function";
       if (hasPg) {
-        await (fastify as any).pg.query("SELECT 1");
+        await fastify.pg.query("SELECT 1");
         return { status: "ok", checks: { database: "ok" } };
       }
       // If pg plugin is not registered, still return ok (service is up)

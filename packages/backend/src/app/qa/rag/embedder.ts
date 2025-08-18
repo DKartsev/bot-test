@@ -1,5 +1,14 @@
 import OpenAI from "openai";
-import { Embedding } from "openai/resources/embeddings.mjs";
+// Runtime type guards to avoid unsafe casts
+function isNumberArray(value: unknown): value is number[] {
+  return Array.isArray(value) && value.every((v) => typeof v === "number");
+}
+
+function isEmbeddingItems(value: unknown): value is Array<{ embedding: number[] }> {
+  return Array.isArray(value) && value.every((item) =>
+    item !== null && typeof item === "object" && isNumberArray((item as { embedding?: unknown }).embedding)
+  );
+}
 import { logger } from "../../../utils/logger.js";
 import { env } from "../../../config/env.js";
 import { Embedder } from "./vector-store.js";
@@ -57,16 +66,24 @@ export class OpenAIEmbedder implements Embedder {
       });
 
       // Нормализуем векторы для использования с косинусным расстоянием
-      const embeddings: number[][] = response.data.map((item: Embedding) =>
-        this.normalize(item.embedding as number[]),
-      );
-      return embeddings;
+      const raw: unknown = response.data;
+      if (!isEmbeddingItems(raw)) {
+        throw new Error("Invalid embeddings format from OpenAI");
+      }
+      const items = raw as Array<{ embedding: number[] }>; // safe after guard
+      const normalized: number[][] = [];
+      for (const item of items) {
+        normalized.push(this.normalize(item.embedding));
+      }
+      return normalized;
     } catch (err) {
       logger.error({ err }, "❌ Ошибка при создании векторов с помощью OpenAI");
       // Возвращаем пустые векторы для текстов, которые не удалось обработать
-      const emptyVectors: number[][] = texts.map(() =>
-        new Array(this.dimension).fill(0),
-      );
+      const emptyVectors: number[][] = [];
+      for (let i = 0; i < texts.length; i++) {
+        const zeroVector: number[] = Array<number>(this.dimension).fill(0);
+        emptyVectors.push(zeroVector);
+      }
       return emptyVectors;
     }
   }
@@ -98,12 +115,20 @@ export class OpenAIEmbedder implements Embedder {
         dimensions: 1536,
       });
 
-      const embeddings = response.data.map(item => item.embedding as number[]);
-      if (!embeddings.length) {
+      const raw: unknown = response.data;
+      if (!isEmbeddingItems(raw)) {
+        throw new Error("Invalid embeddings format from OpenAI");
+      }
+      const items = raw as Array<{ embedding: number[] }>; // safe after guard
+      const vectors: number[][] = [];
+      for (const item of items) {
+        vectors.push(item.embedding);
+      }
+      if (!vectors.length) {
         throw new Error("No embeddings returned from OpenAI");
       }
 
-      return embeddings;
+      return vectors;
     } catch (error) {
       throw new Error(`Failed to embed texts: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

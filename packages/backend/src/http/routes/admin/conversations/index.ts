@@ -10,4 +10,4 @@ const conversationsRoutes: FastifyPluginAsync = async (server, _opts) => {
   await server.register(postReplyRoute);
 };
 
-export default fp(conversationsRoutes as any);
+export default fp(conversationsRoutes);

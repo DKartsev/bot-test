@@ -120,16 +120,16 @@ export function asyncHandler<T extends (...args: unknown[]) => Promise<unknown>>
   fn: T,
 ): T {
   return ((...args: Parameters<T>) => {
-    const result = fn(...args);
-    if (result && typeof result.catch === 'function' && result instanceof Promise) {
+    try {
+      const result = fn(...args);
       return result.catch((error: unknown) => {
-        // Handle error appropriately
         console.error('Async handler error:', error);
         throw error;
       });
+    } catch (err) {
+      return Promise.reject(err);
     }
-    return result;
-  }) as T;
+  }) as unknown as T;
 }
 
 // Handle unhandled promise rejections

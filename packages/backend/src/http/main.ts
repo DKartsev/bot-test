@@ -35,9 +35,9 @@ export async function createApp(): Promise<FastifyInstance> {
     trustProxy: true,
   });
 
-  await app.register(rateLimit as any, { global: false });
+  await app.register(rateLimit, { global: false });
   await app.register(pgPlugin);
-  await app.register(multipart as any);
+  await app.register(multipart);
 
   // -------- Health --------
   app.head("/", (_req, reply) => reply.code(200).send());
@@ -60,7 +60,7 @@ export async function createApp(): Promise<FastifyInstance> {
 
   // -------- Регистрация внутренних роутов --------
   await app.register(routes);
-  await app.register(adminPlugin as any, { prefix: "/api" });
+  await app.register(adminPlugin, { prefix: "/api" });
   await app.register(adminTelegram);
   await app.register(adminConversations);
   await app.register(adminMetrics);
@@ -71,16 +71,18 @@ export async function createApp(): Promise<FastifyInstance> {
   await app.register(adminStream);
 
   // -------- CORS настройки для operator-admin --------
-  app.addHook('onRequest', async (request, reply) => {
+  /* eslint-disable @typescript-eslint/no-floating-promises */
+  void app.addHook('onRequest', async (request, reply) => {
     // Разрешаем запросы от operator-admin
     reply.header('Access-Control-Allow-Origin', 'https://bot-test-operator-admin.onrender.com');
     reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
     if (request.method === 'OPTIONS') {
-      reply.send();
+      return reply.send();
     }
   });
+  /* eslint-enable @typescript-eslint/no-floating-promises */
 
   app.log.info("🚀 Backend API готов к интеграции с панелью операторов");
 
@@ -98,14 +100,14 @@ export async function createApp(): Promise<FastifyInstance> {
 
   const bot = new Telegraf(TG_TOKEN);
 
-  bot.catch((err, ctx) => {
+  void bot.catch((err, ctx) => {
     app.log.error(
       { err, tg_chat_id: ctx.chat?.id, tg_type: ctx.updateType },
       "❌ Ошибка в Telegram боте",
     );
   });
 
-  bot.on("message", async (ctx, next) => {
+  void bot.on("message", async (ctx, next) => {
     try {
       app.log.info(
         { tg_chat_id: ctx.chat?.id, tg_type: ctx.updateType },
@@ -117,7 +119,7 @@ export async function createApp(): Promise<FastifyInstance> {
     return next();
   });
 
-  bot.on(message("text"), async (ctx) => {
+  void bot.on(message("text"), async (ctx) => {
     const text = ctx.message.text || "";
     try {
       await ctx.sendChatAction("typing");
@@ -156,7 +158,7 @@ export async function createApp(): Promise<FastifyInstance> {
     token?: string;
   }
 
-  app.post(`${TG_PATH}/:token?`, async (req, reply) => {
+  void app.post(`${TG_PATH}/:token?`, async (req, reply) => {
     const headerSecret = String(
       req.headers["x-telegram-bot-api-secret-token"] || "",
     );
@@ -202,7 +204,10 @@ async function start() {
 }
 
 if (process.env.NODE_ENV !== "test") {
-  void start();
+  start().catch((err) => {
+    console.error("Failed to start server:", err);
+    process.exit(1);
+  });
 }
 
 export default createApp;

@@ -7,7 +7,7 @@ const adminStreamRoutes: FastifyPluginAsync = async (server, _opts) => {
     async (req, reply) => {
       try {
         const url = new URL(req.url, "http://localhost");
-        const token = url.searchParams.get("token") || (req.query as any)?.token;
+        const token = url.searchParams.get("token") || "";
         const tokensEnv = process.env.ADMIN_API_TOKENS || process.env.ADMIN_API_TOKEN || "";
         const allowed = tokensEnv.split(",").map((t) => t.trim()).filter(Boolean);
 
@@ -25,9 +25,9 @@ const adminStreamRoutes: FastifyPluginAsync = async (server, _opts) => {
           "https://bot-test-operator-admin.onrender.com",
         );
         // Немедленно отправим заголовки
-        (reply.raw as any).flushHeaders?.();
+        reply.raw.flushHeaders?.();
 
-        const send = (event: string, data: any) => {
+        const send = (event: string, data: unknown) => {
           reply.raw.write(`event: ${event}\n`);
           reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
         };

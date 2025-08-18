@@ -17,6 +17,17 @@ interface RagParams {
   pg: FastifyInstance["pg"];
 }
 
+interface KBSearchResult {
+  article_id: string | number;
+  title: string;
+  excerpt: string;
+  score: number;
+}
+
+interface KBSearchResponse {
+  kb_search_json?: KBSearchResult[];
+}
+
 export async function ragAnswer({ text, lang, logger, pg }: RagParams) {
   let start = Date.now();
   let embeddingUsed = false;
@@ -47,7 +58,7 @@ export async function ragAnswer({ text, lang, logger, pg }: RagParams) {
       
       // Сначала пробуем вызвать kb_search_json с embedding
       try {
-        const q = await pg.query<{ kb_search_json?: any[] }>(
+        const q = await pg.query<KBSearchResponse>(
           "select kb_search_json($1, $2, 10, 0.75, 0.25)",
           [text, embedding]
         );
@@ -55,7 +66,7 @@ export async function ragAnswer({ text, lang, logger, pg }: RagParams) {
         const row = q.rows?.[0];
         if (row && Array.isArray(row.kb_search_json)) {
           kbResults = row.kb_search_json
-            .filter((s) => s)
+            .filter((s): s is KBSearchResult => s && typeof s === 'object')
             .map((s) => ({
               id: String(s.article_id),
               title: s.title,
@@ -110,7 +121,7 @@ export async function ragAnswer({ text, lang, logger, pg }: RagParams) {
   if (!embeddingUsed || kbResults.length === 0) {
     try {
       // Сначала пробуем kb_search_json
-      const q = await pg.query<{ kb_search_json?: any[] }>(
+      const q = await pg.query<KBSearchResponse>(
         "select kb_search_json($1, NULL::real[], 10, 0.0, 1.0)",
         [text]
       );
@@ -118,7 +129,7 @@ export async function ragAnswer({ text, lang, logger, pg }: RagParams) {
       const row = q.rows?.[0];
       if (row && Array.isArray(row.kb_search_json)) {
         kbResults = row.kb_search_json
-          .filter((s) => s)
+          .filter((s): s is KBSearchResult => s && typeof s === 'object')
           .map((s) => ({
             id: String(s.article_id),
             title: s.title,

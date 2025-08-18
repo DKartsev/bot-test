@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 
-export default async function faqRoutes(app: FastifyInstance) {
+export default function faqRoutes(app: FastifyInstance) {
   // Получение списка FAQ
   app.get("/admin/faq", async (request, reply) => {
     try {

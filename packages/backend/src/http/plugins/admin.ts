@@ -52,7 +52,7 @@ declare module "fastify" {
 // --- The Plugin ---
 const adminPlugin: FastifyPluginAsync = async (server, _opts) => {
   // 2. Register Admin-specific Rate Limiting
-  await server.register(rateLimit as any, {
+  await server.register(rateLimit, {
     max: ADMIN_RATE_LIMIT_MAX,
     timeWindow: "1 minute",
     keyGenerator: (req: FastifyRequest) => req.user?.id || req.ip,
@@ -70,7 +70,8 @@ const adminPlugin: FastifyPluginAsync = async (server, _opts) => {
         const allowed = ADMIN_IP_ALLOWLIST.some((rule) => matchIp(ip, rule));
         if (!allowed) {
           req.log.warn({ ip }, "Admin IP rejected by allowlist");
-          return reply.code(403).send({ error: "Forbidden" });
+          void reply.code(403).send({ error: "Forbidden" });
+          return;
         }
       }
       done();
@@ -90,7 +91,7 @@ const adminPlugin: FastifyPluginAsync = async (server, _opts) => {
   await server.register(telegramRoutes);
 
   // Lightweight status for admin panel discovery
-  server.get("/admin/status", async () => ({
+  server.get("/admin/status", () => ({
     status: "ok",
     service: "bot-test-backend",
     endpoints: {

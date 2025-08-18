@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 
-export default async function metricsRoutes(app: FastifyInstance) {
+export default function metricsRoutes(app: FastifyInstance) {
   // Получение общих метрик
   app.get("/admin/metrics", async (request, reply) => {
     try {

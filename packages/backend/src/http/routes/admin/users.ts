@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 
-export default async function usersRoutes(app: FastifyInstance) {
+export default function usersRoutes(app: FastifyInstance) {
   // Получение списка пользователей
   app.get("/admin/users", async (request, reply) => {
     try {
