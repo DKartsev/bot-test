@@ -104,7 +104,7 @@ const adminPlugin: FastifyPluginAsync = async (server, _opts) => {
     timestamp: new Date().toISOString(),
   }));
 
-  server.log.info("Admin plugin registered with security hooks and routes.");
+  server.log.info("🔐 Admin плагин зарегистрирован с защитными хуками и маршрутами");
 };
 
 export default adminPlugin;

@@ -26,7 +26,7 @@ export class OpenAIEmbedder implements Embedder {
     this.dimension = OPENAI_EMBEDDING_DIMENSION;
     logger.info(
       { model: OPENAI_EMBEDDING_MODEL },
-      "Инициализирован OpenAI Embedder.",
+      "🧠 Инициализирован OpenAI Embedder.",
     );
   }
 
@@ -62,7 +62,7 @@ export class OpenAIEmbedder implements Embedder {
       );
       return embeddings;
     } catch (err) {
-      logger.error({ err }, "Ошибка при создании векторов с помощью OpenAI");
+      logger.error({ err }, "❌ Ошибка при создании векторов с помощью OpenAI");
       // Возвращаем пустые векторы для текстов, которые не удалось обработать
       const emptyVectors: number[][] = texts.map(() =>
         new Array(this.dimension).fill(0),

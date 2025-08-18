@@ -11,7 +11,7 @@ const healthPlugin: FastifyPluginAsync = (fastify, _opts) => {
       // If pg plugin is not registered, still return ok (service is up)
       return { status: "ok", checks: { database: "skipped" } };
     } catch (err) {
-      request.log.error({ err }, "Health check failed");
+      request.log.error({ err }, "❌ Проверка здоровья сервера не пройдена");
       return reply
         .code(503)
         .send({ status: "error", checks: { database: "error" } });

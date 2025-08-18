@@ -60,12 +60,12 @@ const telegramPlugin: FastifyPluginAsync = async (server, _opts) => {
 
   // Graceful shutdown
   server.addHook("onClose", async () => {
-    server.log.info("Stopping Telegram bot...");
+    server.log.info("🛑 Остановка Telegram бота...");
     try {
       await bot.stop("SIGTERM");
-      server.log.info("Telegram bot stopped.");
+              server.log.info("✅ Telegram бот остановлен.");
     } catch (err) {
-      server.log.warn({ err }, "Failed to stop Telegram bot gracefully.");
+              server.log.warn({ err }, "⚠️ Не удалось корректно остановить Telegram бота.");
     }
   });
 
@@ -79,19 +79,19 @@ const telegramPlugin: FastifyPluginAsync = async (server, _opts) => {
         });
         server.log.info(
           { url: webhookUrl },
-          "Telegram webhook set successfully",
+          "✅ Telegram webhook успешно настроен",
         );
       } catch (err) {
-        server.log.error({ err }, "Failed to set Telegram webhook");
+        server.log.error({ err }, "❌ Не удалось настроить Telegram webhook");
       }
     } else if (TELEGRAM_SET_WEBHOOK_ON_START) {
       server.log.warn(
-        "TELEGRAM_SET_WEBHOOK_ON_START is true, but PUBLIC_URL or TG_WEBHOOK_SECRET is missing. Cannot set webhook.",
+        "⚠️ TELEGRAM_SET_WEBHOOK_ON_START включен, но отсутствует PUBLIC_URL или TG_WEBHOOK_SECRET. Не удается настроить webhook.",
       );
     }
   });
 
-  server.log.info("Telegram plugin registered.");
+  server.log.info("📱 Telegram плагин зарегистрирован.");
 };
 
 export default fp(telegramPlugin as any);

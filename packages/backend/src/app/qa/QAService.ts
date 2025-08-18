@@ -52,18 +52,18 @@ export class QAService {
    */
   async init() {
     if (this.isInitialized) return;
-    logger.info("Инициализация QAService...");
+    logger.info("🤖 Инициализация QAService...");
 
     const faqData = await this.loadFaqData();
     this.fuzzySearch = new FuzzySearch(faqData);
     logger.info(
-      `FuzzySearch инициализирован с ${this.fuzzySearch.getSize()} элементами.`,
+      `🔍 FuzzySearch инициализирован с ${this.fuzzySearch.getSize()} элементами.`,
     );
 
     await this.vectorStore.init();
 
     this.isInitialized = true;
-    logger.info("QAService успешно инициализирован.");
+          logger.info("✅ QAService успешно инициализирован.");
   }
 
   /**
@@ -92,7 +92,7 @@ export class QAService {
       // 0.1 is a good threshold for a direct answer
       logger.info(
         { question, match: topFuzzy.item.Question },
-        "Найдено точное совпадение по FAQ.",
+        "✅ Найдено точное совпадение по FAQ.",
       );
       return { answer: topFuzzy.item.Answer, source: "faq-exact" };
     }
@@ -104,7 +104,7 @@ export class QAService {
     if (!retrievalResult.contextText.trim()) {
       logger.warn(
         { question },
-        "Не удалось найти релевантный контекст в базе знаний.",
+        "⚠️ Не удалось найти релевантный контекст в базе знаний.",
       );
       return {
         answer:
@@ -114,7 +114,7 @@ export class QAService {
     }
 
     // 4. Use the answerer to generate a final response from the context
-    logger.info({ question }, "Генерация ответа с помощью LLM...");
+    logger.info({ question }, "🤖 Генерация ответа с помощью LLM...");
     const finalAnswer = await this.answerer.answer(
       question,
       retrievalResult,
@@ -150,7 +150,7 @@ export class QAService {
     } catch (err) {
       logger.error(
         { err, path: env.FAQ_PATH },
-        "Не удалось загрузить или прочитать FAQ-файл.",
+        "❌ Не удалось загрузить или прочитать FAQ-файл.",
       );
       // Return an empty array if the file doesn't exist or is invalid
       return [];

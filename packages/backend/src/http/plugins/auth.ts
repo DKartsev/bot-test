@@ -26,7 +26,7 @@ const authPlugin: FastifyPluginAsync = async (server, _opts) => {
       },
   );
 
-  server.log.info("Auth plugin registered with authenticate and authorize decorators.");
+  server.log.info("🔐 Auth плагин зарегистрирован с декораторами authenticate и authorize.");
 };
 
 export default fp(authPlugin);

@@ -82,7 +82,7 @@ export async function createApp(): Promise<FastifyInstance> {
     }
   });
 
-  app.log.info("Backend API ready for operator-admin integration");
+  app.log.info("🚀 Backend API готов к интеграции с панелью операторов");
 
   // -------- Telegram / Webhook --------
   const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -90,9 +90,9 @@ export async function createApp(): Promise<FastifyInstance> {
   const TG_SECRET = process.env.TG_WEBHOOK_SECRET || "";
 
   if (!TG_TOKEN) {
-    app.log.warn(
-      "TELEGRAM_BOT_TOKEN is not set — Telegram webhook route will NOT be registered",
-    );
+      app.log.warn(
+    "⚠️ TELEGRAM_BOT_TOKEN не установлен — маршрут Telegram webhook НЕ будет зарегистрирован",
+  );
     return app;
   }
 
@@ -101,7 +101,7 @@ export async function createApp(): Promise<FastifyInstance> {
   bot.catch((err, ctx) => {
     app.log.error(
       { err, tg_chat_id: ctx.chat?.id, tg_type: ctx.updateType },
-      "Telegraf error",
+      "❌ Ошибка в Telegram боте",
     );
   });
 
@@ -109,7 +109,7 @@ export async function createApp(): Promise<FastifyInstance> {
     try {
       app.log.info(
         { tg_chat_id: ctx.chat?.id, tg_type: ctx.updateType },
-        "tg update received",
+        "📨 Получено сообщение от пользователя",
       );
     } catch {
       // ignore
@@ -141,7 +141,7 @@ export async function createApp(): Promise<FastifyInstance> {
       
       await ctx.reply(`${answer}${tail}`);
     } catch (err) {
-      app.log.error({ err }, "ragAnswer/reply failed");
+      app.log.error({ err }, "❌ Ошибка обработки сообщения через ragAnswer");
       try {
         await ctx.reply(
           "❌ Ошибка обработки. Могу подключить оператора поддержки.",
@@ -165,13 +165,13 @@ export async function createApp(): Promise<FastifyInstance> {
 
     if (hasSecret) {
       if (headerSecret !== TG_SECRET && urlSecret !== TG_SECRET) {
-        app.log.warn({ ip: req.ip }, "Unauthorized Telegram webhook access");
+        app.log.warn({ ip: req.ip }, "🚫 Неавторизованный доступ к Telegram webhook");
         return reply.code(401).send();
       }
     } else {
       app.log.warn(
         { ip: req.ip },
-        "Telegram webhook blocked: missing TG_WEBHOOK_SECRET",
+        "🚫 Telegram webhook заблокирован: отсутствует TG_WEBHOOK_SECRET",
       );
       return reply.code(401).send();
     }
@@ -180,7 +180,7 @@ export async function createApp(): Promise<FastifyInstance> {
       await bot.handleUpdate(req.body as Update);
       return reply.send();
     } catch (err) {
-      app.log.error({ err }, "bot.handleUpdate failed");
+      app.log.error({ err }, "❌ Ошибка обработки Telegram обновления");
       return reply.code(500).send();
     }
   });
@@ -194,9 +194,9 @@ async function start() {
   const host = "0.0.0.0";
   try {
     await app.listen({ port, host });
-    app.log.info({ port }, "server started");
+    app.log.info({ port }, "🚀 Сервер успешно запущен");
   } catch (err) {
-    app.log.error({ err }, "failed to start");
+    app.log.error({ err }, "❌ Не удалось запустить сервер");
     process.exit(1);
   }
 }

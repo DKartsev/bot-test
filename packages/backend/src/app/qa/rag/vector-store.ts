@@ -70,7 +70,7 @@ export class VectorStore {
     if (this.isInitialized) return;
     logger.info(
       { path: this.storePath },
-      "Инициализация векторного хранилища...",
+      "🧠 Инициализация векторного хранилища...",
     );
     await fs.mkdir(this.storePath, { recursive: true });
 
@@ -83,7 +83,7 @@ export class VectorStore {
       }
       this.hnswAvailable = true;
     } catch (err) {
-      logger.warn({ err }, "hnswlib-node недоступен. Векторный поиск будет отключён.");
+      logger.warn({ err }, "⚠️ hnswlib-node недоступен. Векторный поиск будет отключён.");
       this.hnswAvailable = false;
       this.isInitialized = true;
       return;
@@ -91,11 +91,11 @@ export class VectorStore {
 
     try {
       await this.load();
-      logger.info("Векторное хранилище успешно загружено с диска.");
+      logger.info("✅ Векторное хранилище успешно загружено с диска.");
     } catch (err) {
       logger.warn(
         { err },
-        "Не удалось загрузить существующий индекс. Создаётся новый.",
+        "⚠️ Не удалось загрузить существующий индекс. Создаётся новый.",
       );
       this.index = new HierarchicalNSWCtor("cosine", this.dimension);
       this.index.initIndex(0);
@@ -161,7 +161,7 @@ export class VectorStore {
 
     logger.info(
       { count: chunks.length },
-      "Добавление чанков в векторный индекс...",
+      "📝 Добавление чанков в векторный индекс...",
     );
     const texts = chunks.map((c) => c.text);
     const vectors = await this.embedder.embed(texts);

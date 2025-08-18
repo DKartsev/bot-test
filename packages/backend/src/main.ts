@@ -8,7 +8,7 @@ import { PgUserRepo } from "./modules/users/infra/PgUserRepo.js";
 import type { IUserRepo } from "./modules/users/app/UserService.js";
 
 async function main() {
-  logger.info("Запуск приложения...");
+  logger.info("🚀 Запуск приложения...");
 
   // 1. Инициализируем сервисы
   const qaService = new QAService();
