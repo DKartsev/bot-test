@@ -18,6 +18,7 @@ import adminFAQ from "./routes/admin/faq.js";
 import adminUsers from "./routes/admin/users.js";
 import adminCategories from "./routes/admin/categories.js";
 import adminNotes from "./routes/admin/notes.js";
+import adminStream from "./routes/admin/stream.js";
 
 /**
  * Создание Fastify-приложения.
@@ -79,6 +80,7 @@ export async function createApp(): Promise<FastifyInstance> {
   await app.register(adminUsers);
   await app.register(adminCategories);
   await app.register(adminNotes);
+  await app.register(adminStream);
 
   // -------- CORS настройки для operator-admin --------
   app.addHook('onRequest', async (request, reply) => {
