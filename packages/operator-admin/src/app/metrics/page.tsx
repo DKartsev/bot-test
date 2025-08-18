@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { BarChart3, MessageCircle, Users, Clock, Activity } from "lucide-react";
 import AuthGuard from "../../components/AuthGuard";
 import BackendStatus from "../../components/BackendStatus";
+import * as Select from '@radix-ui/react-select';
 
 interface Metrics {
 	conversationsTotal: number;
@@ -35,36 +36,30 @@ export default function MetricsPage() {
 	const [operators, setOperators] = useState<OperatorMetric[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [range, setRange] = useState<'24h' | '7d' | '30d'>('24h');
 
-	useEffect(() => {
-		const load = async () => {
-			try {
-				setLoading(true);
-				setError(null);
+	async function loadAll() {
+		try {
+			setLoading(true);
+			setError(null);
+			const q = `?range=${range}`;
+			const [mRes, pRes, oRes] = await Promise.all([
+				api(`/admin/metrics${q}`),
+				api(`/admin/metrics/period${q}`),
+				api(`/admin/metrics/operators${q}`),
+			]);
+			if (!mRes.ok || !pRes.ok || !oRes.ok) throw new Error("HTTP error");
+			setMetrics((await mRes.json()).data || (await mRes.json()));
+			setPeriod((await pRes.json()).data || (await pRes.json()));
+			setOperators((await oRes.json()).data || (await oRes.json()));
+		} catch (e: any) {
+			setError(e?.message || 'Не удалось загрузить метрики');
+		} finally {
+			setLoading(false);
+		}
+	}
 
-				const [mRes, pRes, oRes] = await Promise.all([
-					api("/admin/metrics"),
-					api("/admin/metrics/period"),
-					api("/admin/metrics/operators"),
-				]);
-
-				if (!mRes.ok || !pRes.ok || !oRes.ok) throw new Error("HTTP error");
-
-				const mData = await mRes.json();
-				const pData = await pRes.json();
-				const oData = await oRes.json();
-
-				setMetrics(mData.data || mData);
-				setPeriod(pData.data || pData);
-				setOperators(oData.data || oData);
-			} catch (e: any) {
-				setError(e?.message || "Не удалось загрузить метрики");
-			} finally {
-				setLoading(false);
-			}
-		};
-		load();
-	}, []);
+	useEffect(() => { loadAll(); }, [range]);
 
 	return (
 		<AuthGuard>
@@ -72,21 +67,31 @@ export default function MetricsPage() {
 				<BackendStatus className="absolute top-4 right-4 z-50 w-80" />
 
 				<div className="max-w-6xl mx-auto px-4 py-6">
-					<div className="flex items-center gap-3 mb-6">
-						<BarChart3 className="text-blue-600" />
-						<h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Метрики</h1>
+					<div className="flex items-center justify-between mb-6">
+						<div className="flex items-center gap-3">
+							<BarChart3 className="text-blue-600" />
+							<h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Метрики</h1>
+						</div>
+						<Select.Root value={range} onValueChange={(v: any) => setRange(v)}>
+							<Select.Trigger className="px-3 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+								<Select.Value />
+							</Select.Trigger>
+							<Select.Content className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-1">
+								{['24h','7d','30d'].map(r => (
+									<Select.Item key={r} value={r} className="px-3 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+										<Select.ItemText>{r === '24h' ? '24 часа' : r === '7d' ? '7 дней' : '30 дней'}</Select.ItemText>
+									</Select.Item>
+								))}
+							</Select.Content>
+						</Select.Root>
 					</div>
 
-					{loading && (
-						<div className="text-gray-500 dark:text-gray-400">Загрузка...</div>
-					)}
-					{error && (
-						<div className="text-red-500">{error}</div>
-					)}
+					{loading && (<div className="text-gray-500 dark:text-gray-400">Загрузка...</div>)}
+					{error && (<div className="text-red-500">{error}</div>)}
 
+					{/* cards + charts + table — как было выше */}
 					{!loading && !error && metrics && (
 						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-							{/* Всего диалогов */}
 							<motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
 								<div className="flex items-center justify-between">
 									<div>
@@ -96,8 +101,6 @@ export default function MetricsPage() {
 									<MessageCircle className="text-blue-600" />
 								</div>
 							</motion.div>
-
-							{/* Открытые */}
 							<motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
 								<div className="flex items-center justify-between">
 									<div>
@@ -107,8 +110,6 @@ export default function MetricsPage() {
 									<Activity className="text-green-600" />
 								</div>
 							</motion.div>
-
-							{/* Среднее время ответа */}
 							<motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
 								<div className="flex items-center justify-between">
 									<div>
@@ -118,8 +119,6 @@ export default function MetricsPage() {
 									<Clock className="text-yellow-600" />
 								</div>
 							</motion.div>
-
-							{/* Доля эскалаций к оператору */}
 							<motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
 								<div className="flex items-center justify-between">
 									<div>
@@ -132,15 +131,9 @@ export default function MetricsPage() {
 						</div>
 					)}
 
-					{/* Динамика по дням */}
 					{!loading && !error && period.length > 0 && (
 						<div className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
-							<div className="flex items-center justify-between mb-4">
-								<h2 className="text-lg font-semibold text-gray-900 dark:text-white">Динамика за период</h2>
-								<span className="text-sm text-gray-500 dark:text-gray-400">{period[0]?.date} — {period[period.length-1]?.date}</span>
-							</div>
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-								{/* Простая колонная визуализация */}
 								<div>
 									<div className="text-sm text-gray-600 dark:text-gray-300 mb-2">Диалоги</div>
 									<div className="flex items-end gap-2 h-32">
@@ -165,7 +158,6 @@ export default function MetricsPage() {
 						</div>
 					)}
 
-					{/* Операторы */}
 					{!loading && !error && operators.length > 0 && (
 						<div className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
 							<h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Операторы</h2>

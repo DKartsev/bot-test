@@ -2,6 +2,7 @@ import Fastify, {
   type FastifyInstance,
 } from "fastify";
 import rateLimit from "@fastify/rate-limit";
+import multipart from "@fastify/multipart";
 import { Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
 import { type Update } from "telegraf/types";
@@ -34,6 +35,7 @@ export async function createApp(): Promise<FastifyInstance> {
 
   await app.register(rateLimit as any, { global: false });
   await app.register(pgPlugin);
+  await app.register(multipart as any);
 
   // -------- Health --------
   app.head("/", (_req, reply) => reply.code(200).send());

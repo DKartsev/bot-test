@@ -9,14 +9,12 @@ import {
   MapPin, 
   Calendar, 
   Clock, 
-  Tag, 
   MessageCircle,
   FileText,
   Star,
   AlertCircle,
-  CheckCircle,
-  XCircle,
-  Plus
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { useUsers } from '../hooks/useUsers';
 
@@ -27,7 +25,8 @@ interface UserPanelProps {
 
 export default function UserPanel({ selectedChatId, userId }: UserPanelProps) {
   const [activeTab, setActiveTab] = useState<'info' | 'history' | 'notes'>('info');
-  const { userInfo, notes, history, loading, error, fetchUserInfo, fetchUserHistory, fetchConversationNotes } = useUsers();
+  const [newNote, setNewNote] = useState('');
+  const { userInfo, notes, history, loading, error, fetchUserInfo, fetchUserHistory, fetchConversationNotes, createNote, deleteNote } = useUsers();
 
   useEffect(() => {
     if (userId) {
@@ -41,6 +40,16 @@ export default function UserPanel({ selectedChatId, userId }: UserPanelProps) {
       fetchConversationNotes(selectedChatId);
     }
   }, [selectedChatId, fetchConversationNotes]);
+
+  const handleAddNote = async () => {
+    if (!selectedChatId || !newNote.trim()) return;
+    const res = await createNote(selectedChatId, newNote.trim(), 'internal', true);
+    if (res.success) setNewNote('');
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    await deleteNote(id);
+  };
 
   const getStatusColor = (status: 'online' | 'offline' | 'away') => {
     switch (status) {

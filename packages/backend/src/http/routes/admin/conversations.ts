@@ -1,4 +1,6 @@
 import { FastifyInstance } from "fastify";
+import fs from 'node:fs';
+import path from 'node:path';
 
 export default async function conversationsRoutes(app: FastifyInstance) {
   // Получение списка диалогов
@@ -14,30 +16,30 @@ export default async function conversationsRoutes(app: FastifyInstance) {
           updatedAt: new Date().toISOString(),
           category: "payment",
           priority: "high",
-          assignedTo: "operator-1"
+          assignedTo: "operator-1",
         },
         {
-          id: "conv-2", 
+          id: "conv-2",
           title: "Вопрос по доставке",
           status: "in_progress",
           createdAt: new Date(Date.now() - 3600000).toISOString(),
           updatedAt: new Date().toISOString(),
           category: "delivery",
           priority: "medium",
-          assignedTo: "operator-2"
-        }
+          assignedTo: "operator-2",
+        },
       ];
 
       return reply.send({
         success: true,
         data: mockConversations,
-        total: mockConversations.length
+        total: mockConversations.length,
       });
     } catch (error) {
       app.log.error({ error }, "Failed to get conversations");
       return reply.code(500).send({
         success: false,
-        error: "Internal server error"
+        error: "Internal server error",
       });
     }
   });
@@ -46,39 +48,39 @@ export default async function conversationsRoutes(app: FastifyInstance) {
   app.get("/admin/conversations/:id/messages", async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      
+
       // TODO: Реализовать получение сообщений из базы данных
       const mockMessages = [
         {
           id: "msg-1",
           content: "Здравствуйте! У меня проблема с оплатой заказа",
           role: "user" as const,
-          timestamp: new Date(Date.now() - 7200000).toISOString()
+          timestamp: new Date(Date.now() - 7200000).toISOString(),
         },
         {
           id: "msg-2",
           content: "Здравствуйте! Давайте разберем вашу проблему. Какой именно заказ?",
           role: "assistant" as const,
-          timestamp: new Date(Date.now() - 3600000).toISOString()
+          timestamp: new Date(Date.now() - 3600000).toISOString(),
         },
         {
           id: "msg-3",
           content: "Заказ №12345 на сумму 1500 рублей",
           role: "user" as const,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       ];
 
       return reply.send({
         success: true,
         data: mockMessages,
-        conversationId: id
+        conversationId: id,
       });
     } catch (error) {
       app.log.error({ error }, "Failed to get messages");
       return reply.code(500).send({
         success: false,
-        error: "Internal server error"
+        error: "Internal server error",
       });
     }
   });
@@ -95,7 +97,7 @@ export default async function conversationsRoutes(app: FastifyInstance) {
       if (!title) {
         return reply.code(400).send({
           success: false,
-          error: "Title is required"
+          error: "Title is required",
         });
       }
 
@@ -108,18 +110,18 @@ export default async function conversationsRoutes(app: FastifyInstance) {
         updatedAt: new Date().toISOString(),
         category: category || "general",
         priority: priority || "medium",
-        assignedTo: null
+        assignedTo: null,
       };
 
       return reply.code(201).send({
         success: true,
-        data: newConversation
+        data: newConversation,
       });
     } catch (error) {
       app.log.error({ error }, "Failed to create conversation");
       return reply.code(500).send({
         success: false,
-        error: "Internal server error"
+        error: "Internal server error",
       });
     }
   });
@@ -136,7 +138,7 @@ export default async function conversationsRoutes(app: FastifyInstance) {
       if (!content) {
         return reply.code(400).send({
           success: false,
-          error: "Content is required"
+          error: "Content is required",
         });
       }
 
@@ -146,18 +148,18 @@ export default async function conversationsRoutes(app: FastifyInstance) {
         content,
         role,
         timestamp: new Date().toISOString(),
-        conversationId: id
+        conversationId: id,
       };
 
       return reply.code(201).send({
         success: true,
-        data: newMessage
+        data: newMessage,
       });
     } catch (error) {
       app.log.error({ error }, "Failed to send message");
       return reply.code(500).send({
         success: false,
-        error: "Internal server error"
+        error: "Internal server error",
       });
     }
   });
@@ -171,7 +173,7 @@ export default async function conversationsRoutes(app: FastifyInstance) {
       if (!status) {
         return reply.code(400).send({
           success: false,
-          error: "Status is required"
+          error: "Status is required",
         });
       }
 
@@ -179,19 +181,69 @@ export default async function conversationsRoutes(app: FastifyInstance) {
       const updatedConversation = {
         id,
         status,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
 
       return reply.send({
         success: true,
-        data: updatedConversation
+        data: updatedConversation,
       });
     } catch (error) {
       app.log.error({ error }, "Failed to update conversation status");
       return reply.code(500).send({
         success: false,
-        error: "Internal server error"
+        error: "Internal server error",
       });
+    }
+  });
+
+  // Сброс непрочитанных сообщений (пометить прочитанным со стороны оператора)
+  app.patch("/admin/conversations/:id/read", async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+
+      // TODO: Обновить unread в базе. Пока возвращаем успешный ответ.
+      return reply.send({
+        success: true,
+        data: {
+          id,
+          unreadCount: 0,
+          updatedAt: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      app.log.error({ error }, "Failed to mark conversation as read");
+      return reply.code(500).send({ success: false, error: "Internal server error" });
+    }
+  });
+
+  // Загрузка вложений в диалог (multipart)
+  app.post('/admin/conversations/:id/attachments', async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      // @ts-ignore fastify-multipart typings
+      const parts = request.parts();
+      const saved: Array<{ filename: string; mimetype: string; size: number; path: string }> = [];
+
+      for await (const part of parts) {
+        if (part.type === 'file') {
+          const filename = part.filename as string;
+          const mimetype = part.mimetype as string;
+          const dest = path.join('/tmp', `${Date.now()}_${filename}`);
+          await new Promise<void>((resolve, reject) => {
+            const ws = fs.createWriteStream(dest);
+            part.file.pipe(ws);
+            ws.on('finish', () => resolve());
+            ws.on('error', reject);
+          });
+          saved.push({ filename, mimetype, size: Number(part.file.truncated ? part.file.bytesRead : part.file.bytesRead), path: dest });
+        }
+      }
+
+      return reply.code(201).send({ success: true, data: { conversationId: id, files: saved } });
+    } catch (error) {
+      app.log.error({ error }, 'Failed to upload attachments');
+      return reply.code(500).send({ success: false, error: 'Internal server error' });
     }
   });
 }

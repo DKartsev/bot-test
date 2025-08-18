@@ -12,8 +12,10 @@ import {
   Plus,
   AlertCircle
 } from 'lucide-react';
+import * as Select from '@radix-ui/react-select';
 import { useChatContext } from '../context/ChatContext';
 import type { Chat } from '../hooks/useChats';
+import { api } from '../lib/api';
 
 interface SidebarProps {
   onChatSelect: (chatId: string) => void;
@@ -28,13 +30,47 @@ const filters = [
   { id: 'escalated', label: 'Эскалированы', icon: AlertCircle, count: 0 }
 ];
 
+const priorities = [
+  { id: 'all', label: 'Любой' },
+  { id: 'low', label: 'Низкий' },
+  { id: 'medium', label: 'Средний' },
+  { id: 'high', label: 'Высокий' },
+];
+
 export default function Sidebar({ onChatSelect, selectedChatId }: SidebarProps) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [category, setCategory] = useState('all');
+  const [priority, setPriority] = useState('all');
+  const [assignee, setAssignee] = useState('all');
+  const [categoryOptions, setCategoryOptions] = useState<{ id: string; name: string }[]>([]);
+  const [assigneeOptions, setAssigneeOptions] = useState<{ id: string; name: string }[]>([]);
   
   const { chats, loading, error, applyFilters } = useChatContext();
 
-  // Обновляем счетчики фильтров
+  // Load options
+  useEffect(() => {
+    (async () => {
+      try {
+        const [catsRes, usersRes] = await Promise.all([
+          api('/admin/categories'),
+          api('/admin/users'),
+        ]);
+        if (catsRes.ok) {
+          const cats = await catsRes.json();
+          const items = (cats.data || cats || []).map((c: any) => ({ id: c.id?.toString?.() || c.id, name: c.name || c.title || c.label || 'Категория' }));
+          setCategoryOptions([{ id: 'all', name: 'Все категории' }, ...items]);
+        }
+        if (usersRes.ok) {
+          const users = await usersRes.json();
+          const items = (users.data || users || []).map((u: any) => ({ id: u.id?.toString?.() || u.id, name: u.fullName || u.username || u.name || 'Оператор' }));
+          setAssigneeOptions([{ id: 'all', name: 'Любой оператор' }, ...items]);
+        }
+      } catch {}
+    })();
+  }, []);
+
+  // Update counters for quick chips
   useEffect(() => {
     const counts = {
       all: chats.length,
@@ -49,17 +85,16 @@ export default function Sidebar({ onChatSelect, selectedChatId }: SidebarProps) 
     });
   }, [chats]);
 
-  // Применяем фильтры при изменении
+  // Apply filters
   useEffect(() => {
     const newFilters: any = {};
-    if (activeFilter !== 'all') {
-      newFilters.status = activeFilter;
-    }
-    if (searchQuery) {
-      newFilters.search = searchQuery;
-    }
+    if (activeFilter !== 'all') newFilters.status = activeFilter;
+    if (searchQuery) newFilters.search = searchQuery;
+    if (category !== 'all') newFilters.category = category;
+    if (priority !== 'all') newFilters.priority = priority;
+    if (assignee !== 'all') newFilters.assignedTo = assignee;
     applyFilters(newFilters);
-  }, [activeFilter, searchQuery, applyFilters]);
+  }, [activeFilter, searchQuery, category, priority, assignee, applyFilters]);
 
   const filteredChats = chats;
 
@@ -79,8 +114,8 @@ export default function Sidebar({ onChatSelect, selectedChatId }: SidebarProps) 
       case 'in_progress': return 'В работе';
       case 'closed': return 'Закрыт';
       case 'escalated': return 'Эскалирован';
-      default: return 'Неизвестно';
     }
+    return 'Неизвестно';
   };
 
   return (
@@ -118,13 +153,13 @@ export default function Sidebar({ onChatSelect, selectedChatId }: SidebarProps) 
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters quick chips */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2 mb-3">
           <Filter size={16} className="text-gray-500" />
-          <span className="text-sm font_medium text-gray-700 dark:text-gray-300">Фильтры</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Фильтры</span>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 mb-3">
           {filters.map((filter) => {
             const Icon = filter.icon;
             const isActive = activeFilter === filter.id;
@@ -151,6 +186,51 @@ export default function Sidebar({ onChatSelect, selectedChatId }: SidebarProps) 
               </motion.button>
             );
           })}
+        </div>
+
+        {/* Advanced filters */}
+        <div className="space-y-2">
+          {/* Category */}
+          <Select.Root value={category} onValueChange={setCategory}>
+            <Select.Trigger className="w-full px-3 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+              <Select.Value placeholder="Категория" />
+            </Select.Trigger>
+            <Select.Content className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-1">
+              {(categoryOptions.length ? categoryOptions : [{ id: 'all', name: 'Все категории' }]).map(opt => (
+                <Select.Item key={opt.id} value={opt.id} className="px-3 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                  <Select.ItemText>{opt.name}</Select.ItemText>
+                </Select.Item>
+              ))}
+            </Select.Content>
+          </Select.Root>
+
+          {/* Priority */}
+          <Select.Root value={priority} onValueChange={setPriority}>
+            <Select.Trigger className="w-full px-3 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+              <Select.Value placeholder="Приоритет" />
+            </Select.Trigger>
+            <Select.Content className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-1">
+              {priorities.map(opt => (
+                <Select.Item key={opt.id} value={opt.id} className="px-3 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                  <Select.ItemText>{opt.label}</Select.ItemText>
+                </Select.Item>
+              ))}
+            </Select.Content>
+          </Select.Root>
+
+          {/* Assignee */}
+          <Select.Root value={assignee} onValueChange={setAssignee}>
+            <Select.Trigger className="w-full px-3 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+              <Select.Value placeholder="Оператор" />
+            </Select.Trigger>
+            <Select.Content className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-1">
+              {(assigneeOptions.length ? assigneeOptions : [{ id: 'all', name: 'Любой оператор' }]).map(opt => (
+                <Select.Item key={opt.id} value={opt.id} className="px-3 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                  <Select.ItemText>{opt.name}</Select.ItemText>
+                </Select.Item>
+              ))}
+            </Select.Content>
+          </Select.Root>
         </div>
       </div>
 
@@ -223,7 +303,7 @@ export default function Sidebar({ onChatSelect, selectedChatId }: SidebarProps) 
                       </span>
                     </div>
                     
-                    <p className="text-sm text_gray-600 dark:text-gray-400 truncate mb-2">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 truncate mb-2">
                       {chat.lastMessage || chat.title}
                     </p>
                     
