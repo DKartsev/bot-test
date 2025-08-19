@@ -1,16 +1,62 @@
-node_modules
-**/node_modules
+﻿# Dependencies
+node_modules/
 npm-debug.log*
-.DS_Store
-.env
-.env.*
+yarn-debug.log*
+yarn-error.log*
 
-# build caches and artifacts
-dist
-admin-out
-.next
-.turbo
-.cache
-coverage
-build
-!**/.env.example
+# Build outputs
+dist/
+build/
+.next/
+out/
+admin-out/
+
+# Environment files
+.env*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Test files
+coverage/
+test-results/
+*.test.ts
+*.spec.ts
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Scripts
+scripts/
+.github/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.backup
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python files
+*.py
+__pycache__/
+
+# Backup directories
+backup-*/

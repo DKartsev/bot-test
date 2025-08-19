@@ -1,34 +1,75 @@
 {
-  "name": "bot-test",
+  "name": "bot-support-system",
   "version": "1.0.0",
-  "description": "Support bot with operator admin panel",
+  "description": "Support bot with operator admin panel - unified deployment",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "type": "module",
   "scripts": {
-    "build": "npm run build:copy -w packages/backend && npm run build -w packages/operator-admin",
-    "build:backend": "node scripts/build-backend-only.js",
-    "build:prod": "node scripts/build-prod.js",
-    "deploy": "node scripts/deploy.js",
-    "dev": "npm run dev -w packages/backend",
+    "build": "npm run build:backend && npm run build:admin",
+    "build:backend": "rimraf dist && tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
+    "build:admin": "cd packages/operator-admin && npm run build",
+    "start": "pm2 start ecosystem.config.js",
+    "start:dev": "concurrently \"npm run dev:backend\" \"npm run dev:admin\"",
+    "dev:backend": "tsx watch packages/backend/src/main.ts",
+    "dev:admin": "cd packages/operator-admin && npm run dev",
+    "dev": "npm run dev:backend",
     "test": "npm run test -w packages/backend",
     "test:coverage": "npm run test:coverage -w packages/backend",
     "lint": "npm run lint -w packages/backend",
     "lint:fix": "npm run lint:fix -w packages/backend",
-    "pre-commit": "lint-staged"
-  },
-  "devDependencies": {
-    "husky": "^8.0.3",
-    "lint-staged": "^15.2.0"
-  },
-  "lint-staged": {
-    "packages/backend/src/**/*.{ts,tsx}": [
-      "npm run lint -w packages/backend",
-      "npm run test:coverage -w packages/backend"
-    ]
+    "clean": "rimraf dist packages/operator-admin/.next packages/operator-admin/out",
+    "install:all": "npm install && cd packages/operator-admin && npm install",
+    "setup:vm": "npm run install:all && npm run build"
   },
   "dependencies": {
-    "typescript": "^5.9.2"
-  }
+    "@fastify/cors": "^11.1.0",
+    "@fastify/helmet": "^13.0.1",
+    "@fastify/jwt": "^8.0.1",
+    "@fastify/multipart": "^9.0.3",
+    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/sensible": "^6.0.3",
+    "@fastify/static": "^8.2.0",
+    "@fastify/swagger": "^9.1.0",
+    "@fastify/swagger-ui": "^5.0.1",
+    "@supabase/supabase-js": "^2.45.4",
+    "dotenv-safe": "^9.1.0",
+    "fastify": "^5.5.0",
+    "fastify-plugin": "^4.5.1",
+    "fuse.js": "^7.0.0",
+    "gray-matter": "^4.0.3",
+    "hnswlib-node": "^1.0.0",
+    "ioredis": "^5.7.0",
+    "knex": "^3.1.0",
+    "lru-cache": "^11.1.0",
+    "minisearch": "^6.3.0",
+    "openai": "^4.52.7",
+    "pg": "^8.12.0",
+    "pino": "^9.3.2",
+    "prom-client": "^15.1.3",
+    "telegraf": "^4.16.3",
+    "yaml": "^2.5.0",
+    "zod": "^3.23.8",
+    "zod-validation-error": "^3.3.0",
+    "pm2": "^5.3.1",
+    "concurrently": "^8.2.2"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^11.5.1",
+    "@types/node": "^20.14.12",
+    "@types/pg": "^8.11.6",
+    "@typescript-eslint/eslint-plugin": "^7.10.0",
+    "@typescript-eslint/parser": "^7.10.0",
+    "@vitest/coverage-v8": "^1.6.1",
+    "eslint": "^8.57.0",
+    "pino-pretty": "^11.2.1",
+    "rimraf": "^5.0.9",
+    "testcontainers": "^11.5.1",
+    "tsc-alias": "^1.8.10",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.4",
+    "vitest": "^1.6.1"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }

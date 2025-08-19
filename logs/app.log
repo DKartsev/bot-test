@@ -1,2 +1,0 @@
-{"level":30,"time":1754730282726,"pid":5706,"hostname":"fdecc28deed8","msg":"Server listening on port 3000 (NODE_ENV=development)"}
-{"level":30,"time":1754730283422,"pid":5706,"hostname":"fdecc28deed8","msg":"Received SIGTERM, closing server"}

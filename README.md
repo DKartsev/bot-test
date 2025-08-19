@@ -1,70 +1,82 @@
-# Backend + Admin Monorepo
+# 🤖 Bot Support System
 
-TypeScript **backend** (Node/Fastify, ESM), **admin** (Next.js), and reusable **@app/shared** package.
-Docker uses a **multi-stage** pipeline with separate dependency caches and a **slim runtime**.
-This branch implements: unified ESM, strict TypeScript, shared package, security,
-validation, unified error handling, async IO, tests, CI, and Docker.
+**Support bot с операторской панелью - объединенный деплой на VM**
 
-## Highlights
+Этот проект объединяет backend (Fastify + Telegraf bot) и operator/admin (Next.js) в единую систему для запуска на одной виртуальной машине Яндекс.Облака.
 
-- **Workspaces**: `packages/{shared,backend,admin}` with engine gates.
-- **@app/shared**: distributable ESM lib with explicit exports and types.
-- **ESM everywhere**: `"type": "module"`, TS `module=NodeNext`, `moduleResolution=NodeNext`.
-- **Strict TypeScript**: project refs; path aliases for `@app/shared` in TS (rewritten via `tsc-alias`).
-- **Admin**: Next builds and **transpiles** `@app/shared`; static export to `admin/admin-out`.
-- **Security**: dotenv-safe, Helmet, CORS, rate limit, AES-256-GCM; SQL safety.
-- **Tests**: Vitest + coverage gates; Supertest for HTTP; shared unit tests.
+## 🚀 Быстрый старт
 
-## Structure
+1. **Клонируйте репозиторий**
+   ```bash
+   git clone <your-repo>
+   cd bot-support-system
+   ```
 
-```
-.
-├─ packages/
-│  ├─ shared/               # @app/shared (ESM lib)
-│  ├─ backend/              # Node/Fastify API (TS, ESM)
-│  └─ admin/                # Next.js admin UI
-├─ tsconfig.base.json
-├─ Dockerfile
-└─ README.md
-```
+2. **Настройте окружение**
+   ```bash
+   cp env-template.txt .env
+   # Отредактируйте .env файл
+   ```
 
-## Getting Started
+3. **Соберите проект**
+   ```bash
+   npm install
+   npm run build
+   ```
 
-1. **Node**: Use version 20 (see `.nvmrc`).
-2. **Install Deps**: `npm install` in the root directory.
-3. **Environment**: Copy `.env.example` to `.env` and fill in the required variables. At a minimum, you will need `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `OPENAI_API_KEY`, and `JWT_SECRET`.
-4. **Run Migrations**: `npm run db:migrate -w packages/backend`
-5. **Run Backend**: `npm run dev -w packages/backend`
-6. **Run Admin UI**: `npm run dev -w packages/admin` (if applicable)
+4. **Деплой на VM**
+   ```bash
+   # Linux/macOS
+   ./scripts/deploy-vm.sh <VM_IP> <SSH_KEY_PATH>
+   
+   # Windows PowerShell
+   .\scripts\deploy-vm.ps1 -VMIP <VM_IP> -SSHKeyPath <SSH_KEY_PATH>
+   ```
 
-## Admin API
-
-The backend exposes a secure Admin API under the `/api/admin` prefix.
-
-### Authentication
-
-Authentication is handled via JWTs. To access protected endpoints, include an `Authorization` header with a valid JWT.
+## 🏗️ Архитектура
 
 ```
-Authorization: Bearer <your_jwt>
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Nginx (80/443)│────│  Backend (3000) │────│  Admin (3001)   │
+│   (опционально) │    │  Fastify + Bot  │    │   Next.js App   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-The JWT payload must include a `role` field, which can be `admin` or `operator`.
+## 🔧 Управление
 
-### Endpoints
+- **PM2**: `pm2 start ecosystem.config.js`
+- **Docker**: `docker-compose up -d`
+- **Systemd**: `sudo systemctl start bot-support`
 
-- `GET /api/admin/chats`: List and filter chats.
-- `GET /api/admin/chats/{id}`: Get details for a single chat.
-- `POST /api/admin/chats/{id}/assign`: Assign an operator to a chat.
-- `POST /api/admin/chats/{id}/status`: Change a chat's status.
-- `POST /api/admin/chats/{id}/messages`: Send a message as an operator.
-- `GET /api/admin/users/{id}`: Get a user's summary (placeholder).
-- `GET /api/admin/events`: SSE endpoint for real-time updates (`message.new`, `chat.assigned`, `chat.status_changed`).
-
-## Testing
-
-To run the test suite for the backend:
+## 🧹 Очистка проекта
 
 ```bash
-npm run test -w packages/backend
+# Linux/macOS
+./scripts/clean-project.sh
+
+# Windows PowerShell
+.\scripts\clean-project.ps1
 ```
+
+## 📚 Документация
+
+- **[📖 Полное руководство по деплою и старту ВМ](README-VM-DEPLOY.md)** - пошаговые инструкции с указанием, что и куда вставлять
+- **[🔄 Руководство по миграции](MIGRATION_TO_VM.md)** - процесс миграции с Render
+- **[📋 Сводка выполненной работы](DEPLOYMENT_SUMMARY.md)** - что было сделано
+
+## 🐳 Docker
+
+```bash
+docker-compose up -d
+```
+
+## 📞 Поддержка
+
+При возникновении проблем:
+1. Проверьте логи: `pm2 logs`
+2. Запустите скрипт проверки готовности
+3. Обратитесь к документации в `README-VM-DEPLOY.md`
+
+---
+
+**MIT License**

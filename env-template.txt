@@ -1,90 +1,89 @@
 # ========================================
-# BOT TEST - Объединенный сервис на Render
+# КОНФИГУРАЦИЯ ДЛЯ VM ЯНДЕКС.ОБЛАКО
 # ========================================
-# URL: https://bot-test-6gsg.onrender.com
 
-# ========================================
-# Node.js настройки
-# ========================================
+# Основные настройки приложения
 NODE_ENV=production
-NODE_VERSION=20
-NPM_VERSION=10
-PORT=10000
-LOG_LEVEL=info
+PORT=3000
+ADMIN_PORT=3001
 
-# ========================================
-# Backend API настройки
-# ========================================
-# Основной URL сервиса
-PUBLIC_URL=https://bot-test-6gsg.onrender.com
-CORS_ORIGIN=https://bot-test-6gsg.onrender.com
+# База данных PostgreSQL
+DATABASE_URL=postgresql://username:password@localhost:5432/bot_support
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=bot_support
+DB_USER=username
+DB_PASSWORD=password
 
-# ========================================
-# База данных
-# ========================================
-# PostgreSQL connection string (Supabase)
-DATABASE_URL=postgresql://postgres:[YOUR_PASSWORD]@db.[YOUR_PROJECT_REF].supabase.co:5432/postgres
+# Redis
+REDIS_URL=redis://localhost:6379
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
 
-# ========================================
-# Supabase (если используется)
-# ========================================
-SUPABASE_URL=https://[YOUR_PROJECT_REF].supabase.co
-SUPABASE_KEY=[YOUR_SUPABASE_ANON_KEY]
-SUPABASE_SERVICE_ROLE_KEY=[YOUR_SUPABASE_SERVICE_ROLE_KEY]
+# Supabase
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# ========================================
-# OpenAI API
-# ========================================
-OPENAI_API_KEY=[YOUR_OPENAI_API_KEY]
+# OpenAI
+OPENAI_API_KEY=your-openai-api-key
 
-# ========================================
 # Telegram Bot
-# ========================================
-TELEGRAM_BOT_TOKEN=[YOUR_TELEGRAM_BOT_TOKEN]
-TG_WEBHOOK_PATH=/webhooks/telegram
-TG_WEBHOOK_SECRET=[YOUR_WEBHOOK_SECRET]
-TELEGRAM_SET_WEBHOOK_ON_START=true
-CASES_TELEGRAM_CHAT_ID=[YOUR_TELEGRAM_CHAT_ID]
+TELEGRAM_BOT_TOKEN=your-bot-token
+TELEGRAM_WEBHOOK_URL=https://your-domain.com/bot/webhook
+
+# JWT
+JWT_SECRET=your-jwt-secret-key-here
+JWT_EXPIRES_IN=7d
+
+# CORS
+CORS_ORIGIN=https://your-domain.com
+ALLOWED_ORIGINS=https://your-domain.com,http://localhost:3001
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# Logging
+LOG_LEVEL=info
+LOG_FILE=./logs/app.log
+
+# Monitoring
+ENABLE_METRICS=true
+METRICS_PORT=9090
+
+# Security
+HELMET_ENABLED=true
+RATE_LIMIT_ENABLED=true
+CORS_ENABLED=true
+
+# File Upload
+MAX_FILE_SIZE=10485760
+UPLOAD_DIR=./uploads
+
+# Backup
+BACKUP_ENABLED=true
+BACKUP_SCHEDULE=0 2 * * *
+BACKUP_RETENTION_DAYS=30
 
 # ========================================
-# RAG система
+# НАСТРОЙКИ ДЛЯ NGINX (если используется)
 # ========================================
-FAQ_PATH=data/qa/faq.json
-KB_DIR=data/kb
-MIN_CONFIDENCE_TO_ESCALATE=0.55
+NGINX_ENABLED=true
+NGINX_SSL_CERT_PATH=/etc/nginx/ssl/cert.pem
+NGINX_SSL_KEY_PATH=/etc/nginx/ssl/key.pem
 
 # ========================================
-# Frontend (Operator Admin Panel)
+# НАСТРОЙКИ ДЛЯ PM2
 # ========================================
-NEXT_PUBLIC_BASE_PATH=/admin
-NEXT_PUBLIC_API_URL=https://bot-test-6gsg.onrender.com
-NEXT_PUBLIC_API_BASE=https://bot-test-6gsg.onrender.com
+PM2_INSTANCES=1
+PM2_MAX_MEMORY_RESTART=1G
+PM2_RESTART_DELAY=4000
+PM2_MAX_RESTARTS=10
 
 # ========================================
-# Безопасность
+# НАСТРОЙКИ ДЛЯ DOCKER (если используется)
 # ========================================
-# API токены для админки (разделенные запятыми)
-ADMIN_API_TOKENS=[YOUR_ADMIN_TOKEN_1],[YOUR_ADMIN_TOKEN_2]
-ADMIN_IP_ALLOWLIST=0.0.0.0/0
-ADMIN_RATE_LIMIT_MAX=100
-
-# JWT (опционально)
-JWT_SECRET=[YOUR_JWT_SECRET_32_CHARS_MIN]
-JWT_ISSUER=bot-test
-JWT_AUDIENCE=bot-test-users
-
-# ========================================
-# Дополнительные настройки
-# ========================================
-ENABLE_DOCS=true
-ENCRYPTION_KEY_BASE64=[YOUR_ENCRYPTION_KEY_BASE64]
-
-# ========================================
-# Локальная разработка (закомментировать для продакшена)
-# ========================================
-# NODE_ENV=development
-# PORT=3000
-# CORS_ORIGIN=http://localhost:3000
-# PUBLIC_URL=http://localhost:3000
-# NEXT_PUBLIC_API_URL=http://localhost:3000
-# NEXT_PUBLIC_API_BASE=http://localhost:3000
+DOCKER_ENABLED=false
+DOCKER_NETWORK=bot-network
