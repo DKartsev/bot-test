@@ -38,7 +38,7 @@ export interface AppDeps {
   userRepo: IUserRepo;
 }
 
-export async function buildServer(deps: AppDeps): Promise<import('fastify').FastifyInstance> {
+export async function buildServer(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
       level: env.LOG_LEVEL,

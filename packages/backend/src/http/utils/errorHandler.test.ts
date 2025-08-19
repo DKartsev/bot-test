@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
 
 // Мокаем логгер, чтобы избежать загрузки env в тестах
@@ -34,13 +34,9 @@ function createMockRequest() {
   } as any;
 }
 
-beforeAll(async () => {
-  const mod = await import('./errorHandler.js');
-  centralErrorHandler = mod.centralErrorHandler;
-  asyncHandler = mod.asyncHandler;
-  AppError = mod.AppError;
-  ForbiddenError = mod.ForbiddenError;
-});
+// Load modules synchronously for tests
+const mod = await import('./errorHandler.js');
+const { centralErrorHandler, asyncHandler, AppError, ForbiddenError } = mod;
 
 describe('centralErrorHandler', () => {
   let reply: any;
