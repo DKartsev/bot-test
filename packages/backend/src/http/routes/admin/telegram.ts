@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
 import { checkAdminRole, checkAuth } from '../../middlewares/authMiddleware.js';
 
-const plugin: FastifyPluginAsync = (server, opts) => {
+const plugin: FastifyPluginAsync = async (server, _opts) => {
   // GET /telegram/status
   server.get(
     '/telegram/status',
