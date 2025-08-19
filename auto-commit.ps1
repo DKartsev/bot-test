@@ -31,9 +31,19 @@ try {
     $lastCommit = git log -1 --oneline
     Write-Host "Last commit: $lastCommit" -ForegroundColor Cyan
     
+    # Auto push
+    Write-Host "Pushing to remote..." -ForegroundColor Yellow
+    try {
+        git push
+        Write-Host "Successfully pushed to remote!" -ForegroundColor Green
+    } catch {
+        Write-Host "Warning: Push failed - $_" -ForegroundColor Yellow
+        Write-Host "You can push manually later with: git push" -ForegroundColor Cyan
+    }
+    
 } catch {
     Write-Host "Error creating commit: $_" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "Auto commit completed!" -ForegroundColor Green
+Write-Host "Auto commit and push completed!" -ForegroundColor Green

@@ -3,7 +3,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import type { PoolClient } from 'pg';
 import { Pool } from 'pg';
 
-const pgPlugin: FastifyPluginAsync = (fastify, opts) => {
+const pgPlugin: FastifyPluginAsync = async (fastify, _opts) => {
   const connectionString = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/bot_test';
   const maxConnections = parseInt(process.env.DB_MAX_CONNECTIONS ?? '10', 10);
   const idleTimeoutMillis = parseInt(process.env.DB_IDLE_TIMEOUT ?? '30000', 10);
