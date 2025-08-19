@@ -1,8 +1,8 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 export default function usersRoutes(app: FastifyInstance) {
   // Получение списка пользователей
-  app.get('/admin/users', async (request, reply) => {
+  app.get('/admin/users', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       // TODO: Реализовать получение пользователей из базы данных
       const mockUsers = [

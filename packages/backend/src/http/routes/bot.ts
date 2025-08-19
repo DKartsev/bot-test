@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
 
-const plugin: FastifyPluginAsync = (server, opts) => {
+const plugin: FastifyPluginAsync = async (server, _opts) => {
   // POST /bot/webhook
   server.post(
     '/bot/webhook',
