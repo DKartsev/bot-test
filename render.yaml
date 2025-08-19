@@ -3,8 +3,8 @@ services:
     name: bot-test-backend
     env: node
     buildCommand: |
-      npm ci
-      npm run build:prod
+      npm ci --include=dev
+      npm run build -w packages/backend
     startCommand: npm run start -w packages/backend
     healthCheckPath: /api/health
     envVars:
@@ -16,8 +16,6 @@ services:
         value: 10000
       - key: NODE_ENV
         value: production
-      - key: NPM_CONFIG_PRODUCTION
-        value: "true"
       - key: CORS_ORIGIN
         value: https://bot-test-operator-admin.onrender.com
     # Переменные для backend (будут установлены в Render Dashboard)

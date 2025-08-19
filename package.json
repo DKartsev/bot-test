@@ -8,14 +8,12 @@
   ],
   "scripts": {
     "build": "npm run build -w packages/backend && npm run build -w packages/operator-admin",
-    "build:prod": "NODE_ENV=production npm run build -w packages/backend && NODE_ENV=production npm run build -w packages/operator-admin",
     "dev": "npm run dev -w packages/backend",
     "test": "npm run test -w packages/backend",
     "test:coverage": "npm run test:coverage -w packages/backend",
-    "lint": "echo 'Linting disabled in root project - use workspace-specific commands'",
+    "lint": "npm run lint -w packages/backend",
     "lint:fix": "npm run lint:fix -w packages/backend",
-    "prepare": "node -e \"if (process.env.NODE_ENV !== 'production') { require('child_process').execSync('husky install', {stdio: 'inherit'}) }\"",
-    "postinstall": "node -e \"if (process.env.NODE_ENV === 'production') { console.log('Skipping husky install in production'); } else { console.log('Development environment detected'); }\"",
+    "prepare": "husky install",
     "pre-commit": "lint-staged"
   },
   "devDependencies": {
@@ -23,8 +21,9 @@
     "lint-staged": "^15.2.0"
   },
   "lint-staged": {
-    "*.{js,ts,tsx,json,md,yaml,yml}": [
-      "echo 'Checking file format...'"
+    "packages/backend/src/**/*.{ts,tsx}": [
+      "npm run lint -w packages/backend",
+      "npm run test:coverage -w packages/backend"
     ]
   }
 }
