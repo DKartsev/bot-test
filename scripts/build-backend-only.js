@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * Production build script without husky dependencies
+ * Build script for backend only
  * This script is designed to work in production environments like Render
  */
 
 const { execSync } = require('child_process');
 const path = require('path');
 
-console.log('🚀 Starting production build...');
+console.log('🚀 Starting backend-only build...');
 
 try {
   // Build backend with copy build
@@ -18,15 +18,9 @@ try {
     cwd: path.join(__dirname, '..')
   });
   
-  // Build operator-admin
-  console.log('📦 Building operator-admin...');
-  execSync('npm run build -w packages/operator-admin', { 
-    stdio: 'inherit',
-    cwd: path.join(__dirname, '..')
-  });
-  
-  console.log('✅ Production build completed successfully!');
+  console.log('✅ Backend build completed successfully!');
+  console.log('🚀 Backend is ready for deployment!');
 } catch (error) {
-  console.error('❌ Build failed:', error.message);
+  console.error('❌ Backend build failed:', error.message);
   process.exit(1);
 }

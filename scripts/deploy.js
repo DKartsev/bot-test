@@ -11,9 +11,9 @@ const path = require('path');
 console.log('🚀 Starting deployment build...');
 
 try {
-  // Build backend
-  console.log('📦 Building backend...');
-  execSync('npm run build -w packages/backend', { 
+  // Build backend with copy build
+  console.log('📦 Building backend with copy build...');
+  execSync('npm run build:copy -w packages/backend', { 
     stdio: 'inherit',
     cwd: path.join(__dirname, '..')
   });

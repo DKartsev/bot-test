@@ -7,7 +7,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w packages/backend && npm run build -w packages/operator-admin",
+    "build": "npm run build:copy -w packages/backend && npm run build -w packages/operator-admin",
+    "build:backend": "node scripts/build-backend-only.js",
     "build:prod": "node scripts/build-prod.js",
     "deploy": "node scripts/deploy.js",
     "dev": "npm run dev -w packages/backend",
