@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
 
-const adminStreamRoutes: FastifyPluginAsync = async (server, opts) => {
+const adminStreamRoutes: FastifyPluginAsync = async (server, _opts) => {
   server.get(
     '/admin/stream',
     async (req, reply) => {
@@ -9,7 +9,7 @@ const adminStreamRoutes: FastifyPluginAsync = async (server, opts) => {
         const url = new URL(req.url, 'http://localhost');
         const token = url.searchParams.get('token') || '';
         const tokensEnv = process.env.ADMIN_API_TOKENS || process.env.ADMIN_API_TOKEN || '';
-        const allowed = tokensEnv.split(',').map((t) => t.trim()).filter(Boolean);
+        const allowed = tokensEnv.split(',').map((t: string) => t.trim()).filter(Boolean);
 
         // Relax: если нет токенов в env — пускаем всех; если есть, но токен не передан — пускаем read-only
         if (allowed.length && token && !allowed.includes(String(token))) {
