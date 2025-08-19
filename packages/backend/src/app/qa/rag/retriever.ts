@@ -1,57 +1,89 @@
-import { VectorStore, VectorSearchResult } from "./vector-store.js";
+import type { TextChunk } from './chunker.js';
+import type { Embedder } from './vector-store.js';
+import { logger } from '../../../utils/logger.js';
 
-export interface RetrievalResult {
-  contextText: string;
-  citations: {
-    key: number;
-    sourceId?: string;
-    title?: string;
-    snippet: string;
-  }[];
-  items: VectorSearchResult[];
+export interface Retriever {
+  retrieve(query: string, k: number): Promise<TextChunk[]>;
 }
 
-export class Retriever {
-  constructor(private vectorStore: VectorStore) {}
+interface VectorSearchable {
+  search(query: string, k: number): Promise<TextChunk[]>;
+}
 
-  async retrieve(
-    query: string,
-    opts: { topK?: number; diversify?: boolean } = {},
-  ): Promise<RetrievalResult> {
-    const topK = opts.topK ?? 6;
-    const shouldDiversify = opts.diversify ?? true;
-    const maxChars = 9000;
+export class VectorRetriever implements Retriever {
+  constructor(
+    private embedder: Embedder,
+    private vectorStore: VectorSearchable, // precise interface instead of any
+  ) {
+    // Vector retriever initialization
+  }
 
-    let items = await this.vectorStore.search(query, topK);
-
-    if (shouldDiversify) {
-      const perSourceCount: Record<string, number> = {};
-      items = items.filter((item) => {
-        const title = item.title;
-        if (!title) return true;
-        perSourceCount[title] = (perSourceCount[title] || 0) + 1;
-        return perSourceCount[title] <= 2;
-      });
+  async retrieve(query: string, k: number): Promise<TextChunk[]> {
+    try {
+      return await this.vectorStore.search(query, k);
+    } catch (error) {
+      logger.error({ err: error }, 'Vector search failed');
+      return [];
     }
+  }
+}
 
-    let contextText = "";
-    const citations: RetrievalResult["citations"] = [];
-    for (const item of items) {
-      if (contextText.length + item.text.length > maxChars) break;
-      contextText += item.text + "\n\n";
-      const citation: RetrievalResult["citations"][0] = {
-        key: citations.length + 1,
-        snippet: item.text.slice(0, 200),
-      };
-      if (item.id) citation.sourceId = item.id;
-      if (item.title) citation.title = item.title;
-      citations.push(citation);
+export class TextRetriever implements Retriever {
+  constructor(private chunks: TextChunk[]) {
+    // Text retriever initialization
+  }
+
+  retrieve(query: string, k: number): Promise<TextChunk[]> {
+    const queryLower = query.toLowerCase();
+    const scored = this.chunks
+      .map((chunk) => {
+        const text = chunk.text.toLowerCase();
+        const score = text.includes(queryLower) ? 1 : 0;
+        return { chunk, score };
+      })
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, k)
+      .map((item) => item.chunk);
+
+    return Promise.resolve(scored);
+  }
+}
+
+export class HybridRetriever implements Retriever {
+  constructor(
+    private vectorRetriever: VectorRetriever,
+    private textRetriever: TextRetriever,
+    private vectorWeight = 0.7,
+  ) {
+    // Hybrid retriever initialization
+  }
+
+  async retrieve(query: string, k: number): Promise<TextChunk[]> {
+    try {
+      const [vectorResults, textResults] = await Promise.all([
+        this.vectorRetriever.retrieve(query, Math.ceil(k * this.vectorWeight)),
+        this.textRetriever.retrieve(query, Math.ceil(k * (1 - this.vectorWeight))),
+      ]);
+
+      // Combine and deduplicate results
+      const allResults = [...vectorResults, ...textResults];
+      const seen = new Set<string>();
+      const uniqueResults: TextChunk[] = [];
+
+      for (const result of allResults) {
+        if (!seen.has(result.id)) {
+          seen.add(result.id);
+          uniqueResults.push(result);
+          if (uniqueResults.length >= k) break;
+        }
+      }
+
+      return uniqueResults;
+    } catch (error) {
+      logger.error({ err: error }, 'Hybrid retrieval failed');
+      // Fallback to text retrieval
+      return this.textRetriever.retrieve(query, k);
     }
-
-    return {
-      contextText: contextText.trim(),
-      citations,
-      items,
-    };
   }
 }

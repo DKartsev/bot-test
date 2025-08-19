@@ -1,18 +1,18 @@
-import { FastifyPluginAsync } from "fastify";
-import fp from "fastify-plugin";
-import { checkAuth, checkAdminRole } from "../../../middlewares/authMiddleware.js";
+import type { FastifyPluginAsync } from 'fastify';
+import fp from 'fastify-plugin';
+import { checkAdminRole, checkAuth } from '../../../middlewares/authMiddleware.js';
 
-const getChatsRoute: FastifyPluginAsync = (server, _opts) => {
+const getChatsRoute: FastifyPluginAsync = (server, opts) => {
   server.get(
-    "/chats",
+    '/chats',
     { preHandler: [checkAuth, checkAdminRole] },
-    async (_req, _reply) => {
+    async (req, reply) => {
       // TODO: Implement chats listing
       return { chats: [] };
     },
   );
 
-  return Promise.resolve();
+  return;
 };
 
 export default fp(getChatsRoute);

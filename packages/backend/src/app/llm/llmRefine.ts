@@ -1,106 +1,71 @@
-import OpenAI from "openai";
-import { z } from "zod";
-import type { BotDraft } from "../../domain/bot/types.js";
+import type { FastifyBaseLogger } from 'fastify';
+import OpenAI from 'openai';
+import { z } from 'zod';
 
 const ResultSchema = z.object({
-  answer: z.string().max(4000),
+  answer: z.string(),
   confidence: z.number().min(0).max(1),
   escalate: z.boolean(),
   citations: z.array(z.object({ id: z.string() })).default([]),
 });
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
-
-// Вспомогательный: аккуратно достать JSON даже если LLM добавил текст вокруг
-function extractJson(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    /* ignore */
-  }
-  const m = text.match(/\{[\s\S]*\}$/); // ищем последний JSON-объект
-  if (m) {
-    try {
-      return JSON.parse(m[0]);
-    } catch {
-      /* ignore */
-    }
-  }
-  return {};
-}
+export type RefineResult = z.infer<typeof ResultSchema>;
 
 export async function refineDraft(
-  draft: BotDraft,
-  opts: {
-    targetLang?: string;
-    temperature?: number;
-    minConfidenceToEscalate?: number;
-  } = {},
-) {
-  const targetLang = opts.targetLang ?? draft.lang ?? "ru";
-  const minConfToEscalate = opts.minConfidenceToEscalate ?? 0.55;
-  const temperature =
-    typeof opts.temperature === "number" ? opts.temperature : 0.3;
-
-  const instructions = [
-    `Ты — ассистент поддержки.`,
-    `Перефразируй черновик ответа кратко и ясно на языке: ${targetLang}.`,
-    `Используй только факты из черновика/источников. Не выдумывай.`,
-    `Если информации мало или уверенность низкая — мягко предложи «связаться с оператором поддержки».`,
-    `Верни строго JSON со схемой: { "answer": string, "confidence": number (0..1), "escalate": boolean, "citations": [{"id": string}...] }.`,
-  ].join("\n");
-
-  type Src = { id: string; title?: string; url?: string; snippet?: string };
-  const userPayload = {
-    question: draft.question,
-    draft: draft.draft,
-    sources: (draft.sources ?? []).map((s: Src) => ({
-      id: s.id,
-      title: s.title,
-      url: s.url,
-      snippet: s.snippet,
-    })),
-  };
-
-  // Используем Chat Completions для совместимости типов SDK.
-  const chat = await client.chat.completions.create({
-    model: MODEL,
-    temperature,
-    messages: [
-      { role: "system", content: instructions },
-      {
-        role: "user",
-        content:
-          "Материалы ниже. Верни СТРОГО JSON по указанной схеме, без пояснений.",
-      },
-      { role: "user", content: JSON.stringify(userPayload, null, 2) },
-    ],
+  question: string,
+  draft: string,
+  sources: Array<{ id: string; title?: string; excerpt?: string }>,
+  lang: string,
+  logger: FastifyBaseLogger,
+): Promise<RefineResult> {
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY ?? '',
   });
 
-  const raw = chat.choices?.[0]?.message?.content ?? "{}";
-  const obj = extractJson(raw);
-  const parsed = ResultSchema.safeParse(obj);
-  if (!parsed.success) {
-    // Фолбэк: эскалируем
-    return {
-      answer: "Мне нужно уточнить детали. Могу подключить оператора поддержки.",
-      confidence: 0,
-      escalate: true,
-      citations: [],
-    };
+  const systemPrompt = `You are a helpful AI assistant. Your task is to refine a draft answer based on the provided sources and question.
+
+Question: ${question}
+Draft answer: ${draft}
+Sources: ${JSON.stringify(sources, null, 2)}
+
+Please provide a refined answer that:
+1. Directly addresses the question
+2. Incorporates relevant information from the sources
+3. Is clear, concise, and well-structured
+4. Is in the language: ${lang}
+
+Return your response in the following JSON format:
+{
+  "answer": "your refined answer here",
+  "confidence": 0.95,
+  "escalate": false,
+  "citations": [{"id": "source_id"}]
+}
+
+Confidence should be between 0 and 1. Set escalate to true if you're not confident in the answer or if the question requires human intervention.`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: 'Please refine the draft answer.' },
+      ],
+      temperature: 0.3,
+      max_tokens: 1000,
+    });
+
+    const content = completion.choices[0]?.message?.content ?? '';
+    const result = JSON.parse(content) as RefineResult;
+
+    logger.info(
+      { confidence: result.confidence, escalate: result.escalate },
+      'Draft refined successfully',
+    );
+
+    return result;
+  } catch (error) {
+    logger.error({ error }, 'Failed to refine draft');
+    throw new Error('Failed to refine draft answer');
   }
-
-  const result = parsed.data;
-  const escalate = result.escalate || result.confidence < minConfToEscalate;
-
-  return {
-    answer: result.answer,
-    confidence: result.confidence,
-    escalate,
-    citations: result.citations ?? [],
-  };
 }

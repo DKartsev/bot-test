@@ -1,4 +1,4 @@
-import { logger } from "./logger.js";
+import { logger } from './logger.js';
 
 interface CacheItem<T> {
   value: T;
@@ -19,7 +19,7 @@ export class MemoryCache<T> {
   }
 
   set(key: string, value: T, ttlMs?: number): void {
-    const expiry = Date.now() + (ttlMs || this.defaultTtl);
+    const expiry = Date.now() + (ttlMs ?? this.defaultTtl);
     this.cache.set(key, { value, expiry });
   }
 
@@ -65,7 +65,7 @@ export class MemoryCache<T> {
     if (cleaned > 0) {
       logger.debug(
         { cleaned, remaining: this.cache.size },
-        "Cache cleanup completed",
+        'Cache cleanup completed',
       );
     }
   }

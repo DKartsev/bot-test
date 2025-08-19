@@ -1,14 +1,14 @@
-import OpenAI from "openai";
-import { logger } from "../../../utils/logger.js";
-import { RetrievalResult } from "./retriever.js";
-import { env } from "../../../config/env.js";
+import OpenAI from 'openai';
+
+import { env } from '../../../config/env.js';
+import { logger } from '../../../utils/logger.js';
 
 /**
  * Результат работы Answerer.
  */
 export interface Answer {
   text: string;
-  citations: RetrievalResult["citations"];
+  citations: RetrievalResult['citations'];
 }
 
 /**
@@ -16,66 +16,66 @@ export interface Answer {
  * ответа на основе вопроса и контекста, полученного от Retriever.
  */
 export class Answerer {
-  private client: OpenAI;
+  private openai: OpenAI;
 
   constructor() {
-    if (!env.OPENAI_API_KEY) {
-      logger.warn("OPENAI_API_KEY не установлен; RAG-ответы будут отключены.");
-      // Создаем "пустышку" клиента, чтобы избежать ошибок.
-      // В реальном приложении можно использовать более сложную логику,
-      // например, возвращать ошибку или использовать fallback-механизм.
-      this.client = {
-        chat: {
-          completions: {
-            create: () => Promise.reject(new Error("No API Key")),
-          },
-        },
-      } as unknown as OpenAI;
-    } else {
-      this.client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
-    }
+    this.openai = new OpenAI({
+      apiKey: env.OPENAI_API_KEY,
+    });
   }
 
-  /**
-   * Генерирует ответ с помощью LLM.
-   * @param question - Исходный вопрос пользователя.
-   * @param retrievalResult - Результат работы Retriever (контекст и цитаты).
-   * @param lang - Язык ответа.
-   */
   async answer(
     question: string,
-    retrievalResult: RetrievalResult,
-    lang: string = "ru",
-  ): Promise<Answer> {
-    const { contextText, citations } = retrievalResult;
-
-    const systemPrompt =
-      "Ты — бот поддержки. Отвечай кратко и по делу, используя предоставленный контекст. Если в контексте нет ответа, прямо скажи об этом. В конце ответа обязательно добавь ссылки на источники в формате [1], [2]...";
-
-    const sourceList = (citations || [])
-      .map((c) => `${c.key}. ${c.title || c.sourceId}`)
-      .join("\n");
-
-    const userPrompt = `Вопрос: ${question}\n\nКонтекст:\n---\n${contextText}\n---\nИсточники:\n${sourceList}\n\nОтвет (на ${lang} языке):`;
-
+    context: string,
+    lang: string = 'ru',
+  ): Promise<{ text: string; citations: Array<{ sourceId?: string; title?: string; snippet: string }> }> {
     try {
-      const completion = await this.client.chat.completions.create({
-        model: "gpt-4o-mini", // TODO: Сделать настраиваемым через env
+      const systemPrompt = `You are a helpful AI assistant. Answer the question based on the provided context. 
+      
+Context: ${context}
+
+Question: ${question}
+
+Please provide a clear, concise answer in ${lang}. If the context doesn't contain enough information to answer the question, say so politely.
+
+Return your response in the following JSON format:
+{
+  "answer": "your answer here",
+  "citations": [
+    {
+      "sourceId": "source_id_if_available",
+      "title": "source_title_if_available", 
+      "snippet": "relevant_text_snippet"
+    }
+  ]
+}`;
+
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4',
         messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: 'Please answer the question based on the context.' },
         ],
-        temperature: 0.2, // TODO: Сделать настраиваемым через env
+        temperature: 0.3,
         max_tokens: 1000,
       });
 
-      const text = completion.choices[0]?.message?.content?.trim() || "";
-      return { text, citations };
-    } catch (err) {
-      logger.error({ err }, "Ошибка при генерации RAG-ответа от OpenAI");
-      // В случае ошибки возвращаем заглушку, а не падаем
+      const content = completion.choices[0]?.message?.content ?? '';
+      const result = JSON.parse(content) as { answer: string; citations: Array<{ sourceId?: string; title?: string; snippet: string }> };
+
+      logger.info(
+        { questionLength: question.length, contextLength: context.length, citationsCount: result.citations.length },
+        'Answer generated successfully',
+      );
+
       return {
-        text: "К сожалению, не удалось сгенерировать ответ. Попробуйте позже.",
+        text: result.answer,
+        citations: result.citations ?? [],
+      };
+    } catch (error) {
+      logger.error({ error }, 'Failed to generate answer');
+      return {
+        text: 'Извините, произошла ошибка при генерации ответа. Пожалуйста, попробуйте еще раз.',
         citations: [],
       };
     }

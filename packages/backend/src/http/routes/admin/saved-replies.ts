@@ -1,13 +1,13 @@
-import { FastifyPluginAsync } from "fastify";
-import fp from "fastify-plugin";
-import { checkAuth, checkAdminRole } from "../../middlewares/authMiddleware.js";
+import type { FastifyPluginAsync } from 'fastify';
+import fp from 'fastify-plugin';
+import { checkAdminRole, checkAuth } from '../../middlewares/authMiddleware.js';
 
-const adminSavedRepliesRoutes: FastifyPluginAsync = (server, _opts) => {
+const adminSavedRepliesRoutes: FastifyPluginAsync = (server, opts) => {
   // GET /saved-replies
   server.get(
-    "/saved-replies",
+    '/saved-replies',
     { preHandler: [checkAuth, checkAdminRole] },
-    async (_req, _reply) => {
+    async (req, reply) => {
       // TODO: Implement saved replies listing
       return { savedReplies: [] };
     },
@@ -15,15 +15,15 @@ const adminSavedRepliesRoutes: FastifyPluginAsync = (server, _opts) => {
 
   // POST /saved-replies
   server.post(
-    "/saved-replies",
+    '/saved-replies',
     { preHandler: [checkAuth, checkAdminRole] },
-    async (_req, reply) => {
+    async (req, reply) => {
       // TODO: Implement saved reply creation
-      return reply.code(201).send({ message: "Saved reply created" });
+      return reply.code(201).send({ message: 'Saved reply created' });
     },
   );
 
-  return Promise.resolve();
+  return;
 };
 
 export default fp(adminSavedRepliesRoutes);

@@ -1,4 +1,4 @@
-import { loadFaq } from "./store.js";
+import { loadFaq } from './store.js';
 
 const faq = loadFaq();
 const ids = new Set<string>();
@@ -14,8 +14,9 @@ for (const f of faq) {
 }
 
 if (errors.length) {
-  console.error("FAQ validation failed:\n" + errors.join("\n"));
+  // Use stderr without importing logger to keep this script lightweight
+  process.stderr.write(`FAQ validation failed:\n${errors.join('\n')}\n`);
   process.exit(1);
 } else {
-  console.log(`FAQ valid. Entries: ${faq.length}`);
+  process.stdout.write(`FAQ valid. Entries: ${faq.length}\n`);
 }

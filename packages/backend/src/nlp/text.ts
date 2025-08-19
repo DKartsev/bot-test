@@ -1,41 +1,18 @@
-export function normalize(s: string): string {
-  return s
+export function normalize(text: string): string {
+  return text
     .toLowerCase()
-    .replace(/ё/g, "е")
-    .replace(/[\p{P}\p{S}]+/gu, " ")
-    .replace(/\s+/g, " ")
+    .replace(/[ёе]/g, 'е')
+    .replace(/[ЁЕ]/g, 'Е')
+    .replace(/[йи]/g, 'и')
+    .replace(/[ЙИ]/g, 'И')
+    .replace(/[ъь]/g, '')
+    .replace(/[ЪЬ]/g, '')
+    .replace(/[^а-яa-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
-const STOP_WORDS = new Set([
-  "и",
-  "в",
-  "на",
-  "по",
-  "что",
-  "как",
-  "для",
-  "или",
-  "но",
-  "если",
-  "то",
-  "же",
-  "при",
-  "из",
-  "не",
-  "ни",
-  "а",
-  "к",
-  "у",
-  "от",
-  "до",
-  "без",
-  "над",
-  "под",
-]);
-
-export function tokensRU(s: string): string[] {
-  const norm = normalize(s);
-  const tokens = norm.match(/[\p{L}\p{N}]+/gu) || [];
-  return tokens.filter((t) => t.length >= 2 && !STOP_WORDS.has(t));
+export function tokensRU(text: string): string[] {
+  const normalized = normalize(text ?? '');
+  return normalized.split(/\s+/).filter(Boolean);
 }

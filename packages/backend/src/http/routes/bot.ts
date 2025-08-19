@@ -1,17 +1,17 @@
-import { FastifyPluginAsync } from "fastify";
-import fp from "fastify-plugin";
+import type { FastifyPluginAsync } from 'fastify';
+import fp from 'fastify-plugin';
 
-const plugin: FastifyPluginAsync = (server, _opts) => {
+const plugin: FastifyPluginAsync = (server, opts) => {
   // POST /bot/webhook
   server.post(
-    "/bot/webhook",
-    async (_req, _reply) => {
+    '/bot/webhook',
+    async (req, reply) => {
       // TODO: Implement bot webhook
-      return { status: "ok" };
+      return { status: 'ok' };
     },
   );
 
-  return Promise.resolve();
+  return;
 };
 
 export default fp(plugin);

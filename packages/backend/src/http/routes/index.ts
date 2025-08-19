@@ -1,8 +1,8 @@
-import { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync } from 'fastify';
 
-const routes: FastifyPluginAsync = (_server, _opts) => {
+const routes: FastifyPluginAsync = (server, opts) => {
   // Main routes are registered in main server
-  return Promise.resolve();
+  return;
 };
 
 export default routes;

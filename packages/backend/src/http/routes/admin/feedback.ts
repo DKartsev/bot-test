@@ -1,19 +1,19 @@
-import { FastifyPluginAsync } from "fastify";
-import fp from "fastify-plugin";
-import { checkAuth, checkAdminRole } from "../../middlewares/authMiddleware.js";
+import type { FastifyPluginAsync } from 'fastify';
+import fp from 'fastify-plugin';
+import { checkAdminRole, checkAuth } from '../../middlewares/authMiddleware.js';
 
-const plugin: FastifyPluginAsync = (server, _opts) => {
+const plugin: FastifyPluginAsync = (server, opts) => {
   // GET /feedback
   server.get(
-    "/feedback",
+    '/feedback',
     { preHandler: [checkAuth, checkAdminRole] },
-    async (_req, _reply) => {
+    async (req, reply) => {
       // TODO: Implement feedback listing
       return { feedback: [] };
     },
   );
 
-  return Promise.resolve();
+  return;
 };
 
 export default fp(plugin);

@@ -2,7 +2,7 @@ import type {
   FastifyPluginAsync,
   FastifyReply,
   FastifyRequest,
-} from "fastify";
+} from 'fastify';
 
 interface User {
   id: string;
@@ -22,13 +22,13 @@ interface IUserRepo {
 type PluginOpts = { repo: IUserRepo };
 
 const usersPlugin: FastifyPluginAsync<PluginOpts> = (fastify, opts) => {
-  fastify.get("/users", async (_req: FastifyRequest, _reply: FastifyReply) => {
+  fastify.get('/users', async (req: FastifyRequest, reply: FastifyReply) => {
     const { items, nextCursor } = await opts.repo.list({ limit: 20 });
     return nextCursor ? { items, nextCursor } : { items };
   });
 
   fastify.post(
-    "/users",
+    '/users',
     async (
       req: FastifyRequest<{ Body: { name: string; email: string } }>,
       reply: FastifyReply,
@@ -39,7 +39,7 @@ const usersPlugin: FastifyPluginAsync<PluginOpts> = (fastify, opts) => {
     },
   );
 
-  return Promise.resolve();
+  return;
 };
 
 export default usersPlugin;

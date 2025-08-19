@@ -1,6 +1,7 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { env } from "../../config/env.js";
-import { logger } from "../../utils/logger.js";
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
+import { env } from '../../config/env.js';
+import { logger } from '../../utils/logger.js';
 
 interface Database {
   public: {
@@ -121,11 +122,11 @@ class DatabaseConnection {
 
   private constructor() {
     // Extract Supabase URL and key from DATABASE_URL or use separate env vars
-    const supabaseUrl = process.env.SUPABASE_URL || env.PUBLIC_URL || "http://localhost:54321";
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
-    
+    const supabaseUrl = process.env.SUPABASE_URL ?? env.PUBLIC_URL ?? 'http://localhost:54321';
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_KEY ?? '';
+
     if (!supabaseKey) {
-      throw new Error("SUPABASE_SERVICE_ROLE_KEY or SUPABASE_KEY is required");
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY or SUPABASE_KEY is required');
     }
 
     this.client = createClient<Database>(
@@ -139,7 +140,7 @@ class DatabaseConnection {
       },
     );
 
-    logger.info("Database connection initialized.");
+    logger.info('Database connection initialized.');
   }
 
   public static getInstance(): DatabaseConnection {
@@ -152,14 +153,14 @@ class DatabaseConnection {
   public async healthCheck(): Promise<{ ok: boolean; error?: string }> {
     try {
       const { error } = await this.client
-        .from("conversations")
-        .select("id")
+        .from('conversations')
+        .select('id')
         .limit(1);
       if (error) throw error;
       return { ok: true };
     } catch (err: unknown) {
       const error = err as Error;
-      logger.error({ err: error }, "Database health check failed");
+      logger.error({ err: error }, 'Database health check failed');
       return { ok: false, error: error.message };
     }
   }

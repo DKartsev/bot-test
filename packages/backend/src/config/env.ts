@@ -1,12 +1,13 @@
-import { z } from "zod";
+import { logger } from '../utils/logger.js';
+import { z } from 'zod';
 
 const CommaSeparatedStrings = z.preprocess(
   (v) =>
-    typeof v === "string"
+    typeof v === 'string'
       ? v
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
       : [],
   z.array(z.string()),
 );
@@ -14,18 +15,18 @@ const CommaSeparatedStrings = z.preprocess(
 export const EnvSchema = z.object({
   // Node
   NODE_ENV: z
-    .enum(["development", "test", "production"])
-    .default("development"),
+    .enum(['development', 'test', 'production'])
+    .default('development'),
   LOG_LEVEL: z
-    .enum(["trace", "debug", "info", "warn", "error", "fatal"])
-    .default("info"),
+    .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal'])
+    .default('info'),
 
   // Server
   PORT: z.coerce.number().int().positive().default(3000),
-  CORS_ORIGIN: z.string().url().default("http://localhost:3000"),
+  CORS_ORIGIN: z.string().url().default('http://localhost:3000'),
   PUBLIC_URL: z.string().url().optional(),
   ENABLE_DOCS: z
-    .preprocess((v) => String(v).toLowerCase() === "true", z.boolean())
+    .preprocess((v) => String(v).toLowerCase() === 'true', z.boolean())
     .default(false),
 
   // Security
@@ -36,11 +37,11 @@ export const EnvSchema = z.object({
 
   // Telegram
   TELEGRAM_BOT_TOKEN: z.string().min(1),
-  TG_WEBHOOK_PATH: z.string().startsWith("/").default("/webhooks/telegram"),
+  TG_WEBHOOK_PATH: z.string().startsWith('/').default('/webhooks/telegram'),
   TG_WEBHOOK_SECRET: z.string().optional(),
   TELEGRAM_SET_WEBHOOK_ON_START: z
     .preprocess(
-      (v) => String(v).toLowerCase() === "true" || v === "1",
+      (v) => String(v).toLowerCase() === 'true' || v === '1',
       z.boolean(),
     )
     .default(false),
@@ -54,8 +55,8 @@ export const EnvSchema = z.object({
 
   // OpenAI / RAG
   OPENAI_API_KEY: z.string().min(1),
-  FAQ_PATH: z.string().default("data/qa/faq.json"),
-  KB_DIR: z.string().default("data/kb"),
+  FAQ_PATH: z.string().default('data/qa/faq.json'),
+  KB_DIR: z.string().default('data/kb'),
   MIN_CONFIDENCE_TO_ESCALATE: z.coerce.number().min(0).max(1).default(0.55),
 
   // JWT (Optional, for more advanced auth)
@@ -80,7 +81,7 @@ export function loadEnv(options: { force?: boolean } = {}): Env {
     return parsed;
   } catch (err) {
     if (err instanceof z.ZodError) {
-      console.error("Failed to parse environment variables:", err.format());
+      logger.error({ err: err.format() }, 'Failed to parse environment variables');
       process.exit(1);
     }
     throw err;

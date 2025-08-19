@@ -1,13 +1,13 @@
-import { FastifyPluginAsync } from "fastify";
-import fp from "fastify-plugin";
-import getChatsRoute from "./getChats.js";
-import getChatRoute from "./getChat.js";
-import getMessagesRoute from "./getMessages.js";
-import postMessageRoute from "./postMessage.js";
-import postAssignRoute from "./postAssign.js";
-import postStatusRoute from "./postStatus.js";
+import type { FastifyPluginAsync } from 'fastify';
+import fp from 'fastify-plugin';
+import getChatsRoute from './getChats.js';
+import getChatRoute from './getChat.js';
+import getMessagesRoute from './getMessages.js';
+import postMessageRoute from './postMessage.js';
+import postAssignRoute from './postAssign.js';
+import postStatusRoute from './postStatus.js';
 
-const chatsRoutes: FastifyPluginAsync = async (server, _opts) => {
+const chatsRoutes: FastifyPluginAsync = async (server, opts) => {
   await server.register(getChatsRoute);
   await server.register(getChatRoute);
   await server.register(getMessagesRoute);

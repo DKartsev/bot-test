@@ -1,6 +1,15 @@
-import MiniSearch, { SearchResult } from "minisearch";
-import { loadKb, KbDoc } from "./loader.js";
-import { normalize, tokensRU } from "../nlp/text.js";
+import type { SearchResult } from 'minisearch';
+import MiniSearch from 'minisearch';
+import { loadKb } from './loader.js';
+import { normalize, tokensRU } from '../nlp/text.js';
+
+export interface KbDoc {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[];
+  slug: string;
+}
 
 let mini: MiniSearch<KbDoc> | null = null;
 let docs: KbDoc[] = [];
@@ -9,9 +18,9 @@ function getIndex(): MiniSearch<KbDoc> {
   if (!mini) {
     docs = loadKb();
     mini = new MiniSearch<KbDoc>({
-      idField: "id",
-      fields: ["title", "content", "tags"],
-      storeFields: ["title", "slug"],
+      idField: 'id',
+      fields: ['title', 'content', 'tags'],
+      storeFields: ['title', 'slug'],
       tokenize: tokensRU,
       processTerm: (t) => t,
     });
@@ -23,7 +32,7 @@ function getIndex(): MiniSearch<KbDoc> {
 function highlight(content: string, queryTokens: string[]): string {
   let snippet = content;
   for (const t of queryTokens) {
-    const re = new RegExp(t, "gi");
+    const re = new RegExp(t, 'gi');
     snippet = snippet.replace(re, (m) => `**${m}**`);
   }
   return snippet;
@@ -43,7 +52,10 @@ export function searchKb(
   const hits = hitsAll.slice(0, limit);
   const qTokens = tokensRU(query);
   return hits.map((r: SearchResult) => {
-    const doc = docs.find((d) => d.id === r.id)!;
+    const doc = docs.find((d) => d.id === r.id);
+    if (!doc) {
+      return { doc: { id: String(r.id), title: '', content: '', tags: [], slug: '' }, score: r.score, snippet: '' };
+    }
     const firstToken = qTokens.find((t) => {
       const idx = doc.content.toLowerCase().indexOf(t);
       return idx >= 0;

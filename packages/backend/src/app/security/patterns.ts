@@ -3,7 +3,7 @@
 interface PolicyRule {
   regex: string;
   _regex?: RegExp;
-  severity?: "low" | "medium" | "high" | "critical";
+  severity?: 'low' | 'medium' | 'high' | 'critical';
   block_in?: boolean;
   block_out?: boolean;
 }
@@ -20,16 +20,16 @@ interface Policies {
 }
 
 export interface Detection {
-  type: "pii" | "secrets" | "profanity";
+  type: 'pii' | 'secrets' | 'profanity';
   key: string;
   value: string;
   span: [number, number];
-  severity: "low" | "medium" | "high" | "critical";
+  severity: 'low' | 'medium' | 'high' | 'critical';
   rule: PolicyRule;
 }
 
 function luhnValid(number: string): boolean {
-  const digits = (number || "").replace(/\D+/g, "").split("").reverse();
+  const digits = (number || '').replace(/\D+/g, '').split('').reverse();
   if (!digits.length) return false;
   let sum = 0;
   for (let i = 0; i < digits.length; i++) {
@@ -46,13 +46,13 @@ function luhnValid(number: string): boolean {
 }
 
 function ibanValid(text: string): boolean {
-  const s = (text || "").replace(/\s+/g, "").toUpperCase();
+  const s = (text || '').replace(/\s+/g, '').toUpperCase();
   if (s.length < 5) return false;
   const rearranged = s.slice(4) + s.slice(0, 4);
   const expanded = rearranged
-    .split("")
-    .map((ch) => (ch >= "A" && ch <= "Z" ? ch.charCodeAt(0) - 55 : ch))
-    .join("");
+    .split('')
+    .map((ch) => (ch >= 'A' && ch <= 'Z' ? ch.charCodeAt(0) - 55 : ch))
+    .join('');
   try {
     const remainder = BigInt(expanded) % 97n;
     return remainder === 1n;
@@ -63,8 +63,8 @@ function ibanValid(text: string): boolean {
 
 function compileRegex(p: PolicyRule): RegExp {
   const src = p.regex;
-  const flags = src.startsWith("(?i)") ? "gi" : "g";
-  const body = src.replace("(?i)", "");
+  const flags = src.startsWith('(?i)') ? 'gi' : 'g';
+  const body = src.replace('(?i)', '');
   return new RegExp(body, flags);
 }
 
@@ -72,15 +72,15 @@ export function detectAll(text: string, policies: Policies): Detection[] {
   const detections: Detection[] = [];
   if (!text) return detections;
 
-  const allowEmails = new Set(policies.allow?.email_domains || []);
-  const allowBins = policies.allow?.test_cards_bin || [];
+  const allowEmails = new Set(policies.allow?.email_domains ?? []);
+  const allowBins = policies.allow?.test_cards_bin ?? [];
   const allowTestCards = true; // Assuming this is enabled for now
 
-  const checkType = (type: "pii" | "secrets" | "profanity") => {
-    const rules = policies[type] || {};
+  const checkType = (type: 'pii' | 'secrets' | 'profanity') => {
+    const rules = policies[type] ?? {};
     for (const [key, rule] of Object.entries(rules)) {
       if (!rule.regex) continue;
-      const regex = rule._regex || (rule._regex = compileRegex(rule));
+      const regex = rule._regex ?? (rule._regex = compileRegex(rule));
       regex.lastIndex = 0;
       let match;
       while ((match = regex.exec(text))) {
@@ -92,17 +92,17 @@ export function detectAll(text: string, policies: Policies): Detection[] {
         ];
 
         // Rule-specific validation
-        if (type === "pii" && key === "email" && allowEmails.size) {
-          const domain = value.split("@")[1]?.toLowerCase();
+        if (type === 'pii' && key === 'email' && allowEmails.size) {
+          const domain = value.split('@')[1]?.toLowerCase();
           if (domain && allowEmails.has(domain)) continue;
         }
-        if (type === "pii" && key === "credit_card") {
-          const digits = value.replace(/\D+/g, "");
+        if (type === 'pii' && key === 'credit_card') {
+          const digits = value.replace(/\D+/g, '');
           if (!luhnValid(digits)) continue;
           if (allowTestCards && allowBins.some((bin) => digits.startsWith(bin)))
             continue;
         }
-        if (type === "pii" && key === "iban") {
+        if (type === 'pii' && key === 'iban') {
           if (!ibanValid(value)) continue;
         }
 
@@ -111,16 +111,16 @@ export function detectAll(text: string, policies: Policies): Detection[] {
           key,
           value,
           span,
-          severity: rule.severity || "low",
+          severity: rule.severity ?? 'low',
           rule,
         });
       }
     }
   };
 
-  checkType("pii");
-  checkType("secrets");
-  checkType("profanity");
+  checkType('pii');
+  checkType('secrets');
+  checkType('profanity');
 
   return detections;
 }

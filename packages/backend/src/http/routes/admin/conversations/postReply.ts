@@ -1,18 +1,18 @@
-import { FastifyPluginAsync } from "fastify";
-import fp from "fastify-plugin";
-import { checkAuth, checkAdminRole } from "../../../middlewares/authMiddleware.js";
+import type { FastifyPluginAsync } from 'fastify';
+import fp from 'fastify-plugin';
+import { checkAdminRole, checkAuth } from '../../../middlewares/authMiddleware.js';
 
-const postReplyRoute: FastifyPluginAsync = (server, _opts) => {
+const postReplyRoute: FastifyPluginAsync = (server, opts) => {
   server.post(
-    "/conversations/:id/reply",
+    '/conversations/:id/reply',
     { preHandler: [checkAuth, checkAdminRole] },
-    async (_req, reply) => {
+    async (req, reply) => {
       // TODO: Implement reply posting
-      return reply.code(201).send({ message: "Reply posted" });
+      return reply.code(201).send({ message: 'Reply posted' });
     },
   );
 
-  return Promise.resolve();
+  return;
 };
 
 export default fp(postReplyRoute);

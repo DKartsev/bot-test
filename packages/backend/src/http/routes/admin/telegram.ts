@@ -1,24 +1,24 @@
-import { FastifyPluginAsync } from "fastify";
-import fp from "fastify-plugin";
-import { checkAuth, checkAdminRole } from "../../middlewares/authMiddleware.js";
+import type { FastifyPluginAsync } from 'fastify';
+import fp from 'fastify-plugin';
+import { checkAdminRole, checkAuth } from '../../middlewares/authMiddleware.js';
 
-const plugin: FastifyPluginAsync = (server, _opts) => {
+const plugin: FastifyPluginAsync = (server, opts) => {
   // GET /telegram/status
   server.get(
-    "/telegram/status",
-    { 
+    '/telegram/status',
+    {
       preHandler: [
-        checkAuth, 
-        checkAdminRole
-      ] 
+        checkAuth,
+        checkAdminRole,
+      ],
     },
-    async (_req, _reply) => {
+    async (req, reply) => {
       // TODO: Implement Telegram status check
-      return { status: "ok" };
+      return { status: 'ok' };
     },
   );
 
-  return Promise.resolve();
+  return;
 };
 
 export default fp(plugin);

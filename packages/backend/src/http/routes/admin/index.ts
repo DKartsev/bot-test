@@ -1,9 +1,9 @@
-import { FastifyPluginAsync } from "fastify";
-import fp from "fastify-plugin";
+import type { FastifyPluginAsync } from 'fastify';
+import fp from 'fastify-plugin';
 
-const adminRoutes: FastifyPluginAsync = (_server, _opts) => {
+const adminRoutes: FastifyPluginAsync = (server, opts) => {
   // Admin routes are registered in admin plugin
-  return Promise.resolve();
+  return;
 };
 
 export default fp(adminRoutes);

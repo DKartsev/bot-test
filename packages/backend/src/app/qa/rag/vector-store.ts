@@ -1,8 +1,8 @@
-import { promises as fs } from "fs";
-import path from "path";
-// import { HierarchicalNSW } from "hnswlib-node"; // Заменено на динамический импорт
-import { logger } from "../../../utils/logger.js";
-import { TextChunk } from "./chunker.js";
+import { promises as fs } from 'fs';
+import path from 'path';
+
+import { logger } from '../../../utils/logger.js';
+import type { TextChunk } from './chunker.js';
 
 /**
  * Абстракция для любого движка, который может превращать текст в векторы.
@@ -68,9 +68,9 @@ export class VectorStore {
     private embedder: Embedder,
   ) {
     this.dimension = this.embedder.getDimension();
-    this.indexFile = path.join(storePath, "hnsw-index.bin");
-    this.metaFile = path.join(storePath, "hnsw-meta.json");
-    this.chunksFile = path.join(storePath, "chunks.jsonl");
+    this.indexFile = path.join(storePath, 'hnsw-index.bin');
+    this.metaFile = path.join(storePath, 'hnsw-meta.json');
+    this.chunksFile = path.join(storePath, 'chunks.jsonl');
   }
 
   /**
@@ -83,29 +83,29 @@ export class VectorStore {
     if (this.isInitialized) return;
     logger.info(
       { path: this.storePath },
-      "🧠 Инициализация векторного хранилища...",
+      '🧠 Инициализация векторного хранилища...',
     );
     await fs.mkdir(this.storePath, { recursive: true });
 
     let HierarchicalNSWCtor: new (space: string, dimension: number) => HNSWIndex;
     try {
-      const mod = await import("hnswlib-node") as HNSWModule;
+      const mod = await import('hnswlib-node') as HNSWModule;
       HierarchicalNSWCtor = mod.HierarchicalNSW;
       if (!HierarchicalNSWCtor) {
-        throw new Error("HierarchicalNSW export not found");
+        throw new Error('HierarchicalNSW export not found');
       }
       this.hnswAvailable = true;
-      logger.info("✅ hnswlib-node успешно загружен. Векторный поиск включен.");
+      logger.info('✅ hnswlib-node успешно загружен. Векторный поиск включен.');
     } catch (err) {
       const code = (err as NodeJS.ErrnoException)?.code;
-      if (code === "ERR_MODULE_NOT_FOUND") {
+      if (code === 'ERR_MODULE_NOT_FOUND') {
         logger.info(
-          "ℹ️ Векторный поиск отключён: модуль hnswlib-node не установлен (ожидаемо на Render).",
+          'ℹ️ Векторный поиск отключён: модуль hnswlib-node не установлен (ожидаемо на Render).',
         );
       } else {
         logger.warn(
           { err },
-          "⚠️ hnswlib-node недоступен. Векторный поиск будет отключён.",
+          '⚠️ hnswlib-node недоступен. Векторный поиск будет отключён.',
         );
       }
       this.hnswAvailable = false;
@@ -115,14 +115,14 @@ export class VectorStore {
 
     try {
       await this.load();
-      logger.info("✅ Векторное хранилище успешно загружено с диска.");
+      logger.info('✅ Векторное хранилище успешно загружено с диска.');
     } catch (err) {
       logger.warn(
         { err },
-        "⚠️ Не удалось загрузить существующий индекс. Создаётся новый.",
+        '⚠️ Не удалось загрузить существующий индекс. Создаётся новый.',
       );
       if (HierarchicalNSWCtor) {
-        this.index = new HierarchicalNSWCtor("cosine", this.dimension);
+        this.index = new HierarchicalNSWCtor('cosine', this.dimension);
         this.index.initIndex(0);
       }
     }
@@ -136,7 +136,7 @@ export class VectorStore {
     if (!this.hnswAvailable) return; // нет индекса — ничего не грузим
 
     const meta = JSON.parse(
-      await fs.readFile(this.metaFile, "utf8"),
+      await fs.readFile(this.metaFile, 'utf8'),
     ) as IndexMeta;
     if (meta.dim !== this.dimension) {
       throw new Error(
@@ -144,9 +144,9 @@ export class VectorStore {
       );
     }
 
-    const mod = await import("hnswlib-node") as HNSWModule;
+    const mod = await import('hnswlib-node') as HNSWModule;
     const HierarchicalNSWCtor = mod.HierarchicalNSW;
-    const index = new HierarchicalNSWCtor("cosine", this.dimension);
+    const index = new HierarchicalNSWCtor('cosine', this.dimension);
     index.readIndex(this.indexFile);
     this.index = index;
 
@@ -154,7 +154,7 @@ export class VectorStore {
     this.chunkIdToIndex = new Map(this.indexToChunkId.map((id, i) => [id, i]));
 
     // Загружаем метаданные чанков
-    const lines = (await fs.readFile(this.chunksFile, "utf8")).split("\n");
+    const lines = (await fs.readFile(this.chunksFile, 'utf8')).split('\n');
     for (const line of lines) {
       if (!line) continue;
       const chunk = JSON.parse(line) as TextChunk;
@@ -182,12 +182,12 @@ export class VectorStore {
    */
   async upsert(chunks: TextChunk[]): Promise<void> {
     if (!this.hnswAvailable) return; // no-op
-    if (!this.index) throw new Error("VectorStore не инициализирован.");
+    if (!this.index) throw new Error('VectorStore не инициализирован.');
     if (!chunks.length) return;
 
     logger.info(
       { count: chunks.length },
-      "📝 Добавление чанков в векторный индекс...",
+      '📝 Добавление чанков в векторный индекс...',
     );
     const texts = chunks.map((c) => c.text);
     const vectors = await this.embedder.embed(texts);
@@ -200,7 +200,7 @@ export class VectorStore {
       if (!chunk || !vector) {
         logger.warn(
           { chunkIndex: i },
-          "Skipping empty chunk or vector during upsert.",
+          'Skipping empty chunk or vector during upsert.',
         );
         continue;
       }
@@ -208,7 +208,7 @@ export class VectorStore {
       if (this.chunkIdToIndex.has(chunk.id)) {
         logger.warn(
           { chunkId: chunk.id },
-          "Chunk already exists. Update not implemented.",
+          'Chunk already exists. Update not implemented.',
         );
       } else {
         const newIndex = this.index.getCurrentCount();
@@ -222,19 +222,19 @@ export class VectorStore {
 
     // Дописываем только новые чанки в файл
     if (newChunks.length) {
-      const lines = newChunks.map((c) => JSON.stringify(c)).join("\n") + "\n";
+      const lines = `${newChunks.map((c) => JSON.stringify(c)).join('\n')}\n`;
       await fs.appendFile(this.chunksFile, lines);
     }
 
     await this.save();
-    logger.info("Векторный индекс успешно обновлён.");
+    logger.info('Векторный индекс успешно обновлён.');
   }
 
   /**
    * Выполняет поиск ближайших соседей по заданному запросу.
    */
   async search(query: string, k: number): Promise<VectorSearchResult[]> {
-    if (!this.hnswAvailable || !this.index || !this.index.getCurrentCount || this.index.getCurrentCount() === 0) return [];
+    if (!this.hnswAvailable || !this.index?.getCurrentCount || this.index.getCurrentCount() === 0) return [];
 
     const [queryVector] = await this.embedder.embed([query]);
     if (!queryVector) return [];
@@ -268,11 +268,11 @@ export class VectorStore {
    */
   async rebuild(): Promise<void> {
     if (!this.hnswAvailable) return; // no-op
-    logger.warn("Полная перестройка векторного индекса...");
+    logger.warn('Полная перестройка векторного индекса...');
 
-    const mod = await import("hnswlib-node") as HNSWModule;
+    const mod = await import('hnswlib-node') as HNSWModule;
     const HierarchicalNSWCtor = mod.HierarchicalNSW;
-    this.index = new HierarchicalNSWCtor("cosine", this.dimension);
+    this.index = new HierarchicalNSWCtor('cosine', this.dimension);
     this.index.initIndex(0);
     this.chunkMeta.clear();
     this.chunkIdToIndex.clear();
@@ -285,9 +285,9 @@ export class VectorStore {
         .catch(
           (e: unknown) =>
             e &&
-            typeof e === "object" &&
-            "code" in e &&
-            (e as NodeJS.ErrnoException).code !== "ENOENT" &&
+            typeof e === 'object' &&
+            'code' in e &&
+            (e as NodeJS.ErrnoException).code !== 'ENOENT' &&
             Promise.reject(e),
         ),
       fs
@@ -295,18 +295,18 @@ export class VectorStore {
         .catch(
           (e: unknown) =>
             e &&
-            typeof e === "object" &&
-            "code" in e &&
-            (e as NodeJS.ErrnoException).code !== "ENOENT" &&
+            typeof e === 'object' &&
+            'code' in e &&
+            (e as NodeJS.ErrnoException).code !== 'ENOENT' &&
             Promise.reject(e),
         ),
     ]);
-    const lines = (await fs.readFile(this.chunksFile, "utf8")).split("\n");
+    const lines = (await fs.readFile(this.chunksFile, 'utf8')).split('\n');
     const chunks: TextChunk[] = lines
       .filter(Boolean)
       .map((line) => JSON.parse(line) as TextChunk);
 
     await this.upsert(chunks);
-    logger.info("Перестройка индекса завершена.");
+    logger.info('Перестройка индекса завершена.');
   }
 }

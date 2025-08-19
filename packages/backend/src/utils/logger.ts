@@ -1,24 +1,14 @@
-import pino from "pino";
-import { env } from "../config/env.js";
-
-// Create a single, unified logger instance
-// The logger is configured in `server.ts` to use pino-pretty in development
-// This file provides the base logger and helper functions.
+import pino from 'pino';
 
 const logger = pino({
-  level: env.LOG_LEVEL,
-  redact: {
-    paths: [
-      "req.headers.authorization",
-      'req.headers["x-api-key"]',
-      'req.headers["x-admin-token"]',
-      "password",
-      "token",
-      "apiKey",
-      "*.secret",
-      "*.token",
-    ],
-    censor: "[REDACTED]",
+  level: process.env.LOG_LEVEL ?? 'info',
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
+      translateTime: 'HH:MM:ss Z',
+      ignore: 'pid,hostname',
+    },
   },
 });
 

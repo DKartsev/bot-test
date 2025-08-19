@@ -1,32 +1,94 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
+    branches: [ main, develop ]
   pull_request:
+    branches: [ main, develop ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [18.x, 20.x]
-    env:
-      ADMIN_TOKENS: test-admin
-      EDITOR_TOKENS: test-editor
-      ADMIN_IP_ALLOWLIST: 127.0.0.1,::1
-      DEFAULT_LANG: ru
-      SUPPORTED_LANGS: ru,en,eo
-      AUTO_CACHE_OPENAI: '0'
-      SYNC_CRON: ''
-      FEEDBACK_AGG_INTERVAL_MIN: '0'
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+          POSTGRES_USER: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-          cache: 'npm'
-      - run: npm ci
-      - run: mkdir -p data/backups logs feedback data/versions
-      - run: cp test/__fixtures__/qa_pairs.fixture.json data/qa_pairs.json
-      - run: npm test
-      - run: npm run coverage
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run linting
+      run: npm run lint
+    
+    - name: Run tests
+      run: npm run test:coverage
+      env:
+        DATABASE_URL: postgresql://test:test@localhost:5432/test_db
+        REDIS_URL: redis://localhost:6379
+        NODE_ENV: test
+        LOG_LEVEL: silent
+        OPENAI_API_KEY: test-key
+        TELEGRAM_BOT_TOKEN: test-token
+        TG_WEBHOOK_SECRET: test-secret
+        ADMIN_IP_ALLOWLIST: 127.0.0.1
+        ADMIN_RATE_LIMIT_MAX: 100
+        CORS_ORIGIN: http://localhost:3000
+        PUBLIC_URL: http://localhost:3000
+        ENABLE_DOCS: false
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./packages/backend/coverage/lcov.info
+        flags: backend
+        name: backend-coverage
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build packages
+      run: npm run build

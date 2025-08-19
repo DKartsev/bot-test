@@ -1,18 +1,18 @@
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import { FAQ_PATH } from "../env.js";
+const FAQ_PATH: string = process.env.FAQ_PATH ?? './data/qa/faq.json';
 
 // types
 export type FaqPair = { id: string; q: string; a: string; tags?: string[] };
 
 const ROOT_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  "../../../..",
+  '../../../..',
 );
 const JSON_PATH = path.resolve(ROOT_DIR, FAQ_PATH);
-const CSV_PATH = JSON_PATH.replace(/\.json$/, ".csv");
+const CSV_PATH = JSON_PATH.replace(/\.json$/, '.csv');
 
 // кэш всегда массив (не null)
 let faqCache: FaqPair[] = [];
@@ -21,9 +21,9 @@ let faqCache: FaqPair[] = [];
 export const normalize = (s: string): string =>
   s
     .toLowerCase()
-    .replaceAll("ё", "е")
-    .replace(/[^\p{L}\p{N}\s]+/gu, " ")
-    .replace(/\s+/g, " ")
+    .replaceAll('ё', 'е')
+    .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 
 type RawFaqRow = {
@@ -40,21 +40,21 @@ type RawFaqRow = {
 // вытянуть q/a из разных возможных полей; пропускать битые записи
 function pickQA(row: RawFaqRow): { q: string; a: string } | null {
   const q =
-    typeof row?.q === "string"
+    typeof row?.q === 'string'
       ? row.q
-      : typeof row?.question === "string"
+      : typeof row?.question === 'string'
         ? row.question
-        : typeof row?.["Вопрос"] === "string"
-          ? row["Вопрос"]
-          : "";
+        : typeof row?.['Вопрос'] === 'string'
+          ? row['Вопрос']
+          : '';
   const a =
-    typeof row?.a === "string"
+    typeof row?.a === 'string'
       ? row.a
-      : typeof row?.answer === "string"
+      : typeof row?.answer === 'string'
         ? row.answer
-        : typeof row?.["Ответ"] === "string"
-          ? row["Ответ"]
-          : "";
+        : typeof row?.['Ответ'] === 'string'
+          ? row['Ответ']
+          : '';
   if (!q || !a) return null;
   return { q, a };
 }
@@ -72,29 +72,29 @@ export function loadFaq(): FaqPair[] {
       };
     }
   ).app;
-  app?.log?.info({ path: FAQ_PATH }, "FAQ: loading");
+  app?.log?.info({ path: FAQ_PATH }, 'FAQ: loading');
 
   // ...загрузка raw-строк из JSON или CSV (CSV уже конвертирован в объекты)
   let rows: RawFaqRow[] = [];
   try {
     if (fs.existsSync(JSON_PATH)) {
-      const raw = fs.readFileSync(JSON_PATH, "utf-8");
+      const raw = fs.readFileSync(JSON_PATH, 'utf-8');
       rows = JSON.parse(raw) as RawFaqRow[];
     } else if (fs.existsSync(CSV_PATH)) {
-      const csv = fs.readFileSync(CSV_PATH, "utf-8");
+      const csv = fs.readFileSync(CSV_PATH, 'utf-8');
       const lines = csv.trim().split(/\r?\n/);
-      const [header = "", ...rest] = lines;
+      const [header = '', ...rest] = lines;
       if (!/вопрос/i.test(header) || !/ответ/i.test(header)) {
         throw new Error("CSV header must contain 'Вопрос,Ответ'");
       }
       rows = rest.map((line, idx) => {
-        const parts = line.split(",");
+        const parts = line.split(',');
         if (parts.length < 2) return {};
-        const q = parts[0]?.trim() ?? "";
-        const a = parts[1]?.trim() ?? "";
+        const q = parts[0]?.trim() ?? '';
+        const a = parts[1]?.trim() ?? '';
         return { id: `csv-${idx + 1}`, q, a };
       });
-      fs.writeFileSync(JSON_PATH, JSON.stringify(rows, null, 2), "utf-8");
+      fs.writeFileSync(JSON_PATH, JSON.stringify(rows, null, 2), 'utf-8');
     }
   } catch (err) {
     if (err instanceof Error) {
@@ -110,7 +110,7 @@ export function loadFaq(): FaqPair[] {
 
     const newPair: FaqPair = {
       id:
-        typeof row?.id === "string" && row.id
+        typeof row?.id === 'string' && row.id
           ? row.id
           : (globalThis.crypto?.randomUUID?.() ??
             String(Date.now()) + Math.random().toString(16).slice(2)),
@@ -119,7 +119,7 @@ export function loadFaq(): FaqPair[] {
     };
 
     const tags = Array.isArray(row?.tags)
-      ? row.tags.filter((t): t is string => typeof t === "string")
+      ? row.tags.filter((t): t is string => typeof t === 'string')
       : undefined;
 
     if (tags?.length) {
@@ -130,15 +130,15 @@ export function loadFaq(): FaqPair[] {
   }
 
   faqCache = out;
-  app?.log?.info({ count: out.length }, "FAQ: loaded");
-  if (out.length === 0) app?.log?.warn("FAQ: empty");
+  app?.log?.info({ count: out.length }, 'FAQ: loaded');
+  if (out.length === 0) app?.log?.warn('FAQ: empty');
   return faqCache;
 }
 
 // точный поиск — нормализуем вход и не пускаем undefined
 export function findExact(query: string): FaqPair | undefined {
   if (!faqCache.length) loadFaq();
-  const qn = normalize(query ?? "");
+  const qn = normalize(query ?? '');
   if (!qn) return;
   return faqCache.find((p) => normalize(p.q) === qn);
 }

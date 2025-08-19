@@ -1,18 +1,18 @@
-import { FastifyPluginAsync } from "fastify";
-import fp from "fastify-plugin";
+import type { FastifyPluginAsync } from 'fastify';
+import fp from 'fastify-plugin';
 
-const apiPlugin: FastifyPluginAsync = (server, _opts) => {
+const apiPlugin: FastifyPluginAsync = (server, opts) => {
   server.post(
-    "/ask",
+    '/ask',
     {
       schema: {
         body: {
-          type: "object",
+          type: 'object',
           additionalProperties: false,
-          required: ["question"],
+          required: ['question'],
           properties: {
-            question: { type: "string", minLength: 1 },
-            lang: { type: "string" },
+            question: { type: 'string', minLength: 1 },
+            lang: { type: 'string' },
           },
         },
       },
@@ -22,18 +22,18 @@ const apiPlugin: FastifyPluginAsync = (server, _opts) => {
       const { question, lang } = (request.body as { question: string; lang?: string }) ?? {};
 
       try {
-        const result = await qaService.ask(question, lang ?? "ru");
+        const result = await qaService.ask(question, lang ?? 'ru');
         return reply.send(result);
       } catch (err) {
-        request.log.error({ err }, "Error in /ask route");
+        request.log.error({ err }, 'Error in /ask route');
         return reply
           .code(500)
-          .send({ error: "Failed to process your question." });
+          .send({ error: 'Failed to process your question.' });
       }
     },
   );
 
-  return Promise.resolve();
+  return;
 };
 
 export default fp(apiPlugin);
