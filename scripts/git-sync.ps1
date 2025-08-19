@@ -31,7 +31,7 @@ switch ($Action.ToLower()) {
         
         # 3. Синхронизируем с VM
         Write-Host "3. Синхронизируем с VM..." -ForegroundColor Yellow
-        ssh -l $VMUser $VMIP "cd $VMProjectPath && git pull origin main 2>/dev/null || echo 'Удаленный репозиторий недоступен на VM'"
+        ssh -l $VMUser $VMIP "cd $VMProjectPath ; git pull origin main 2>/dev/null || echo 'Удаленный репозиторий недоступен на VM'"
         
         Write-Host "Git синхронизация завершена!" -ForegroundColor Green
     }
@@ -46,7 +46,7 @@ switch ($Action.ToLower()) {
         git push origin main
         
         # Обновляем на VM
-        ssh -l $VMUser $VMIP "cd $VMProjectPath && git pull origin main"
+        ssh -l $VMUser $VMIP "cd $VMProjectPath ; git pull origin main"
         
         Write-Host "Изменения отправлены на VM!" -ForegroundColor Green
     }
@@ -55,7 +55,7 @@ switch ($Action.ToLower()) {
         Write-Host "Получаем изменения с VM через Git..." -ForegroundColor Blue
         
         # Коммитим изменения на VM
-        ssh -l $VMUser $VMIP "cd $VMProjectPath && git add . && git commit -m 'VM changes: $(date)' && git push origin main"
+        ssh -l $VMUser $VMIP "cd $VMProjectPath ; git add . ; git commit -m 'VM changes: \$(date)' ; git push origin main"
         
         # Получаем локально
         git pull origin main
@@ -72,12 +72,12 @@ switch ($Action.ToLower()) {
         
         # Статус на VM
         Write-Host "VM Git статус:" -ForegroundColor Yellow
-        ssh -l $VMUser $VMIP "cd $VMProjectPath && git status --porcelain"
+        ssh -l $VMUser $VMIP "cd $VMProjectPath ; git status --porcelain"
         
         # Проверяем синхронизацию
         Write-Host "Проверяем синхронизацию..." -ForegroundColor Yellow
         $localCommit = git rev-parse HEAD
-        $vmCommit = ssh -l $VMUser $VMIP "cd $VMProjectPath && git rev-parse HEAD"
+        $vmCommit = ssh -l $VMUser $VMIP "cd $VMProjectPath ; git rev-parse HEAD"
         
         if ($localCommit -eq $vmCommit) {
             Write-Host "Репозитории синхронизированы!" -ForegroundColor Green
