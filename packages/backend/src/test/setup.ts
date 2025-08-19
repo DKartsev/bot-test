@@ -1,4 +1,4 @@
-import { vi, afterAll } from 'vitest';
+import { vi } from 'vitest';
 
 // Мокаем process.exit для предотвращения завершения тестов
 vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
@@ -109,6 +109,6 @@ process.env.ENABLE_DOCS = 'false';
 process.env.PORT = '3000';
 
 // Восстанавливаем process.exit после тестов
-afterAll(() => {
+vi.afterAll(() => {
   vi.restoreAllMocks();
 });
