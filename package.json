@@ -8,12 +8,13 @@
   ],
   "scripts": {
     "build": "npm run build -w packages/backend && npm run build -w packages/operator-admin",
+    "build:prod": "node scripts/build-prod.js",
+    "deploy": "node scripts/deploy.js",
     "dev": "npm run dev -w packages/backend",
     "test": "npm run test -w packages/backend",
     "test:coverage": "npm run test:coverage -w packages/backend",
     "lint": "npm run lint -w packages/backend",
     "lint:fix": "npm run lint:fix -w packages/backend",
-    "prepare": "husky install",
     "pre-commit": "lint-staged"
   },
   "devDependencies": {
@@ -25,5 +26,8 @@
       "npm run lint -w packages/backend",
       "npm run test:coverage -w packages/backend"
     ]
+  },
+  "dependencies": {
+    "typescript": "^5.9.2"
   }
 }

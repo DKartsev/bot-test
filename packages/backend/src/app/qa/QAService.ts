@@ -24,8 +24,10 @@ export class QAService {
   private kbData: KBDoc[] = [];
 
   constructor() {
-    void this.loadFAQ();
-    void this.loadKB();
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    this.loadFAQ();
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    this.loadKB();
   }
 
   private async loadFAQ() {

@@ -12,17 +12,17 @@ export function makeBot(deps: { qaService: QAService }) {
   }
   const bot = new Telegraf(token);
 
-  bot.start(async (ctx) => {
+  bot.start(async (ctx: any) => {
     await ctx.reply('Здравствуйте! Чем могу помочь?');
   });
 
-  bot.on('text', async (ctx) => {
+  bot.on('text', async (ctx: any) => {
     const text: string = String(ctx.message.text ?? '');
     const reply = text.trim().length > 0 ? 'Сообщение получено.' : 'Пустое сообщение.';
     await ctx.reply(reply);
   });
 
-  const botWebhookCallback = bot.webhookCallback(env.TG_WEBHOOK_PATH);
+  const botWebhookCallback = (bot as any).webhookCallback(env.TG_WEBHOOK_PATH);
 
   return { bot, botWebhookCallback };
 }

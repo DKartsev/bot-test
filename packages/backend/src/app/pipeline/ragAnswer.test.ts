@@ -34,7 +34,7 @@ vi.mock("../../config/env.js", () => ({
 
 describe("ragAnswer", () => {
   let mockLogger: FastifyBaseLogger;
-  let mockPg: FastifyInstance["pg"];
+  let mockPg: any;
   let mockQuery: any;
 
   beforeEach(() => {
@@ -69,7 +69,7 @@ describe("ragAnswer", () => {
 
     // Mock LLM refine result
     const { refineDraft } = await import("../llm/llmRefine.js");
-    vi.mocked(refineDraft).mockResolvedValue({
+    (refineDraft as any).mockResolvedValue({
       answer: "Test answer",
       confidence: 0.8,
       escalate: false,

@@ -35,7 +35,7 @@ describe('users plugin', () => {
 	it('registers routes and returns users list', async () => {
 		await usersPlugin(app as unknown as FastifyInstance, { repo } as unknown as { repo: any });
 
-		expect(app.get).toHaveBeenCalledWith('/users', expect.any(Function));
+		expect((app as any).get).toHaveBeenCalledWith('/users', expect.any(Function));
 
 		repo.list.mockResolvedValue({ items: [{ id: '1', email: 'a@b.c', name: 'Alice' }], nextCursor: undefined });
 		const res = await app._getHandler?.({} as unknown, {} as unknown);
@@ -48,7 +48,7 @@ describe('users plugin', () => {
 
 	it('creates user and sets 201 status', async () => {
 		await usersPlugin(app as unknown as FastifyInstance, { repo } as unknown as { repo: any });
-		expect(app.post).toHaveBeenCalledWith('/users', expect.any(Function));
+		expect((app as any).post).toHaveBeenCalledWith('/users', expect.any(Function));
 
 		repo.create.mockResolvedValue({ id: '2', email: 'bob@example.com', name: 'Bob' });
 		const reply = { code: vi.fn().mockReturnThis() };

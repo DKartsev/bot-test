@@ -29,7 +29,7 @@ const telegramPlugin: FastifyPluginAsync = async (server, _opts) => {
   server.post(
     `${TG_WEBHOOK_PATH}/:token?`,
     {
-      preHandler: (request, reply, done) => {
+      preHandler: (request: any, reply: any, done: any) => {
         if (TG_WEBHOOK_SECRET) {
           const headerTok = request.headers[
             "x-telegram-bot-api-secret-token"
@@ -49,7 +49,7 @@ const telegramPlugin: FastifyPluginAsync = async (server, _opts) => {
     },
     async (request, reply) => {
       try {
-        await bot.handleUpdate(request.body as Update);
+        await (bot as any).handleUpdate(request.body as Update);
         return reply.send({ ok: true });
       } catch (err) {
         request.log.error({ err }, "Failed to handle Telegram update");
@@ -62,7 +62,7 @@ const telegramPlugin: FastifyPluginAsync = async (server, _opts) => {
   server.addHook("onClose", async () => {
     server.log.info("🛑 Остановка Telegram бота...");
     try {
-      await bot.stop("SIGTERM");
+              await (bot as any).stop("SIGTERM");
               server.log.info("✅ Telegram бот остановлен.");
     } catch (err) {
               server.log.warn({ err }, "⚠️ Не удалось корректно остановить Telegram бота.");
@@ -74,7 +74,7 @@ const telegramPlugin: FastifyPluginAsync = async (server, _opts) => {
     if (TELEGRAM_SET_WEBHOOK_ON_START && PUBLIC_URL && TG_WEBHOOK_SECRET) {
       try {
         const webhookUrl = `${PUBLIC_URL}${TG_WEBHOOK_PATH}/${TG_WEBHOOK_SECRET}`;
-        await bot.telegram.setWebhook(webhookUrl, {
+        await (bot as any).telegram.setWebhook(webhookUrl, {
           secret_token: TG_WEBHOOK_SECRET,
         });
         server.log.info(

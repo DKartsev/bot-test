@@ -12,16 +12,16 @@ export const assertAdmin = (req: FastifyRequest) => {
   const hdr = (req.headers['authorization'] as string) ?? '';
   const bearer = hdr.startsWith('Bearer ') ? hdr.slice(7) : undefined;
   const x = (req.headers['x-admin-token'] as string) ?? bearer;
-  const tokens = (process.env.ADMIN_API_TOKENS || '')
+  const tokens = (process.env.ADMIN_API_TOKENS ?? '')
     .split(',')
-    .map((s) => s.trim())
+    .map((s: string) => s.trim())
     .filter(Boolean);
   if (!x || !tokens.includes(x)) {
     throw new HttpError('unauthorized', 401);
   }
 };
 
-export function checkAuth(request: FastifyRequest, reply: FastifyReply, done: () => void) {
+export function checkAuth(request: FastifyRequest, reply: any, done: () => void) {
   const ip = request.ip ?? '127.0.0.1';
   const allowlist = process.env.ADMIN_IP_ALLOWLIST?.split(',') ?? [];
   

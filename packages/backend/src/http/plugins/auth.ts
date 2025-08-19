@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 
-const authPlugin: FastifyPluginAsync = (server, opts) => {
+const authPlugin: FastifyPluginAsync = async (server, _opts) => {
   // Register authentication and authorization functions
   server.decorate(
     'authenticate',

@@ -18,8 +18,8 @@ describe('OpenAIEmbedder', () => {
 	it('успешно встраивает тексты через OpenAI', async () => {
 		const embedder = new OpenAIEmbedder();
 		// Получаем инстанс мокнутого OpenAI клиента
-		const OpenAIConstructor = (OpenAI as unknown as { mock: vi.Mock }).mock;
-		const instance = OpenAIConstructor.instances[0] as unknown as { embeddings: { create: vi.Mock } };
+		const OpenAIConstructor = (OpenAI as any).mock;
+		const instance = OpenAIConstructor.instances[0] as any;
 		instance.embeddings.create.mockResolvedValue({ data: [{ embedding: [0.1, 0.2] }] });
 
 		const result = await embedder.embed(['hello']);
@@ -32,11 +32,11 @@ describe('OpenAIEmbedder', () => {
 
 	it('логирует ошибку и пробрасывает исключение при сбое OpenAI', async () => {
 		const embedder = new OpenAIEmbedder();
-		const OpenAIConstructor = (OpenAI as unknown as { mock: vi.Mock }).mock;
-		const instance = OpenAIConstructor.instances[0] as unknown as { embeddings: { create: vi.Mock } };
+		const OpenAIConstructor = (OpenAI as any).mock;
+		const instance = OpenAIConstructor.instances[0] as any;
 		instance.embeddings.create.mockRejectedValue(new Error('boom'));
 
-		const spy = vi.spyOn(logger, 'error');
+		const spy = (logger as any).error;
 		await expect(embedder.embed(['text'])).rejects.toThrow('Embedding creation failed');
 		expect(spy).toHaveBeenCalled();
 	});

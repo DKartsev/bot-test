@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
 
-const apiPlugin: FastifyPluginAsync = (server, opts) => {
+const apiPlugin: FastifyPluginAsync = async (server, _opts) => {
   server.post(
     '/ask',
     {
@@ -17,7 +17,7 @@ const apiPlugin: FastifyPluginAsync = (server, opts) => {
         },
       },
     },
-    async (request, reply) => {
+    async (request: any, reply: any) => {
       const { qaService } = server.deps;
       const { question, lang } = (request.body as { question: string; lang?: string }) ?? {};
 

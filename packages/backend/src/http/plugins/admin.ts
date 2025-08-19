@@ -43,11 +43,7 @@ interface User {
   role?: 'admin' | 'operator';
 }
 
-declare module 'fastify' {
-  interface FastifyRequest {
-    user?: User & { role: 'admin' | 'operator' };
-  }
-}
+// User interface is already defined in global types
 
 // --- The Plugin ---
 const adminPlugin: FastifyPluginAsync = async (server, _opts) => {
@@ -61,7 +57,7 @@ const adminPlugin: FastifyPluginAsync = async (server, _opts) => {
   // 3. Add security hooks that apply to all routes registered within this plugin
   server.addHook(
     'onRequest',
-    (req: FastifyRequest, reply: FastifyReply, done) => {
+    (req: FastifyRequest, reply: FastifyReply, done: any) => {
       // IP Allowlist Check
       if (ADMIN_IP_ALLOWLIST && ADMIN_IP_ALLOWLIST.length > 0) {
         const ip =

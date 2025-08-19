@@ -21,7 +21,7 @@ interface IUserRepo {
 
 type PluginOpts = { repo: IUserRepo };
 
-const usersPlugin: FastifyPluginAsync<PluginOpts> = (fastify, opts) => {
+const usersPlugin: FastifyPluginAsync<PluginOpts> = async (fastify, opts) => {
   fastify.get('/users', async (req: FastifyRequest, reply: FastifyReply) => {
     const { items, nextCursor } = await opts.repo.list({ limit: 20 });
     return nextCursor ? { items, nextCursor } : { items };

@@ -57,7 +57,7 @@ export async function ragAnswer({
         [text, embedding],
       );
       const kbResults = result.rows[0]?.kb_search_json ?? [];
-      sources = kbResults.map((s) => ({
+      sources = kbResults.map((s: any) => ({
         id: s.article_id,
         title: s.title,
         excerpt: s.excerpt,
@@ -72,7 +72,7 @@ export async function ragAnswer({
         [text],
       );
       const kbResults = result.rows[0]?.kb_search_json ?? [];
-      sources = kbResults.map((s) => ({
+      sources = kbResults.map((s: any) => ({
         id: s.article_id,
         title: s.title,
         excerpt: s.excerpt,

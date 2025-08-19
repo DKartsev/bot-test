@@ -26,7 +26,7 @@ import adminPlugin from './plugins/admin.js';
  * Telegram webhook: POST ${TG_WEBHOOK_PATH}/:token?  (секрет в заголовке x-telegram-bot-api-secret-token ИЛИ в :token)
  * Дополнительно: логирование входящих апдейтов и отлов ошибок Telegraf.
  */
-export async function createApp(): Promise<import('fastify').FastifyInstance> {
+export async function createApp(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',

@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 
-const healthPlugin: FastifyPluginAsync = (fastify, opts) => {
-  fastify.get('/health', async (request, reply) => {
+const healthPlugin: FastifyPluginAsync = async (fastify, _opts) => {
+  fastify.get('/health', async (request: any, reply: any) => {
     try {
       const hasPg = fastify.pg && typeof fastify.pg?.query === 'function';
       if (hasPg) {

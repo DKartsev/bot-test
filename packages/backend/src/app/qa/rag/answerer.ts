@@ -8,7 +8,7 @@ import { logger } from '../../../utils/logger.js';
  */
 export interface Answer {
   text: string;
-  citations: RetrievalResult['citations'];
+  citations: Array<{ sourceId?: string; title?: string; snippet: string }>;
 }
 
 /**

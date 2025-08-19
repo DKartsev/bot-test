@@ -1,0 +1,8 @@
+engine-strict=true
+fund=false
+audit=false
+
+# Production настройки - отключаем все dev-зависимости и скрипты
+production=true
+ignore-scripts=true
+ignore-prepublish-install=true
