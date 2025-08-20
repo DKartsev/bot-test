@@ -11,8 +11,8 @@ COPY package*.json ./
 COPY packages/backend/package*.json ./packages/backend/
 COPY packages/shared/package*.json ./packages/shared/
 
-# Устанавливаем зависимости
-RUN npm install
+# Устанавливаем зависимости для Linux
+RUN npm install --omit=dev
 
 # Development stage
 FROM base AS development
@@ -22,7 +22,7 @@ COPY packages/backend ./packages/backend
 COPY packages/shared ./packages/shared
 COPY tsconfig*.json ./
 
-# Устанавливаем dev зависимости
+# Устанавливаем dev зависимости для Linux
 RUN npm install
 
 # Создаем пользователя для безопасности
@@ -47,6 +47,9 @@ COPY packages/backend ./packages/backend
 COPY packages/shared ./packages/shared
 COPY tsconfig*.json ./
 
+# Устанавливаем все зависимости для сборки
+RUN npm install
+
 # Собираем проект
 RUN npm run build:backend
 
@@ -55,10 +58,10 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Устанавливаем только production зависимости
+# Устанавливаем только production зависимости для Linux
 COPY package*.json ./
 RUN apk add --no-cache python3 build-base \
-  && npm install --only=production \
+  && npm install --omit=dev \
   && apk del build-base || true
 
 # Копируем собранный код

@@ -1,43 +1,54 @@
-# Base stage для общих зависимостей
-FROM node:20-alpine AS base
+# Development stage для Next.js приложения
+FROM node:20-alpine AS development
 
 WORKDIR /app
 
-# System deps for building native modules (node-gyp)
+# System deps for building native modules
 RUN apk add --no-cache python3 build-base
 
-# Копируем package.json файлы
-COPY package*.json ./
+# Копируем package.json файлы для operator-admin
 COPY packages/operator-admin/package*.json ./packages/operator-admin/
 COPY packages/shared/package*.json ./packages/shared/
 
-# Устанавливаем зависимости
+# Устанавливаем зависимости для operator-admin
+WORKDIR /app/packages/operator-admin
 RUN npm install
-
-# Development stage
-FROM base AS development
 
 # Копируем исходный код
 COPY packages/operator-admin ./packages/operator-admin
 COPY packages/shared ./packages/shared
 COPY tsconfig*.json ./
 
-# Устанавливаем dev зависимости
-RUN npm install
-
 # Создаем пользователя для безопасности
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
+
+# Передаем права на node_modules
+RUN chown -R nodejs:nodejs /app
 
 USER nodejs
 
 EXPOSE 3000
 
-# Запускаем в режиме разработки с hot reload
-CMD ["npm", "run", "dev", "-w", "packages/operator-admin"]
+# Запускаем в режиме разработки используя npx
+WORKDIR /app/packages/operator-admin
+CMD ["npx", "next", "dev", "--hostname", "0.0.0.0"]
 
 # Builder stage для production
-FROM base AS builder
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# System deps for building
+RUN apk add --no-cache python3 build-base
+
+# Копируем package.json файлы
+COPY packages/operator-admin/package*.json ./packages/operator-admin/
+COPY packages/shared/package*.json ./packages/shared/
+
+# Устанавливаем зависимости для сборки
+WORKDIR /app/packages/operator-admin
+RUN npm install
 
 # Копируем исходный код
 COPY packages/operator-admin ./packages/operator-admin
@@ -45,7 +56,7 @@ COPY packages/shared ./packages/shared
 COPY tsconfig*.json ./
 
 # Собираем проект
-RUN npm run build:admin
+RUN npm run build
 
 # Production stage
 FROM nginx:alpine AS production
@@ -53,8 +64,8 @@ FROM nginx:alpine AS production
 # Копируем собранные файлы
 COPY --from=builder /app/packages/operator-admin/out /usr/share/nginx/html
 
-# Копируем nginx конфигурацию
-COPY nginx.conf /etc/nginx/nginx.conf
+# Копируем nginx конфигурацию (если есть)
+# COPY nginx.conf /etc/nginx/nginx.conf
 
 EXPOSE 3000
 

@@ -83,6 +83,30 @@ services:
       timeout: 10s
       retries: 3
 
+  # Worker сервис для обработки очередей
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+      target: development
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+    networks:
+      - bot-network
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+
   # Nginx для проксирования
   nginx:
     image: nginx:alpine
