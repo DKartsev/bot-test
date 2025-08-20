@@ -1,30 +1,24 @@
-FROM node:18-alpine AS builder
+# Base stage для общих зависимостей
+FROM node:18-alpine AS base
 
 WORKDIR /app
 
-# Копируем package.json и устанавливаем зависимости
+# Копируем package.json файлы
 COPY package*.json ./
+COPY ../shared/package*.json ./packages/shared/
+
+# Устанавливаем зависимости
 RUN npm ci
+
+# Development stage
+FROM base AS development
 
 # Копируем исходный код
 COPY . .
+COPY ../shared ./packages/shared
 
-# Собираем проект
-RUN npm run build
-
-# Production образ
-FROM node:18-alpine AS production
-
-WORKDIR /app
-
-# Устанавливаем только production зависимости
-COPY package*.json ./
-RUN npm ci --only=production
-
-# Копируем собранный код
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.js ./
+# Устанавливаем dev зависимости
+RUN npm install
 
 # Создаем пользователя для безопасности
 RUN addgroup -g 1001 -S nodejs
@@ -34,4 +28,32 @@ USER nodejs
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
+# Запускаем в режиме разработки с hot reload
+CMD ["npm", "run", "dev"]
+
+# Builder stage для production
+FROM base AS builder
+
+# Копируем исходный код
+COPY . .
+COPY ../shared ./packages/shared
+
+# Собираем проект
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine AS production
+
+# Копируем собранные файлы
+COPY --from=builder /app/out /usr/share/nginx/html
+
+# Копируем nginx конфигурацию
+COPY nginx.conf /etc/nginx/nginx.conf
+
+EXPOSE 3000
+
+# Health check endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

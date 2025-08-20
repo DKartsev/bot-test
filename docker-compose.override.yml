@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # Переопределяем переменные для разработки
+  bot-backend:
+    build:
+      target: development
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./packages/backend:/app/packages/backend
+      - ./packages/shared:/app/packages/shared
+      - ./node_modules:/app/node_modules
+      - ./logs:/app/logs
+      - ./data:/app/data
+
+  bot-admin:
+    build:
+      target: development
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./packages/operator-admin:/app
+      - ./packages/shared:/app/packages/shared
+      - ./node_modules:/app/node_modules
+
+  # Добавляем development сервис
+  bot-backend-dev:
+    profiles:
+      - dev
+    build:
+      target: development
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./packages/backend:/app/packages/backend
+      - ./packages/shared:/app/packages/shared
+      - ./node_modules:/app/node_modules
+      - ./logs:/app/logs
+      - ./data:/app/data
+
+  # Отключаем nginx для локальной разработки
+  nginx:
+    profiles:
+      - production

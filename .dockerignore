@@ -14,6 +14,7 @@ admin-out/
 # Environment files
 .env*
 !.env.example
+!docker.env
 
 # Logs
 logs/
@@ -24,6 +25,7 @@ coverage/
 test-results/
 *.test.ts
 *.spec.ts
+vitest.config.ts
 
 # Development files
 .vscode/
@@ -39,10 +41,13 @@ test-results/
 README.md
 *.md
 docs/
+GIT_SYNC_README.md
 
 # Scripts
 scripts/
 .github/
+.husky/
+.bolt/
 
 # Temporary files
 tmp/
@@ -60,3 +65,39 @@ __pycache__/
 
 # Backup directories
 backup-*/
+
+# Docker files (не нужны в контейнере)
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Infrastructure
+infrastructure/
+
+# Reports
+reports/
+feedback/
+
+# Data files
+data/
+*.tar.gz
+*.zip
+
+# Package manager
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Editor config
+.editorconfig
+.nvmrc
+.npmrc*
+
+# Commit lint
+commitlint.config.cjs
+
+# Changeset
+.changeset/
+
+# Supabase
+supabase/

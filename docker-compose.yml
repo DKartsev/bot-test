@@ -1,33 +1,75 @@
 version: '3.8'
 
 services:
+  # База данных PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: bot_support
+      POSTGRES_USER: bot_user
+      POSTGRES_PASSWORD: bot_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./supabase/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - bot-network
+
+  # Redis для кэширования
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - bot-network
+
+  # Backend сервис
   bot-backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
+      target: ${BUILD_TARGET:-production}
     ports:
-      - "3000:3000"
+      - "${BACKEND_PORT:-3000}:3000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
       - PORT=3000
+      - DATABASE_URL=postgresql://bot_user:bot_password@postgres:5432/bot_support
+      - REDIS_URL=redis://redis:6379
     env_file:
       - .env
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
+    depends_on:
+      - postgres
+      - redis
     restart: unless-stopped
     networks:
       - bot-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # Admin панель
   bot-admin:
     build:
       context: ./packages/operator-admin
       dockerfile: Dockerfile.admin
+      target: ${BUILD_TARGET:-production}
     ports:
-      - "3001:3000"
+      - "${ADMIN_PORT:-3001}:3000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
       - PORT=3000
+      - BACKEND_URL=http://bot-backend:3000
     env_file:
       - .env
     depends_on:
@@ -35,15 +77,22 @@ services:
     restart: unless-stopped
     networks:
       - bot-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # Nginx для проксирования
   nginx:
     image: nginx:alpine
     ports:
-      - "80:80"
-      - "443:443"
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
     depends_on:
       - bot-backend
       - bot-admin
@@ -51,10 +100,42 @@ services:
     networks:
       - bot-network
 
+  # Development сервис (только для локальной разработки)
+  bot-backend-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      target: development
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DATABASE_URL=postgresql://bot_user:bot_password@postgres:5432/bot_support
+      - REDIS_URL=redis://redis:6379
+    env_file:
+      - .env
+    volumes:
+      - ./packages/backend:/app/packages/backend
+      - ./packages/shared:/app/packages/shared
+      - ./node_modules:/app/node_modules
+      - ./logs:/app/logs
+      - ./data:/app/data
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - bot-network
+    profiles:
+      - dev
+
 networks:
   bot-network:
     driver: bridge
 
 volumes:
+  postgres_data:
+  redis_data:
   logs:
   data:
