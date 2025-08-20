@@ -2,8 +2,10 @@ module.exports = {
   apps: [
     {
       name: 'bot-backend',
-      script: 'dist/main.js',
+      script: 'packages/backend/src/main.ts',
       cwd: './',
+      interpreter: '/usr/bin/tsx',
+      interpreter_args: '-r dotenv/config',
       instances: 1,
       exec_mode: 'fork',
       env: {
@@ -26,7 +28,7 @@ module.exports = {
     {
       name: 'bot-admin',
       script: 'npm',
-      args: 'start',
+      args: 'run dev',
       cwd: './packages/operator-admin',
       instances: 1,
       exec_mode: 'fork',
