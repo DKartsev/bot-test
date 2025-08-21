@@ -19,8 +19,12 @@ WORKDIR /app/packages/operator-admin
 RUN npm install
 
 # Копируем исходный код
-COPY packages/operator-admin/ ./packages/operator-admin/
-COPY packages/shared/ ./packages/shared/
+COPY packages/operator-admin/src ./src
+COPY packages/operator-admin/public ./public
+COPY packages/operator-admin/next.config.js ./
+COPY packages/operator-admin/postcss.config.js ./
+COPY packages/operator-admin/tailwind.config.js ./
+COPY packages/shared/src ./packages/shared/src
 COPY tsconfig*.json ./
 
 # Передаем права на файлы проекта (только на исходный код)

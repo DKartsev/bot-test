@@ -33,19 +33,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-      target: ${BUILD_TARGET:-production}
+      target: development
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     environment:
-      - NODE_ENV=${NODE_ENV:-production}
+      - NODE_ENV=${NODE_ENV:-development}
       - PORT=3000
-      - DATABASE_URL=postgresql://bot_user:bot_password@postgres:5432/bot_support
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
     env_file:
       - .env
-    volumes:
-      - ./logs:/app/logs
-      - ./data:/app/data
     depends_on:
       - postgres
       - redis
@@ -53,7 +52,7 @@ services:
     networks:
       - bot-network
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "node.*backend"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
