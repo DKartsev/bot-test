@@ -1,0 +1,123 @@
+# Финальный .dockerignore для максимально быстрой сборки
+
+# ВСЕ зависимости
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ВСЕ build outputs
+dist/
+build/
+.next/
+out/
+admin-out/
+
+# ВСЕ environment files
+.env*
+!.env.example
+!docker.env
+
+# ВСЕ logs
+logs/
+*.log
+
+# ВСЕ test files
+coverage/
+test-results/
+*.test.ts
+*.spec.ts
+vitest.config.ts
+
+# ВСЕ development files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ВСЕ Git
+.git/
+.gitignore
+
+# ВСЕ Documentation
+README.md
+*.md
+docs/
+GIT_SYNC_README.md
+VM_DEVELOPMENT_README.md
+OPERATOR_PANEL_README.md
+IMPLEMENTATION_SUMMARY.md
+
+# ВСЕ Scripts
+scripts/
+.github/
+.husky/
+.bolt/
+
+# ВСЕ Temporary files
+tmp/
+temp/
+*.tmp
+*.backup
+
+# ВСЕ OS files
+.DS_Store
+Thumbs.db
+
+# ВСЕ Python files
+*.py
+__pycache__/
+
+# ВСЕ Backup directories
+backup-*/
+
+# ВСЕ Docker files
+Dockerfile*
+docker-compose*
+.dockerignore*
+
+# ВСЕ Infrastructure
+infrastructure/
+
+# ВСЕ Reports
+reports/
+feedback/
+
+# ВСЕ Data files
+data/
+*.tar.gz
+*.zip
+
+# ВСЕ Package manager
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ВСЕ Editor config
+.editorconfig
+.nvmrc
+.npmrc*
+
+# ВСЕ Commit lint
+commitlint.config.cjs
+
+# ВСЕ Changeset
+.changeset/
+
+# ВСЕ Supabase
+supabase/
+
+# ВСЕ Apps
+apps/
+
+# ВСЕ Source files
+src/
+
+# ВСЕ Tools
+tools/
+
+# ВСЕ Packages (исключаем полностью, копируем выборочно в Dockerfile)
+packages/
+
+# ВСЕ остальное
+*

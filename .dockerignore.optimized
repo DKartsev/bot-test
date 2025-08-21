@@ -1,0 +1,119 @@
+# Оптимизированный .dockerignore для быстрой сборки
+
+# Dependencies (устанавливаются в контейнере)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+admin-out/
+
+# Environment files
+.env*
+!.env.example
+!docker.env
+
+# Logs
+logs/
+*.log
+
+# Test files
+coverage/
+test-results/
+*.test.ts
+*.spec.ts
+vitest.config.ts
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Documentation (не нужны в контейнере)
+README.md
+*.md
+docs/
+GIT_SYNC_README.md
+VM_DEVELOPMENT_README.md
+OPERATOR_PANEL_README.md
+IMPLEMENTATION_SUMMARY.md
+
+# Scripts (не нужны в контейнере)
+scripts/
+.github/
+.husky/
+.bolt/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.backup
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python files
+*.py
+__pycache__/
+
+# Backup directories
+backup-*/
+
+# Docker files (не нужны в контейнере)
+Dockerfile*
+docker-compose*
+.dockerignore*
+
+# Infrastructure
+infrastructure/
+
+# Reports
+reports/
+feedback/
+
+# Data files
+data/
+*.tar.gz
+*.zip
+
+# Package manager (копируются выборочно)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Editor config
+.editorconfig
+.nvmrc
+.npmrc*
+
+# Commit lint
+commitlint.config.cjs
+
+# Changeset
+.changeset/
+
+# Supabase
+supabase/
+
+# Apps (не нужны для backend и admin)
+apps/worker/
+apps/operator-admin/
+
+# Packages (копируются выборочно в Dockerfile)
+packages/admin/
+packages/kb-tools/
+
+# Source files (копируются выборочно)
+src/

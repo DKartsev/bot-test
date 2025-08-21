@@ -1,0 +1,32 @@
+# Рабочий Dockerfile для admin панели
+FROM node:20-alpine AS base
+
+# Устанавливаем только необходимые системные зависимости
+RUN apk add --no-cache python3 build-base
+
+# Создаем пользователя для безопасности
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+WORKDIR /app
+
+# Копируем только package.json файлы для кэширования слоев
+COPY package.json ./
+COPY packages/operator-admin/package.json ./packages/operator-admin/
+COPY packages/shared/package.json ./packages/shared/
+
+# Устанавливаем ВСЕ зависимости (production + dev)
+RUN npm install
+
+# Создаем необходимые директории
+RUN mkdir -p logs packages/operator-admin packages/shared && \
+    chown -R nodejs:nodejs logs packages
+
+USER nodejs
+
+WORKDIR /app/packages/operator-admin
+
+EXPOSE 3000
+
+# Запускаем в режиме разработки
+CMD ["npm", "run", "dev"]
