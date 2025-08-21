@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "npm run build:backend && npm run build:admin",
-    "build:backend": "rimraf dist && mkdir dist && xcopy packages\\backend\\src dist /E /I /Y && mkdir dist\\shared && xcopy packages\\shared\\src dist\\shared /E /I /Y",
+    "build:backend": "rimraf dist && mkdir -p dist && tsc -p packages/backend/tsconfig.json && tsc-alias -p packages/backend/tsconfig.json && mkdir -p dist/shared && cp -r packages/shared/src/* dist/shared/",
     "build:admin": "cd packages/operator-admin && npm run build",
     "start": "pm2 start ecosystem.config.js",
     "start:dev": "concurrently \"npm run dev:backend\" \"npm run dev:admin\"",

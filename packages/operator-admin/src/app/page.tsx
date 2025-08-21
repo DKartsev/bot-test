@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import { OperatorPanel } from '../components/OperatorPanel';
 
-export default function HomePage() {
-  redirect('/conversations');
+export default function Home() {
+  return <OperatorPanel />;
 }

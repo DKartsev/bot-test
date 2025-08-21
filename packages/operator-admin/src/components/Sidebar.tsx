@@ -13,9 +13,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 import * as Select from '@radix-ui/react-select';
-import { useChatContext } from '../context/ChatContext';
-import type { Chat } from '../hooks/useChats';
-import { api } from '../lib/api';
+import { useChat } from '../context/ChatContext';
+import type { Chat } from '../types/chat';
 
 interface SidebarProps {
   onChatSelect: (chatId: string) => void;
@@ -46,38 +45,35 @@ export default function Sidebar({ onChatSelect, selectedChatId }: SidebarProps) 
   const [categoryOptions, setCategoryOptions] = useState<{ id: string; name: string }[]>([]);
   const [assigneeOptions, setAssigneeOptions] = useState<{ id: string; name: string }[]>([]);
   
-  const { chats, loading, error, applyFilters } = useChatContext();
+  const { state, filteredChats } = useChat();
+  const chats = filteredChats;
+  const loading = state.isLoading;
+  const error = state.error;
 
-  // Load options
+  // Заглушки для опций
   useEffect(() => {
-    (async () => {
-      try {
-        const [catsRes, usersRes] = await Promise.all([
-          api('/admin/categories'),
-          api('/admin/users'),
-        ]);
-        if (catsRes.ok) {
-          const cats = await catsRes.json();
-          const items = (cats.data || cats || []).map((c: any) => ({ id: c.id?.toString?.() || c.id, name: c.name || c.title || c.label || 'Категория' }));
-          setCategoryOptions([{ id: 'all', name: 'Все категории' }, ...items]);
-        }
-        if (usersRes.ok) {
-          const users = await usersRes.json();
-          const items = (users.data || users || []).map((u: any) => ({ id: u.id?.toString?.() || u.id, name: u.fullName || u.username || u.name || 'Оператор' }));
-          setAssigneeOptions([{ id: 'all', name: 'Любой оператор' }, ...items]);
-        }
-      } catch {}
-    })();
+    setCategoryOptions([
+      { id: 'all', name: 'Все категории' },
+      { id: 'payment', name: 'Платежи' },
+      { id: 'verification', name: 'Верификация' },
+      { id: 'dispute', name: 'Споры' },
+      { id: 'technical', name: 'Техподдержка' },
+    ]);
+    
+    setAssigneeOptions([
+      { id: 'all', name: 'Любой оператор' },
+      { id: 'current', name: 'Текущий оператор' },
+    ]);
   }, []);
 
   // Update counters for quick chips
   useEffect(() => {
     const counts = {
       all: chats.length,
-      open: chats.filter(chat => chat.status === 'open').length,
+      open: chats.filter(chat => chat.status === 'new').length,
       in_progress: chats.filter(chat => chat.status === 'in_progress').length,
       closed: chats.filter(chat => chat.status === 'closed').length,
-      escalated: chats.filter(chat => chat.status === 'escalated').length
+      escalated: chats.filter(chat => chat.escalation_reason).length
     };
 
     filters.forEach(filter => {
@@ -85,37 +81,24 @@ export default function Sidebar({ onChatSelect, selectedChatId }: SidebarProps) 
     });
   }, [chats]);
 
-  // Apply filters
-  useEffect(() => {
-    const newFilters: any = {};
-    if (activeFilter !== 'all') newFilters.status = activeFilter;
-    if (searchQuery) newFilters.search = searchQuery;
-    if (category !== 'all') newFilters.category = category;
-    if (priority !== 'all') newFilters.priority = priority;
-    if (assignee !== 'all') newFilters.assignedTo = assignee;
-    applyFilters(newFilters);
-  }, [activeFilter, searchQuery, category, priority, assignee, applyFilters]);
-
-  const filteredChats = chats;
+  // Фильтры теперь управляются через контекст
 
   const getStatusColor = (status: Chat['status']) => {
     switch (status) {
-      case 'open': return 'bg-green-500';
+      case 'new': return 'bg-green-500';
       case 'in_progress': return 'bg-blue-500';
       case 'closed': return 'bg-gray-500';
-      case 'escalated': return 'bg-red-500';
       default: return 'bg-gray-500';
     }
   };
 
   const getStatusLabel = (status: Chat['status']) => {
     switch (status) {
-      case 'open': return 'Открыт';
+      case 'new': return 'Новый';
       case 'in_progress': return 'В работе';
       case 'closed': return 'Закрыт';
-      case 'escalated': return 'Эскалирован';
+      default: return 'Неизвестно';
     }
-    return 'Неизвестно';
   };
 
   return (

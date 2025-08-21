@@ -1,118 +1,98 @@
-.PHONY: help build up down dev prod clean logs shell-backend shell-admin shell-postgres shell-redis
+# Makefile для управления Docker контейнерами
+# Использование: make <команда>
 
-# Переменные
-COMPOSE_FILE = docker-compose.yml
-COMPOSE_OVERRIDE = docker-compose.override.yml
-ENV_FILE = docker.env
+.PHONY: help build up down restart logs status clean prod-up prod-down
 
-help: ## Показать справку
+# Основные команды
+help: ## Показать справку по командам
 	@echo "Доступные команды:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 build: ## Собрать все образы
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) build
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev build
 
-build-prod: ## Собрать production образы
-	docker-compose -f $(COMPOSE_FILE) build --target production
-
-up: ## Запустить все сервисы
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) up -d
-
-up-prod: ## Запустить production сервисы
-	docker-compose -f $(COMPOSE_FILE) --profile production up -d
+up: ## Запустить все сервисы в режиме разработки
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev up -d
 
 down: ## Остановить все сервисы
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) down
-
-down-prod: ## Остановить production сервисы
-	docker-compose -f $(COMPOSE_FILE) --profile production down
-
-dev: ## Запустить в режиме разработки
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) --profile dev up -d
-
-prod: ## Запустить в production режиме
-	docker-compose -f $(COMPOSE_FILE) --profile production up -d
-
-clean: ## Очистить все контейнеры, образы и volumes
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) down -v --rmi all
-	docker system prune -f
-
-logs: ## Показать логи всех сервисов
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) logs -f
-
-logs-backend: ## Показать логи backend
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) logs -f bot-backend
-
-logs-admin: ## Показать логи admin панели
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) logs -f bot-admin
-
-shell-backend: ## Войти в shell backend контейнера
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) exec bot-backend sh
-
-shell-admin: ## Войти в shell admin контейнера
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) exec bot-admin sh
-
-shell-postgres: ## Войти в shell PostgreSQL контейнера
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) exec postgres psql -U bot_user -d bot_support
-
-shell-redis: ## Войти в shell Redis контейнера
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) exec redis redis-cli
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev down
 
 restart: ## Перезапустить все сервисы
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) restart
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev restart
 
-restart-backend: ## Перезапустить backend
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) restart bot-backend
-
-restart-admin: ## Перезапустить admin панель
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) restart bot-admin
+logs: ## Показать логи всех сервисов
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev logs -f
 
 status: ## Показать статус всех сервисов
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) ps
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev ps
 
-health: ## Проверить health check всех сервисов
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) exec bot-backend wget -q -O - http://localhost:3000/health || echo "Backend unhealthy"
-	docker-compose -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) exec bot-admin wget -q -O - http://localhost:3000/health || echo "Admin unhealthy"
+clean: ## Очистить все контейнеры, образы и volumes
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev down -v
+	docker system prune -f
+	docker volume prune -f
 
-# Команды для тестирования
-test-docker: ## Протестировать Docker конфигурацию (Linux/Mac)
-	@echo "Тестирование Docker конфигурации..."
-	./scripts/test-docker.sh
+# Production команды
+prod-build: ## Собрать production образы
+	docker-compose -f docker-compose.prod.yml build
 
-test-docker-win: ## Протестировать Docker конфигурацию (Windows)
-	@echo "Тестирование Docker конфигурации..."
-	powershell -ExecutionPolicy Bypass -File scripts/test-docker.ps1
+prod-up: ## Запустить production сервисы
+	docker-compose -f docker-compose.prod.yml up -d
 
-test-docker-auto: ## Протестировать Docker конфигурацию (автоопределение ОС)
-	@echo "Тестирование Docker конфигурации..."
-	@if [ "$(OS)" = "Windows_NT" ]; then \
-		powershell -ExecutionPolicy Bypass -File scripts/test-docker.ps1; \
-	else \
-		./scripts/test-docker.sh; \
-	fi
+prod-down: ## Остановить production сервисы
+	docker-compose -f docker-compose.prod.yml down
 
-# Команды для синхронизации с VM
-sync-vm: ## Синхронизировать код с VM (Linux/Mac)
-	@echo "Синхронизация с VM..."
-	./scripts/docker-sync.sh
+prod-logs: ## Показать логи production сервисов
+	docker-compose -f docker-compose.prod.yml logs -f
 
-sync-vm-win: ## Синхронизировать код с VM (Windows)
-	@echo "Синхронизация с VM..."
-	powershell -ExecutionPolicy Bypass -File scripts/docker-sync.ps1
+prod-status: ## Показать статус production сервисов
+	docker-compose -f docker-compose.prod.yml ps
 
-sync-vm-auto: ## Синхронизировать код с VM (автоопределение ОС)
-	@echo "Синхронизация с VM..."
-	@if [ "$(OS)" = "Windows_NT" ]; then \
-		powershell -ExecutionPolicy Bypass -File scripts/docker-sync.ps1; \
-	else \
-		./scripts/docker-sync.sh; \
-	fi
+# Отдельные сервисы
+backend-logs: ## Показать логи backend
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev logs -f bot-backend
 
-# Команды для production
-deploy: build-prod up-prod ## Развернуть в production
-	@echo "Приложение развернуто в production режиме"
+admin-logs: ## Показать логи admin панели
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev logs -f bot-admin
 
-rollback: ## Откатить к предыдущей версии
-	@echo "Откат к предыдущей версии..."
-	git checkout HEAD~1
-	$(MAKE) deploy
+worker-logs: ## Показать логи worker
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev logs -f worker
+
+postgres-logs: ## Показать логи PostgreSQL
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev logs -f postgres
+
+redis-logs: ## Показать логи Redis
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev logs -f redis
+
+# Утилиты
+shell-backend: ## Войти в shell backend контейнера
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev exec bot-backend sh
+
+shell-admin: ## Войти в shell admin контейнера
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev exec bot-admin sh
+
+shell-worker: ## Войти в shell worker контейнера
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev exec worker sh
+
+shell-postgres: ## Войти в shell PostgreSQL контейнера
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev exec postgres psql -U bot_user -d bot_support
+
+# Мониторинг
+monitor: ## Показать использование ресурсов
+	docker stats --no-stream
+
+health: ## Проверить здоровье всех сервисов
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+
+# Бэкапы
+backup-db: ## Создать бэкап базы данных
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev exec postgres pg_dump -U bot_user bot_support > backup_$(shell date +%Y%m%d_%H%M%S).sql
+
+restore-db: ## Восстановить базу данных из бэкапа (указать файл: make restore-db FILE=backup.sql)
+	docker-compose -f docker-compose.yml -f docker-compose.override.yml --profile dev exec -T postgres psql -U bot_user -d bot_support < $(FILE)
+
+# Развертывание
+deploy: prod-build prod-up ## Развернуть production версию
+	@echo "Production развертывание завершено!"
+
+rollback: prod-down ## Откатить production версию
+	@echo "Production версия откачена!"

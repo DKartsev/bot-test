@@ -6,6 +6,10 @@ WORKDIR /app
 # System deps for building native modules
 RUN apk add --no-cache python3 build-base
 
+# Создаем пользователя для безопасности
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
+
 # Копируем package.json файлы для operator-admin
 COPY packages/operator-admin/package*.json ./packages/operator-admin/
 COPY packages/shared/package*.json ./packages/shared/
@@ -15,24 +19,21 @@ WORKDIR /app/packages/operator-admin
 RUN npm install
 
 # Копируем исходный код
-COPY packages/operator-admin ./packages/operator-admin
-COPY packages/shared ./packages/shared
+COPY packages/operator-admin/ ./packages/operator-admin/
+COPY packages/shared/ ./packages/shared/
 COPY tsconfig*.json ./
 
-# Создаем пользователя для безопасности
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
-
-# Передаем права на node_modules
-RUN chown -R nodejs:nodejs /app
+# Передаем права на файлы проекта (только на исходный код)
+RUN find /app/packages/operator-admin/src -type f -exec chown nodejs:nodejs {} \; 2>/dev/null || true
+RUN find /app/packages/shared/src -type f -exec chown nodejs:nodejs {} \; 2>/dev/null || true
 
 USER nodejs
 
 EXPOSE 3000
 
-# Запускаем в режиме разработки используя npx
+# Запускаем в режиме разработки из пакета
 WORKDIR /app/packages/operator-admin
-CMD ["npx", "next", "dev", "--hostname", "0.0.0.0"]
+CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
 
 # Builder stage для production
 FROM node:20-alpine AS builder
@@ -51,26 +52,43 @@ WORKDIR /app/packages/operator-admin
 RUN npm install
 
 # Копируем исходный код
-COPY packages/operator-admin ./packages/operator-admin
-COPY packages/shared ./packages/shared
+COPY packages/operator-admin/ ./packages/operator-admin/
+COPY packages/shared/ ./packages/shared/
 COPY tsconfig*.json ./
 
 # Собираем проект
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine AS production
+# Production stage (run Next.js server)
+FROM node:20-alpine AS production
 
-# Копируем собранные файлы
-COPY --from=builder /app/packages/operator-admin/out /usr/share/nginx/html
+WORKDIR /app
 
-# Копируем nginx конфигурацию (если есть)
-# COPY nginx.conf /etc/nginx/nginx.conf
+# Создаем того же пользователя
+RUN addgroup -g 1001 -S nodejs \
+  && adduser -S nodejs -u 1001
+
+# Копируем package.json для установки runtime-зависимостей
+COPY packages/operator-admin/package*.json ./packages/operator-admin/
+
+WORKDIR /app/packages/operator-admin
+
+# Устанавливаем только runtime зависимости
+RUN npm install --omit=dev
+
+# Копируем артефакты сборки
+COPY --from=builder /app/packages/operator-admin/.next ./.next
+COPY --from=builder /app/packages/operator-admin/public ./public
+COPY --from=builder /app/packages/operator-admin/next.config.js ./next.config.js
+COPY --from=builder /app/packages/operator-admin/package.json ./package.json
+
+USER nodejs
 
 EXPOSE 3000
 
-# Health check endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+ENV NODE_ENV=production
 
-CMD ["nginx", "-g", "daemon off;"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=5 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/admin/health || exit 1
+
+CMD ["npm", "run", "start", "--", "-H", "0.0.0.0", "-p", "3000"]
