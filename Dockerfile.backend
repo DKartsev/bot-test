@@ -39,34 +39,13 @@ EXPOSE 3000
 # Запускаем в режиме разработки с hot reload
 CMD ["npm", "run", "dev", "-w", "packages/backend"]
 
-# Builder stage для production
-FROM base AS builder
+# Production stage
+FROM base AS production
 
 # Копируем исходный код
 COPY packages/backend ./packages/backend
 COPY packages/shared ./packages/shared
 COPY tsconfig*.json ./
-
-# Устанавливаем все зависимости для сборки
-RUN npm install
-
-# Собираем проект
-RUN npm run build:backend
-
-# Production stage
-FROM node:20-alpine AS production
-
-WORKDIR /app
-
-# Устанавливаем только production зависимости для Linux
-COPY package*.json ./
-RUN apk add --no-cache python3 build-base \
-  && npm install --omit=dev \
-  && apk del build-base || true
-
-# Копируем собранный код
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/packages/shared ./packages/shared
 
 # Создаем пользователя для безопасности
 RUN addgroup -g 1001 -S nodejs
@@ -83,4 +62,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-CMD ["node", "dist/main.js"]
+CMD ["npm", "run", "dev", "-w", "packages/backend"]

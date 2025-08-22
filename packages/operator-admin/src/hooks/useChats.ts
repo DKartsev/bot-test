@@ -41,7 +41,7 @@ export function useChats() {
   const [filters, setFilters] = useState<ChatFilters>({});
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const { success, error: toastError } = useToast();
+  const { success, addToast } = useToast();
 
   // Восстановление фильтров из localStorage
   useEffect(() => {
@@ -76,7 +76,7 @@ export function useChats() {
           setChats(data.data || []);
         } else {
           setError(data.error || 'Ошибка загрузки чатов');
-          toastError('Ошибка', data.error || 'Ошибка загрузки чатов');
+          addToast('error', 'Ошибка', data.error || 'Ошибка загрузки чатов');
         }
       } else {
         const msg = `HTTP ${response.status}: ${response.statusText}`;

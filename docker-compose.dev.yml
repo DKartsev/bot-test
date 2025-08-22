@@ -66,11 +66,11 @@ services:
       retries: 3
       start_period: 40s
 
-  # Admin панель (рабочая)
+  # Admin панель (эффективная)
   bot-admin:
     build:
       context: .
-      dockerfile: Dockerfile.admin.working
+      dockerfile: Dockerfile.admin.efficient
       args:
         NODE_ENV: development
     ports:
