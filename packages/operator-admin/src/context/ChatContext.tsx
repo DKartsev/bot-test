@@ -1,223 +1,133 @@
 'use client';
 
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
-import { Chat, Message, ChatFilters, User } from '../types/chat';
-
-interface ChatState {
-  chats: Chat[];
-  currentChat: Chat | null;
-  filters: ChatFilters;
-  isFiltersOpen: boolean;
-  isLoading: boolean;
-  error: string | null;
-}
-
-type ChatAction =
-  | { type: 'SET_CHATS'; payload: Chat[] }
-  | { type: 'SET_CURRENT_CHAT'; payload: Chat | null }
-  | { type: 'UPDATE_CHAT'; payload: { id: string; updates: Partial<Chat> } }
-  | { type: 'ADD_MESSAGE'; payload: { chatId: string; message: Message } }
-  | { type: 'SET_FILTERS'; payload: ChatFilters }
-  | { type: 'TOGGLE_FILTERS' }
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'MARK_CHAT_READ'; payload: string }
-  | { type: 'ASSIGN_CHAT'; payload: { chatId: string; operatorId: string } };
-
-const initialState: ChatState = {
-  chats: [],
-  currentChat: null,
-  filters: {},
-  isFiltersOpen: false,
-  isLoading: false,
-  error: null,
-};
-
-function chatReducer(state: ChatState, action: ChatAction): ChatState {
-  switch (action.type) {
-    case 'SET_CHATS':
-      return { ...state, chats: action.payload };
-    
-    case 'SET_CURRENT_CHAT':
-      return { ...state, currentChat: action.payload };
-    
-    case 'UPDATE_CHAT':
-      return {
-        ...state,
-        chats: state.chats.map(chat =>
-          chat.id === action.payload.id
-            ? { ...chat, ...action.payload.updates }
-            : chat
-        ),
-        currentChat: state.currentChat?.id === action.payload.id
-          ? { ...state.currentChat, ...action.payload.updates }
-          : state.currentChat,
-      };
-    
-    case 'ADD_MESSAGE':
-      return {
-        ...state,
-        chats: state.chats.map(chat =>
-          chat.id === action.payload.chatId
-            ? {
-                ...chat,
-                last_message: action.payload.message,
-                unread_count: chat.unread_count + 1,
-                updated_at: new Date(),
-              }
-            : chat
-        ),
-        currentChat: state.currentChat?.id === action.payload.chatId
-          ? {
-              ...state.currentChat,
-              last_message: action.payload.message,
-              unread_count: state.currentChat.unread_count + 1,
-              updated_at: new Date(),
-            }
-          : state.currentChat,
-      };
-    
-    case 'SET_FILTERS':
-      return { ...state, filters: action.payload };
-    
-    case 'TOGGLE_FILTERS':
-      return { ...state, isFiltersOpen: !state.isFiltersOpen };
-    
-    case 'SET_LOADING':
-      return { ...state, isLoading: action.payload };
-    
-    case 'SET_ERROR':
-      return { ...state, error: action.payload };
-    
-    case 'MARK_CHAT_READ':
-      return {
-        ...state,
-        chats: state.chats.map(chat =>
-          chat.id === action.payload
-            ? { ...chat, unread_count: 0 }
-            : chat
-        ),
-        currentChat: state.currentChat?.id === action.payload
-          ? { ...state.currentChat, unread_count: 0 }
-          : state.currentChat,
-      };
-    
-    case 'ASSIGN_CHAT':
-      return {
-        ...state,
-        chats: state.chats.map(chat =>
-          chat.id === action.payload.chatId
-            ? { ...chat, assigned_operator: action.payload.operatorId, status: 'in_progress' }
-            : chat
-        ),
-        currentChat: state.currentChat?.id === action.payload.chatId
-          ? { ...state.currentChat, assigned_operator: action.payload.operatorId, status: 'in_progress' }
-          : state.currentChat,
-      };
-    
-    default:
-      return state;
-  }
-}
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import { telegramAPI, TelegramChat, TelegramMessage } from '../lib/telegram-api';
 
 interface ChatContextType {
-  state: ChatState;
-  dispatch: React.Dispatch<ChatAction>;
-  filteredChats: Chat[];
-  acceptChat: (chatId: string, operatorId: string) => void;
-  sendMessage: (chatId: string, text: string) => void;
-  copyChatLink: (chatId: string) => void;
-  createCase: (chatId: string, title: string, description: string) => void;
+  chats: TelegramChat[];
+  selectedChat: TelegramChat | null;
+  messages: TelegramMessage[];
+  loading: boolean;
+  error: string | null;
+  selectChat: (chat: TelegramChat) => void;
+  sendMessage: (chatId: string, text: string) => Promise<void>;
+  fetchChats: () => Promise<void>;
+  refreshMessages: () => Promise<void>;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(chatReducer, initialState);
+  const [chats, setChats] = useState<TelegramChat[]>([]);
+  const [selectedChat, setSelectedChat] = useState<TelegramChat | null>(null);
+  const [messages, setMessages] = useState<TelegramMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Фильтрация чатов на основе активных фильтров
-  const filteredChats = React.useMemo(() => {
-    let filtered = [...state.chats];
-
-    if (state.filters.status?.length) {
-      filtered = filtered.filter(chat => state.filters.status!.includes(chat.status));
+  // Загрузка списка чатов
+  const fetchChats = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const telegramChats = await telegramAPI.getChats();
+      setChats(telegramChats);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Ошибка загрузки чатов';
+      setError(errorMessage);
+      console.error('Error fetching chats:', err);
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    if (state.filters.source?.length) {
-      filtered = filtered.filter(chat => state.filters.source!.includes(chat.source));
+  // Загрузка сообщений чата
+  const fetchMessages = useCallback(async (chatId: string) => {
+    try {
+      setError(null);
+      const telegramMessages = await telegramAPI.getChatMessages(chatId, 100);
+      setMessages(telegramMessages);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Ошибка загрузки сообщений';
+      setError(errorMessage);
+      console.error('Error fetching messages:', err);
     }
+  }, []);
 
-    if (state.filters.priority?.length) {
-      filtered = filtered.filter(chat => state.filters.priority!.includes(chat.priority));
-    }
-
-    if (state.filters.category?.length) {
-      filtered = filtered.filter(chat => state.filters.category!.includes(chat.category));
-    }
-
-    if (state.filters.has_attachments !== undefined) {
-      filtered = filtered.filter(chat => chat.has_attachments === state.filters.has_attachments);
-    }
-
-    if (state.filters.assigned_to_me) {
-      filtered = filtered.filter(chat => chat.assigned_operator === 'current-operator-id');
-    }
-
-    // Сортировка: новые сверху, затем по приоритету
-    return filtered.sort((a, b) => {
-      if (a.status === 'new' && b.status !== 'new') return -1;
-      if (b.status === 'new' && a.status !== 'new') return 1;
+  // Отправка сообщения
+  const sendMessage = useCallback(async (chatId: string, text: string) => {
+    try {
+      setError(null);
       
-      const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
-      const aPriority = priorityOrder[a.priority];
-      const bPriority = priorityOrder[b.priority];
-      
-      if (aPriority !== bPriority) return bPriority - aPriority;
-      
-      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-    });
-  }, [state.chats, state.filters]);
+      // Отправляем сообщение через API
+      const sentMessage = await telegramAPI.sendMessage({
+        chat_id: chatId,
+        text: text,
+      });
 
-  const acceptChat = (chatId: string, operatorId: string) => {
-    dispatch({ type: 'ASSIGN_CHAT', payload: { chatId, operatorId } });
-  };
+      // Добавляем отправленное сообщение в список
+      setMessages(prev => [sentMessage, ...prev]);
 
-  const sendMessage = (chatId: string, text: string) => {
-    const message: Message = {
-      id: `msg-${Date.now()}`,
-      author: 'operator',
-      role: 'operator',
-      text,
-      timestamp: new Date(),
-      status: 'sent',
-    };
+      // Обновляем информацию о чате
+      if (selectedChat) {
+        const updatedChat = await telegramAPI.getChatInfo(chatId);
+        setChats(prev => prev.map(chat => 
+          chat.id === chatId ? updatedChat : chat
+        ));
+        setSelectedChat(updatedChat);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Ошибка отправки сообщения';
+      setError(errorMessage);
+      console.error('Error sending message:', err);
+      throw err; // Пробрасываем ошибку для обработки в UI
+    }
+  }, [selectedChat]);
 
-    dispatch({ type: 'ADD_MESSAGE', payload: { chatId, message } });
-  };
+  // Выбор чата
+  const selectChat = useCallback((chat: TelegramChat) => {
+    setSelectedChat(chat);
+    fetchMessages(chat.id);
+  }, [fetchMessages]);
 
-  const copyChatLink = (chatId: string) => {
-    const link = `${window.location.origin}/chat/${chatId}`;
-    navigator.clipboard.writeText(link);
-    // Здесь можно добавить toast уведомление
-  };
+  // Обновление сообщений
+  const refreshMessages = useCallback(async () => {
+    if (selectedChat) {
+      await fetchMessages(selectedChat.id);
+    }
+  }, [selectedChat, fetchMessages]);
 
-  const createCase = (chatId: string, title: string, description: string) => {
-    // Логика создания кейса
-    console.log('Creating case:', { chatId, title, description });
-  };
+  // Автоматическое обновление чатов каждые 30 секунд
+  useEffect(() => {
+    fetchChats();
+    
+    const interval = setInterval(fetchChats, 30000);
+    return () => clearInterval(interval);
+  }, [fetchChats]);
 
-  const value: ChatContextType = {
-    state,
-    dispatch,
-    filteredChats,
-    acceptChat,
-    sendMessage,
-    copyChatLink,
-    createCase,
-  };
+  // Автоматическое обновление сообщений каждые 10 секунд для выбранного чата
+  useEffect(() => {
+    if (selectedChat) {
+      const interval = setInterval(() => {
+        fetchMessages(selectedChat.id);
+      }, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedChat, fetchMessages]);
 
   return (
-    <ChatContext.Provider value={value}>
+    <ChatContext.Provider
+      value={{
+        chats,
+        selectedChat,
+        messages,
+        loading,
+        error,
+        selectChat,
+        sendMessage,
+        fetchChats,
+        refreshMessages,
+      }}
+    >
       {children}
     </ChatContext.Provider>
   );
