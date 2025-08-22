@@ -32,8 +32,8 @@ services:
   bot-backend:
     build:
       context: .
-      dockerfile: Dockerfile.backend
-      target: development
+      dockerfile: Dockerfile
+      target: runtime
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     environment:
