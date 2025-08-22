@@ -1,207 +1,284 @@
-'use client';
-
 import React, { useState } from 'react';
-import { useChat } from '../context/ChatContext';
-import { TelegramChat } from '../lib/telegram-api';
+import { Chat, FilterOptions } from '../types';
+import { ChevronDownIcon, PinIcon, StarIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
-export function ChatList() {
-  const { chats, selectChat, selectedChat, loading, error } = useChat();
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
+interface ChatListProps {
+  chats: Chat[];
+  selectedChatId: number | null;
+  onSelectChat: (chat: Chat) => void;
+  onTakeChat: (chatId: number) => void;
+  filters: FilterOptions;
+  onUpdateFilters: (filters: Partial<FilterOptions>) => void;
+  onResetFilters: () => void;
+  loading: boolean;
+}
+
+export function ChatList({
+  chats,
+  selectedChatId,
+  onSelectChat,
+  onTakeChat,
+  filters,
+  onUpdateFilters,
+  onResetFilters,
+  loading
+}: ChatListProps) {
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'waiting': return 'bg-yellow-100 text-yellow-800';
+      case 'in_progress': return 'bg-blue-100 text-blue-800';
+      case 'closed': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-100 text-red-800';
+      case 'high': return 'bg-orange-100 text-orange-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getSourceIcon = (source: string) => {
+    switch (source) {
+      case 'telegram': return '📱';
+      case 'website': return '🌐';
+      case 'p2p': return '💱';
+      default: return '📝';
+    }
+  };
+
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 60) return `${minutes}м`;
+    if (hours < 24) return `${hours}ч`;
+    return `${days}д`;
+  };
 
   const filteredChats = chats.filter(chat => {
-    // Фильтр по статусу
-    if (filter === 'active' && chat.status !== 'active') return false;
-    if (filter === 'inactive' && chat.status !== 'inactive') return false;
-    
-    // Поиск по названию или имени пользователя
-    if (search) {
-      const searchLower = search.toLowerCase();
-      const matchesSearch =
-        chat.title.toLowerCase().includes(searchLower) ||
-        chat.first_name?.toLowerCase().includes(searchLower) ||
-        chat.last_name?.toLowerCase().includes(searchLower) ||
-        chat.username?.toLowerCase().includes(searchLower);
-      if (!matchesSearch) return false;
-    }
+    if (filters.status && filters.status.length > 0 && !filters.status.includes(chat.status)) return false;
+    if (filters.source && filters.source.length > 0 && !filters.source.includes(chat.source)) return false;
+    if (filters.priority && filters.priority.length > 0 && !filters.priority.includes(chat.priority)) return false;
+    if (filters.has_attachments && chat.last_message.attachments?.length === 0) return false;
     return true;
   });
 
-  const getChatDisplayName = (chat: TelegramChat) => {
-    if (chat.type === 'private') {
-      if (chat.first_name && chat.last_name) {
-        return `${chat.first_name} ${chat.last_name}`;
-      }
-      if (chat.first_name) {
-        return chat.first_name;
-      }
-      if (chat.username) {
-        return `@${chat.username}`;
-      }
-      return chat.title;
-    }
-    return chat.title;
-  };
+  return (
+    <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-full">
+      {/* Заголовок с фильтрами */}
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-gray-900">Чаты</h2>
+          <button
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Открыть/закрыть фильтры"
+          >
+            <ChevronDownIcon className={`w-5 h-5 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
 
-  const getChatAvatar = (chat: TelegramChat) => {
-    if (chat.type === 'private') {
-      return chat.first_name?.charAt(0).toUpperCase() || 'U';
-    }
-    return chat.title.charAt(0).toUpperCase();
-  };
+        {/* Фильтры */}
+        {filtersOpen && (
+          <div className="absolute top-16 left-4 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4 fade-in">
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Статус</label>
+                <select
+                  multiple
+                  value={filters.status || []}
+                  onChange={(e) => {
+                    const values = Array.from(e.target.selectedOptions, option => option.value);
+                    onUpdateFilters({ status: values });
+                  }}
+                  className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                  aria-label="Фильтр по статусу"
+                >
+                  <option value="waiting">В ожидании</option>
+                  <option value="in_progress">В работе</option>
+                  <option value="closed">Закрыт</option>
+                </select>
+              </div>
 
-  const getChatStatusColor = (chat: TelegramChat) => {
-    switch (chat.status) {
-      case 'active':
-        return 'bg-green-100 text-green-600';
-      case 'inactive':
-        return 'bg-gray-100 text-gray-600';
-      case 'blocked':
-        return 'bg-red-100 text-red-600';
-      default:
-        return 'bg-blue-100 text-blue-600';
-    }
-  };
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Источник</label>
+                <select
+                  multiple
+                  value={filters.source || []}
+                  onChange={(e) => {
+                    const values = Array.from(e.target.selectedOptions, option => option.value);
+                    onUpdateFilters({ source: values });
+                  }}
+                  className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                  aria-label="Фильтр по источнику"
+                >
+                  <option value="telegram">Telegram</option>
+                  <option value="website">Сайт</option>
+                  <option value="p2p">P2P</option>
+                </select>
+              </div>
 
-  if (loading) {
-    return (
-      <div className='w-80 bg-white border-r border-gray-200 flex flex-col'>
-        <div className='p-4 border-b border-gray-200'>
-          <h2 className='text-lg font-semibold text-gray-900 mb-4'>Чаты</h2>
-          <div className='animate-pulse'>
-            <div className='h-10 bg-gray-200 rounded mb-4'></div>
-            <div className='space-y-3'>
-              {[1, 2, 3].map(i => (
-                <div key={i} className='h-20 bg-gray-200 rounded'></div>
-              ))}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
+                <select
+                  multiple
+                  value={filters.priority || []}
+                  onChange={(e) => {
+                    const values = Array.from(e.target.selectedOptions, option => option.value);
+                    onUpdateFilters({ priority: values });
+                  }}
+                  className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                  aria-label="Фильтр по приоритету"
+                >
+                  <option value="urgent">Срочно</option>
+                  <option value="high">Высокий</option>
+                  <option value="medium">Средний</option>
+                  <option value="low">Низкий</option>
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="has_attachments"
+                  checked={filters.has_attachments || false}
+                  onChange={(e) => onUpdateFilters({ has_attachments: e.target.checked })}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="has_attachments" className="text-sm text-gray-700">
+                  С вложениями
+                </label>
+              </div>
+
+              <div className="flex space-x-2 pt-2">
+                <button
+                  onClick={onResetFilters}
+                  className="flex-1 px-3 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Сбросить
+                </button>
+                <button
+                  onClick={() => setFiltersOpen(false)}
+                  className="flex-1 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                >
+                  Применить
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className='w-80 bg-white border-r border-gray-200 flex flex-col'>
-        <div className='p-4 border-b border-gray-200'>
-          <h2 className='text-lg font-semibold text-gray-900 mb-4'>Чаты</h2>
-          <div className='p-4 text-center text-red-600'>
-            <p>Ошибка загрузки чатов:</p>
-            <p className='text-sm mt-1'>{error}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className='w-80 bg-white border-r border-gray-200 flex flex-col'>
-      {/* Заголовок */}
-      <div className='p-4 border-b border-gray-200'>
-        <div className='flex items-center justify-between mb-4'>
-          <select 
-            value={filter} 
-            onChange={(e) => setFilter(e.target.value)}
-            className='text-lg font-semibold text-gray-900 bg-transparent border-none focus:outline-none'
-          >
-            <option value='all'>Все чаты</option>
-            <option value='active'>Активные</option>
-            <option value='inactive'>Неактивные</option>
-          </select>
-          
-          <div className='flex items-center space-x-2'>
-            <button className='w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200'>
-              <svg className='w-4 h-4 text-gray-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' />
-              </svg>
-            </button>
-            <button className='w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200'>
-              <svg className='w-5 h-5 text-gray-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a2 2 0 00-2.828-2.828z' />
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6.172 15.172a4 4 0 015.656 0M9 12h6m-6-4h4' />
-              </svg>
-            </button>
-            <button className='w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200'>
-              <svg className='w-4 h-4 text-gray-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' />
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        <input
-          type='text'
-          placeholder='Поиск чатов...'
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-        />
+        )}
       </div>
 
       {/* Список чатов */}
-      <div className='flex-1 overflow-y-auto'>
-        {filteredChats.length === 0 ? (
-          <div className='p-4 text-center text-gray-500'>
-            {search ? 'Чаты не найдены' : 'Нет активных чатов'}
-          </div>
+      <div className="flex-1 overflow-y-auto">
+        {loading ? (
+          <div className="p-4 text-center text-gray-500">Загрузка чатов...</div>
+        ) : filteredChats.length === 0 ? (
+          <div className="p-4 text-center text-gray-500">Чаты не найдены</div>
         ) : (
           filteredChats.map((chat) => (
             <div
               key={chat.id}
-              onClick={() => selectChat(chat)}
-              className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                selectedChat?.id === chat.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+              onClick={() => onSelectChat(chat)}
+              className={`p-4 border-b border-gray-100 cursor-pointer transition-colors hover:bg-gray-50 ${
+                selectedChatId === chat.id ? 'bg-blue-50 border-blue-200' : ''
               }`}
             >
-              <div className='flex items-start space-x-3'>
+              <div className="flex items-start space-x-3">
                 {/* Аватар */}
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${getChatStatusColor(chat)}`}>
-                  <span className='font-semibold text-sm'>
-                    {getChatAvatar(chat)}
-                  </span>
+                <div className="flex-shrink-0">
+                  {chat.user.avatar_url ? (
+                    <img
+                      src={chat.user.avatar_url}
+                      alt={chat.user.first_name}
+                      className="w-10 h-10 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-medium text-sm">
+                        {chat.user.first_name.charAt(0)}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                
+
                 {/* Информация о чате */}
-                <div className='flex-1 min-w-0'>
-                  <div className='flex items-center justify-between mb-1'>
-                    <h3 className='text-sm font-medium text-gray-900 truncate'>
-                      {getChatDisplayName(chat)}
-                    </h3>
-                    <span className='text-xs text-gray-500'>
-                      {chat.last_message_date ? 
-                        new Date(chat.last_message_date).toLocaleTimeString('ru-RU', { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        }) : ''
-                      }
-                    </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium text-gray-900 truncate">
+                        {chat.user.first_name} {chat.user.last_name}
+                      </span>
+                      {chat.user.is_verified && (
+                        <span className="text-blue-600 text-xs">✓</span>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      {chat.is_pinned && (
+                        <PinIcon className="w-4 h-4 text-yellow-500" />
+                      )}
+                      {chat.is_important && (
+                        <StarIcon className="w-4 h-4 text-red-500" />
+                      )}
+                    </div>
                   </div>
-                  
-                  <p className='text-sm text-gray-600 truncate mb-2'>
-                    {chat.last_message || 'Нет сообщений'}
+
+                  {/* Последнее сообщение */}
+                  <p className="text-sm text-gray-600 truncate mb-2">
+                    {chat.last_message.text}
                   </p>
-                  
-                  <div className='flex items-center justify-between'>
-                    <span className='text-xs text-gray-500'>
-                      {chat.type === 'private' ? 'Личный чат' : 'Группа'}
-                    </span>
-                    
-                    <div className='flex items-center space-x-2'>
-                      {chat.unread_count && chat.unread_count > 0 && (
-                        <span className='w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center'>
+
+                  {/* Метаданные */}
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center space-x-2">
+                      <span className={getStatusColor(chat.status)}>
+                        {chat.status === 'waiting' ? 'Ожидает' : 
+                         chat.status === 'in_progress' ? 'В работе' : 'Закрыт'}
+                      </span>
+                      <span className={getPriorityColor(chat.priority)}>
+                        {chat.priority === 'urgent' ? 'Срочно' :
+                         chat.priority === 'high' ? 'Высокий' :
+                         chat.priority === 'medium' ? 'Средний' : 'Низкий'}
+                      </span>
+                      <span>{getSourceIcon(chat.source)}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {chat.unread_count > 0 && (
+                        <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
                           {chat.unread_count}
                         </span>
                       )}
-                      
-                      <span className={`px-2 py-1 text-xs rounded-full ${getChatStatusColor(chat)}`}>
-                        {chat.status === 'active' ? 'Активен' : 
-                         chat.status === 'inactive' ? 'Неактивен' : 'Заблокирован'}
-                      </span>
+                      <span>{formatTime(chat.last_message.timestamp)}</span>
                     </div>
                   </div>
                 </div>
               </div>
+
+              {/* Кнопка принятия чата */}
+              {chat.status === 'waiting' && (
+                <div className="mt-3">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTakeChat(chat.id);
+                    }}
+                    className="w-full px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                  >
+                    Принять чат
+                  </button>
+                </div>
+              )}
             </div>
           ))
         )}
