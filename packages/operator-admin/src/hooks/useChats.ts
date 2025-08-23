@@ -13,14 +13,14 @@ export function useChats() {
   const [isInitialized, setIsInitialized] = useState(false);
   
   // WebSocket соединение
-  const wsRef = useRef<WebSocket | null>(null);
+  const wsRef = useRef<any | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Инициализация WebSocket соединения
   const initializeWebSocket = useCallback(() => {
     try {
       const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3000/ws';
-      const ws = new WebSocket(wsUrl);
+      const ws = new (globalThis as any).WebSocket(wsUrl);
       
       ws.onopen = () => {
         console.log('WebSocket подключен');
@@ -211,7 +211,7 @@ export function useChats() {
     setSelectedChatId(chat.id);
     
     // Подписываемся на обновления чата через WebSocket
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+    if (wsRef.current && wsRef.current.readyState === (globalThis as any).WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         type: 'subscribe_to_chat',
         chatId: chat.id
