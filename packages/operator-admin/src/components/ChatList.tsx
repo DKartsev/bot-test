@@ -102,7 +102,7 @@ export function ChatList({
                 <select
                   value={filters.status || ''}
                   onChange={(e) => {
-                    const value = (e.target as HTMLSelectElement).value;
+                    const value = (e.target as any).value;
                     onUpdateFilters({ status: value ? [value] : [] });
                   }}
                   className="w-full p-2 border border-gray-300 rounded-lg text-sm"
@@ -120,7 +120,7 @@ export function ChatList({
                 <select
                   value={filters.source || ''}
                   onChange={(e) => {
-                    const value = (e.target as HTMLSelectElement).value;
+                    const value = (e.target as any).value;
                     onUpdateFilters({ source: value ? [value] : [] });
                   }}
                   className="w-full p-2 border border-gray-300 rounded-lg text-sm"
@@ -138,7 +138,7 @@ export function ChatList({
                 <select
                   value={filters.priority || ''}
                   onChange={(e) => {
-                    const value = (e.target as HTMLSelectElement).value;
+                    const value = (e.target as any).value;
                     onUpdateFilters({ priority: value ? [value] : [] });
                   }}
                   className="w-full p-2 border border-gray-300 rounded-lg text-sm"
