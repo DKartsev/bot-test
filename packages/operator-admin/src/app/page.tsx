@@ -99,7 +99,7 @@ export default function OperatorPanel() {
 
   // Копирование ссылки
   const handleCopyLink = () => {
-    if (selectedChat) {
+    if (selectedChat && typeof window !== 'undefined') {
       const link = `${window.location.origin}/chat/${selectedChat.id}`;
       navigator.clipboard.writeText(link);
       addNotification('Ссылка скопирована в буфер обмена');
