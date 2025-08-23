@@ -54,7 +54,7 @@ export function ToolsPanel({
 
       if (response.ok) {
         const responses = await response.json();
-        setCannedResponses(responses);
+        setCannedResponses(responses as any);
       } else {
         // Fallback к базовым шаблонам
         setCannedResponses([
