@@ -100,17 +100,15 @@ export function ChatList({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Статус</label>
                 <select
-                  multiple
-                  value={filters.status || []}
+                  value={filters.status || ''}
                   onChange={(e) => {
-                    const target = e.target as HTMLSelectElement;
-                    const values = Array.from(target.querySelectorAll('option:checked'))
-                      .map(option => (option as HTMLOptionElement).value);
-                    onUpdateFilters({ status: values });
+                    const value = (e.target as HTMLSelectElement).value;
+                    onUpdateFilters({ status: value ? [value] : [] });
                   }}
                   className="w-full p-2 border border-gray-300 rounded-lg text-sm"
                   aria-label="Фильтр по статусу"
                 >
+                  <option value="">Все статусы</option>
                   <option value="waiting">В ожидании</option>
                   <option value="in_progress">В работе</option>
                   <option value="closed">Закрыт</option>
@@ -120,17 +118,15 @@ export function ChatList({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Источник</label>
                 <select
-                  multiple
-                  value={filters.source || []}
+                  value={filters.source || ''}
                   onChange={(e) => {
-                    const target = e.target as HTMLSelectElement;
-                    const values = Array.from(target.querySelectorAll('option:checked'))
-                      .map(option => (option as HTMLOptionElement).value);
-                    onUpdateFilters({ source: values });
+                    const value = (e.target as HTMLSelectElement).value;
+                    onUpdateFilters({ source: value ? [value] : [] });
                   }}
                   className="w-full p-2 border border-gray-300 rounded-lg text-sm"
                   aria-label="Фильтр по источнику"
                 >
+                  <option value="">Все источники</option>
                   <option value="telegram">Telegram</option>
                   <option value="website">Сайт</option>
                   <option value="p2p">P2P</option>
@@ -140,17 +136,15 @@ export function ChatList({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
                 <select
-                  multiple
-                  value={filters.priority || []}
+                  value={filters.priority || ''}
                   onChange={(e) => {
-                    const target = e.target as HTMLSelectElement;
-                    const values = Array.from(target.querySelectorAll('option:checked'))
-                      .map(option => (option as HTMLOptionElement).value);
-                    onUpdateFilters({ priority: values });
+                    const value = (e.target as HTMLSelectElement).value;
+                    onUpdateFilters({ priority: value ? [value] : [] });
                   }}
                   className="w-full p-2 border border-gray-300 rounded-lg text-sm"
                   aria-label="Фильтр по приоритету"
                 >
+                  <option value="">Все приоритеты</option>
                   <option value="urgent">Срочно</option>
                   <option value="high">Высокий</option>
                   <option value="medium">Средний</option>
