@@ -157,7 +157,7 @@ export function ChatList({
                   type="checkbox"
                   id="has_attachments"
                   checked={filters.has_attachments || false}
-                  onChange={(e) => onUpdateFilters({ has_attachments: e.target.checked })}
+                  onChange={(e) => onUpdateFilters({ has_attachments: (e.target as any).checked })}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <label htmlFor="has_attachments" className="text-sm text-gray-700">
