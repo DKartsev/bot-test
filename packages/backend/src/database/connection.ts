@@ -46,7 +46,15 @@ export class PostgreSQLConnection implements DatabaseConnection {
     });
 
     // Проверяем подключение при инициализации
-          void this.testConnection();
+    // Используем setTimeout чтобы не блокировать основной поток
+    setTimeout(() => {
+      void this.testConnection().catch(error => {
+        logError('Критическая ошибка при тестировании подключения к БД', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          note: 'Сервер продолжит работу без БД'
+        });
+      });
+    }, 1000);
   }
 
   // Тестирование подключения
@@ -65,8 +73,10 @@ export class PostgreSQLConnection implements DatabaseConnection {
       logError('Ошибка подключения к базе данных', {
         error: error instanceof Error ? error.message : 'Unknown error',
         connectionString: process.env.DATABASE_URL ? 'DATABASE_URL' : 'individual params',
+        note: 'Сервер продолжит работу без БД'
       });
       this.isConnectedFlag = false;
+      // НЕ выбрасываем ошибку - сервер должен продолжать работать
     }
   }
 

@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // Загружаем переменные окружения
-dotenv.config({ path: path.join(String(process.cwd()), '.env') });
+dotenv.config({ path: path.join(process.cwd(), '.env') });
 
 // Схема валидации переменных окружения
 const envSchema = z.object({
