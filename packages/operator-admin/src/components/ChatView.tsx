@@ -51,7 +51,7 @@ export function ChatView({
       }
       
       const messages = await response.json();
-      setMessages(messages);
+      setMessages(messages as any);
     } catch (error) {
       console.error('Ошибка загрузки сообщений:', error);
       // Fallback к пустому массиву в случае ошибки
