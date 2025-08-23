@@ -16,7 +16,7 @@ COPY packages/backend/package*.json ./packages/backend/
 COPY packages/shared/package*.json  ./packages/shared/
 
 # ставим prod+dev зависимости двух воркспейсов и вырубаем prepare/postinstall (husky)
-RUN npm ci --include=dev -w packages/shared -w packages/backend --ignore-scripts
+RUN npm install --include=dev -w packages/shared -w packages/backend --ignore-scripts
 
 # ---------- build: используем node_modules из deps ----------
 FROM node:20-bookworm-slim AS backend_build
@@ -60,7 +60,7 @@ COPY packages/shared/package*.json  ./packages/shared/
 COPY packages/backend/package*.json ./packages/backend/
 
 # ставим только prod зависимости и без скриптов (чтобы не вызывался prepare:husky)
-RUN npm ci --omit=dev -w packages/shared -w packages/backend --ignore-scripts
+RUN npm install --omit=dev -w packages/shared -w packages/backend --ignore-scripts
 
 # копируем билд-артефакты
 COPY --from=backend_build /app/packages/shared/dist   ./packages/shared/dist
