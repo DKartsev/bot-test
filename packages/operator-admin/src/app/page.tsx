@@ -98,9 +98,17 @@ export default function OperatorPanel() {
   };
 
   // Копирование ссылки
+  const [origin, setOrigin] = useState<string>('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
   const handleCopyLink = () => {
-    if (selectedChat && typeof window !== 'undefined') {
-      const link = `${window.location.origin}/chat/${selectedChat.id}`;
+    if (selectedChat && origin) {
+      const link = `${origin}/chat/${selectedChat.id}`;
       navigator.clipboard.writeText(link);
       addNotification('Ссылка скопирована в буфер обмена');
     }
