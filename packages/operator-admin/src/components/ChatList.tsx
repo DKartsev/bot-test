@@ -103,9 +103,9 @@ export function ChatList({
                   multiple
                   value={filters.status || []}
                   onChange={(e) => {
-                    const values = Array.from(e.target as HTMLSelectElement)
-                      .filter((option): option is HTMLOptionElement => option instanceof HTMLOptionElement)
-                      .map(option => option.value);
+                    const target = e.target as HTMLSelectElement;
+                    const values = Array.from(target.querySelectorAll('option:checked'))
+                      .map(option => (option as HTMLOptionElement).value);
                     onUpdateFilters({ status: values });
                   }}
                   className="w-full p-2 border border-gray-300 rounded-lg text-sm"
@@ -123,9 +123,9 @@ export function ChatList({
                   multiple
                   value={filters.source || []}
                   onChange={(e) => {
-                    const values = Array.from(e.target as HTMLSelectElement)
-                      .filter((option): option is HTMLOptionElement => option instanceof HTMLOptionElement)
-                      .map(option => option.value);
+                    const target = e.target as HTMLSelectElement;
+                    const values = Array.from(target.querySelectorAll('option:checked'))
+                      .map(option => (option as HTMLOptionElement).value);
                     onUpdateFilters({ source: values });
                   }}
                   className="w-full p-2 border border-gray-300 rounded-lg text-sm"
@@ -143,9 +143,9 @@ export function ChatList({
                   multiple
                   value={filters.priority || []}
                   onChange={(e) => {
-                    const values = Array.from(e.target as HTMLSelectElement)
-                      .filter((option): option is HTMLOptionElement => option instanceof HTMLOptionElement)
-                      .map(option => option.value);
+                    const target = e.target as HTMLSelectElement;
+                    const values = Array.from(target.querySelectorAll('option:checked'))
+                      .map(option => (option as HTMLOptionElement).value);
                     onUpdateFilters({ priority: values });
                   }}
                   className="w-full p-2 border border-gray-300 rounded-lg text-sm"
