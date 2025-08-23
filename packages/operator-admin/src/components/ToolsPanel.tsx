@@ -215,7 +215,7 @@ export function ToolsPanel({
         <div className="flex space-x-2">
           <textarea
             value={currentMessageText}
-            onChange={(e) => onMessageTextChange(e.target.value)}
+            onChange={(e) => onMessageTextChange((e.target as any).value)}
             onKeyPress={handleKeyPress}
             placeholder="Введите сообщение..."
             className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -262,7 +262,7 @@ export function ToolsPanel({
                 <input
                   type="checkbox"
                   checked={isInternalNote}
-                  onChange={(e) => setIsInternalNote(e.target.checked)}
+                  onChange={(e) => setIsInternalNote((e.target as any).checked)}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-700">Внутренняя заметка (не видна пользователю)</span>
@@ -271,7 +271,7 @@ export function ToolsPanel({
             
             <textarea
               value={noteContent}
-              onChange={(e) => setNoteContent(e.target.value)}
+              onChange={(e) => setNoteContent((e.target as any).value)}
               placeholder="Введите текст заметки..."
               className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows={4}
