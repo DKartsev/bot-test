@@ -18,7 +18,7 @@ export function MessageList({ messages, loading, currentOperatorId }: MessageLis
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    (messagesEndRef.current as any)?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
