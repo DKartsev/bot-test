@@ -20,7 +20,6 @@ RUN npm install
 
 # Копируем исходный код
 COPY packages/operator-admin/src ./src
-COPY packages/operator-admin/public ./public
 COPY packages/operator-admin/next.config.js ./
 COPY packages/operator-admin/postcss.config.js ./
 COPY packages/operator-admin/tailwind.config.js ./
@@ -82,7 +81,6 @@ RUN npm install --omit=dev
 
 # Копируем артефакты сборки
 COPY --from=builder /app/packages/operator-admin/.next ./.next
-COPY --from=builder /app/packages/operator-admin/public ./public
 COPY --from=builder /app/packages/operator-admin/next.config.js ./next.config.js
 COPY --from=builder /app/packages/operator-admin/package.json ./package.json
 
