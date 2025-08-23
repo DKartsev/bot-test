@@ -105,7 +105,7 @@ export function ToolsPanel({
     const files = Array.from((e.target as any).files || []);
     if (files.length > 0) {
       // В реальном приложении здесь будет загрузка файлов
-      onSendMessage(currentMessageText, files);
+      onSendMessage(currentMessageText, files as any);
     }
   };
 
