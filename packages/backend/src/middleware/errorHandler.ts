@@ -142,13 +142,17 @@ export const errorHandlerMiddleware = (
   // Форматируем ошибку для клиента
   const errorResponse = errorHandlerService.formatErrorForClient(appError);
 
-  // Устанавливаем заголовки
-  res.set('X-Request-ID', req.id);
-  res.set('X-Error-Type', appError.type);
-  res.set('X-Error-Code', appError.code);
+  // Устанавливаем заголовки только если ответ еще не отправлен
+  if (!res.headersSent) {
+    res.set('X-Request-ID', req.id);
+    res.set('X-Error-Type', appError.type);
+    res.set('X-Error-Code', appError.code);
+  }
 
-  // Отправляем ответ
-  res.status(statusCode).json(errorResponse);
+  // Отправляем ответ только если он еще не отправлен
+  if (!res.headersSent) {
+    res.status(statusCode).json(errorResponse);
+  }
 };
 
 /**
@@ -169,11 +173,13 @@ export const notFoundHandler = (req: Request, res: Response, next: NextFunction)
 
   const errorResponse = errorHandlerService.formatErrorForClient(appError);
 
-  res.set('X-Request-ID', req.id);
-  res.set('X-Error-Type', appError.type);
-  res.set('X-Error-Code', appError.code);
-
-  res.status(404).json(errorResponse);
+  // Устанавливаем заголовки только если ответ еще не отправлен
+  if (!res.headersSent) {
+    res.set('X-Request-ID', req.id);
+    res.set('X-Error-Type', appError.type);
+    res.set('X-Error-Code', appError.code);
+    res.status(404).json(errorResponse);
+  }
 };
 
 /**
@@ -245,9 +251,11 @@ export const performanceMonitor = (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    // Добавляем заголовки с метриками
-    res.set('X-Response-Time', `${duration}ms`);
-    res.set('X-Request-ID', req.id);
+    // Добавляем заголовки с метриками только если ответ еще не отправлен
+    if (!res.headersSent) {
+      res.set('X-Response-Time', `${duration}ms`);
+      res.set('X-Request-ID', req.id);
+    }
   });
 
   next();
