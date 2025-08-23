@@ -102,7 +102,7 @@ export function ToolsPanel({
   ];
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+    const files = Array.from((e.target as any).files || []);
     if (files.length > 0) {
       // В реальном приложении здесь будет загрузка файлов
       onSendMessage(currentMessageText, files);
