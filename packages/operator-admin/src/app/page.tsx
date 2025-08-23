@@ -98,19 +98,16 @@ export default function OperatorPanel() {
   };
 
   // Копирование ссылки
-  const [origin, setOrigin] = useState<string>('');
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setOrigin(window.location.origin);
-    }
-  }, []);
-
   const handleCopyLink = () => {
-    if (selectedChat && origin) {
-      const link = `${origin}/chat/${selectedChat.id}`;
-      navigator.clipboard.writeText(link);
-      addNotification('Ссылка скопирована в буфер обмена');
+    if (selectedChat) {
+      // Используем относительный путь вместо window.location.origin
+      const link = `/chat/${selectedChat.id}`;
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        navigator.clipboard.writeText(link);
+        addNotification('Ссылка скопирована в буфер обмена');
+      } else {
+        addNotification('Копирование не поддерживается в этом браузере');
+      }
     }
   };
 
