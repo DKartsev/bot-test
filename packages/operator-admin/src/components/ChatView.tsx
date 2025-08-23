@@ -41,7 +41,7 @@ export function ChatView({
     try {
       const response = await fetch(`http://localhost:3000/api/chats/${chatId}/messages`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || 'test-token-1'}`,
+          'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('auth_token') || 'test-token-1' : 'test-token-1'}`,
           'Content-Type': 'application/json'
         }
       });
@@ -69,7 +69,7 @@ export function ChatView({
       const response = await fetch(`http://localhost:3000/api/chats/${chat.id}/messages`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || 'test-token-1'}`,
+          'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('auth_token') || 'test-token-1' : 'test-token-1'}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ text })

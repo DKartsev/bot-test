@@ -47,7 +47,7 @@ export function ToolsPanel({
     try {
       const response = await fetch('http://localhost:3000/api/canned-responses', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || 'test-token-1'}`,
+          'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('auth_token') || 'test-token-1' : 'test-token-1'}`,
           'Content-Type': 'application/json'
         }
       });
