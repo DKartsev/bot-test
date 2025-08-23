@@ -161,7 +161,7 @@ export function ToolsPanel({
       <div className="p-4 border-t border-gray-200 bg-gray-50">
         <div className="flex items-center space-x-2 mb-3">
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => (fileInputRef.current as any)?.click()}
             className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
             title="Прикрепить файл"
           >
