@@ -82,7 +82,7 @@ export function ChatView({
       const newMessage = await response.json();
       
       // Добавляем сообщение в список
-      setMessages(prev => [...prev, newMessage]);
+      setMessages(prev => [...prev, newMessage as any]);
       
       // Очищаем поле ввода
       setMessageText('');
