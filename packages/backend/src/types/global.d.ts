@@ -4,32 +4,32 @@ declare module 'fastify' {
   export interface FastifyPluginAsync<T = any> {
     (fastify: any, options?: T): Promise<void>;
   }
-  
+
   export interface FastifyBaseLogger {
     info(msg: string, ...args: any[]): void;
     error(msg: string, ...args: any[]): void;
     warn(msg: string, ...args: any[]): void;
     debug(msg: string, ...args: any[]): void;
   }
-  
+
   export interface FastifyError extends Error {
     statusCode?: number;
     code?: string;
   }
-  
+
   export interface FastifyReply {
     send(payload?: any): FastifyReply;
     status(statusCode: number): FastifyReply;
     header(key: string, value: string): FastifyReply;
   }
-  
+
   export interface FastifyRequest {
     body?: any;
     params?: any;
     query?: any;
     headers?: any;
   }
-  
+
   export interface FastifyInstance {
     register(plugin: any, options?: any): Promise<void>;
     get(path: string, handler: any): void;
@@ -61,8 +61,8 @@ declare module 'telegraf' {
     message?: any;
     update?: any;
   }
-  
-  export class Telegraf<T extends Context = Context> {
+
+  export class Telegraf {
     constructor(token: string);
     start(): void;
     stop(): void;

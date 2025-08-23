@@ -2,130 +2,85 @@
 # КОНФИГУРАЦИЯ ДЛЯ VM ЯНДЕКС.ОБЛАКО
 # ========================================
 
-# Основные настройки приложения
-NODE_ENV=production
+# Основные настройки
+NODE_ENV=development
 PORT=3000
-ADMIN_PORT=3001
 
-# База данных PostgreSQL
-DATABASE_URL=postgresql://bot_user:your_secure_password@localhost:5432/bot_support
+# База данных
+DATABASE_URL=postgresql://username:password@localhost:5432/database_name
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=bot_support
-DB_USER=bot_user
-DB_PASSWORD=your_secure_password
+DB_NAME=support_db
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_SSL=false
+
+# JWT
+JWT_SECRET=your_jwt_secret_key_here_minimum_32_characters
+JWT_REFRESH_SECRET=your_jwt_refresh_secret_key_here_minimum_32_characters
+JWT_EXPIRES_IN=24h
+JWT_REFRESH_EXPIRES_IN=7d
+
+# CORS
+CORS_ORIGIN=http://localhost:3001
+
+# Telegram
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+PUBLIC_URL=https://your-domain.com
 
 # Redis
 REDIS_URL=redis://localhost:6379
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=
+REDIS_DB=0
 
-# Supabase (если используется)
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+# Логирование
+LOG_LEVEL=info
+LOG_FILE=logs/app.log
 
-# OpenAI
-OPENAI_API_KEY=your-openai-api-key
+# Безопасность
+SESSION_SECRET=your_session_secret_here_minimum_32_characters
+COOKIE_SECRET=your_cookie_secret_here_minimum_32_characters
 
-# Telegram Bot
-TELEGRAM_BOT_TOKEN=your-bot-token
-TELEGRAM_WEBHOOK_URL=https://84.201.146.125/bot/webhook
-
-# JWT
-JWT_SECRET=your-super-secret-jwt-key-here-make-it-long-and-random
-JWT_EXPIRES_IN=7d
-
-# CORS
-CORS_ORIGIN=*
-ALLOWED_ORIGINS=*,http://localhost:3001,http://84.201.146.125
-
-# Rate Limiting
+# Rate limiting
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
 
-# Logging
-LOG_LEVEL=info
-LOG_FILE=./logs/app.log
-
-# Monitoring
-ENABLE_METRICS=true
-METRICS_PORT=9090
-
-# Security
-HELMET_ENABLED=true
-RATE_LIMIT_ENABLED=true
-CORS_ENABLED=true
-
-# File Upload
+# Файлы
 MAX_FILE_SIZE=10485760
-UPLOAD_DIR=./uploads
+UPLOAD_DIR=uploads
 
-# Backup
-BACKUP_ENABLED=true
-BACKUP_SCHEDULE=0 2 * * *
-BACKUP_RETENTION_DAYS=30
+# Мониторинг
+ENABLE_METRICS=false
+METRICS_PORT=9090
+METRICS_ENABLED=true
+METRICS_RETENTION_PERIOD=86400000
+METRICS_BATCH_SIZE=1000
+METRICS_FLUSH_INTERVAL=60000
+METRICS_REDIS_STORAGE=true
+METRICS_MEMORY_STORAGE=true
 
-# ========================================
-# НАСТРОЙКИ NGINX (если используется)
-# ========================================
+# Обработка ошибок
+MAX_ERROR_DETAILS_LENGTH=1000
+ERROR_SAMPLING_RATE=1.0
 
-NGINX_ENABLED=true
-NGINX_SSL_CERT_PATH=/etc/nginx/ssl/cert.pem
-NGINX_SSL_KEY_PATH=/etc/nginx/ssl/key.pem
+# Оптимизация SQL
+SLOW_QUERY_THRESHOLD=1000
+ENABLE_QUERY_LOGGING=true
+ENABLE_EXPLAIN_ANALYSIS=true
+MAX_QUERY_LENGTH=1000
+ENABLE_INDEX_RECOMMENDATIONS=true
 
-# ========================================
-# НАСТРОЙКИ PM2
-# ========================================
+# OpenAI
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MAX_TOKENS=4000
+OPENAI_TEMPERATURE=0.3
+OPENAI_TIMEOUT=30000
 
-PM2_INSTANCES=1
-PM2_MAX_MEMORY_RESTART=1G
-PM2_RESTART_DELAY=4000
-PM2_MAX_RESTARTS=10
-
-# ========================================
-# НАСТРОЙКИ DOCKER (если используется)
-# ========================================
-
-DOCKER_ENABLED=false
-DOCKER_NETWORK=bot-network
-
-# ========================================
-# ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ ДЛЯ VM
-# ========================================
-
-# Пути к логам
-LOG_DIR=./logs
-ERROR_LOG=./logs/error.log
-ACCESS_LOG=./logs/access.log
-
-# Настройки для production
-ENABLE_COMPRESSION=true
-ENABLE_CACHING=true
-CACHE_TTL=3600
-
-# Настройки безопасности
-TRUST_PROXY=true
-ENABLE_HTTPS_REDIRECT=false
-SESSION_SECRET=your-super-secret-session-key
-
-# Настройки для мониторинга
-ENABLE_HEALTH_CHECKS=true
-HEALTH_CHECK_INTERVAL=30000
-ENABLE_PERFORMANCE_MONITORING=true
-
-# Настройки для бэкапов
-BACKUP_DIR=./backups
-BACKUP_COMPRESSION=true
-BACKUP_ENCRYPTION=false
-
-# ========================================
-# ИНСТРУКЦИИ ПО НАСТРОЙКЕ
-# ========================================
-
-# 1. Замените все значения "your-*" на реальные
-# 2. Установите безопасные пароли для базы данных
-# 3. Получите реальные API ключи для Telegram и OpenAI
-# 4. Настройте SSL сертификаты если планируете HTTPS
-# 5. Проверьте права доступа к директориям логов и загрузок
+# Дополнительные настройки
+ENABLE_SWAGGER=false
+API_VERSION=v1
+DEBUG_MODE=false

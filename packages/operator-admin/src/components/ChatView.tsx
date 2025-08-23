@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Chat, Message, User } from '../types';
+import { MessageList } from './MessageList';
+import { ToolsPanel } from './ToolsPanel';
 import { 
-  PaperClipIcon, 
-  DocumentTextIcon, 
-  BookOpenIcon, 
-  ChatBubbleLeftRightIcon,
-  SparklesIcon,
-  UserIcon
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 
 interface ChatViewProps {
@@ -15,6 +12,8 @@ interface ChatViewProps {
   onCloseChat: () => void;
   onCreateCase: () => void;
   onCopyLink: () => void;
+  onCreateNote: (content: string, isInternal: boolean) => void;
+  onImproveResponse: (text: string, isOperator: boolean) => void;
 }
 
 export function ChatView({
@@ -22,51 +21,87 @@ export function ChatView({
   onSendMessage,
   onCloseChat,
   onCreateCase,
-  onCopyLink
+  onCopyLink,
+  onCreateNote,
+  onImproveResponse
 }: ChatViewProps) {
   const [messageText, setMessageText] = useState('');
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // Загрузка сообщений при выборе чата
   useEffect(() => {
-    scrollToBottom();
-  }, [chat?.last_message]);
+    if (chat) {
+      loadMessages(chat.id);
+    }
+  }, [chat]);
 
-  const handleSendMessage = () => {
-    if (messageText.trim() || attachments.length > 0) {
-      onSendMessage(messageText, attachments);
+  const loadMessages = async (chatId: number) => {
+    setLoadingMessages(true);
+    try {
+      const response = await fetch(`http://localhost:3000/api/chats/${chatId}/messages`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || 'test-token-1'}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load messages: ${response.statusText}`);
+      }
+      
+      const messages = await response.json();
+      setMessages(messages);
+    } catch (error) {
+      console.error('Ошибка загрузки сообщений:', error);
+      // Fallback к пустому массиву в случае ошибки
+      setMessages([]);
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
+  const handleSendMessage = async (text: string, attachments?: File[]) => {
+    if (!chat || !text.trim()) return;
+
+    try {
+      // Отправляем сообщение через API
+      const response = await fetch(`http://localhost:3000/api/chats/${chat.id}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || 'test-token-1'}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to send message: ${response.statusText}`);
+      }
+
+      const newMessage = await response.json();
+      
+      // Добавляем сообщение в список
+      setMessages(prev => [...prev, newMessage]);
+      
+      // Очищаем поле ввода
       setMessageText('');
-      setAttachments([]);
+      
+      // Вызываем callback для уведомления родительского компонента
+      await onSendMessage(text, attachments);
+      
+    } catch (error) {
+      console.error('Ошибка отправки сообщения:', error);
     }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setAttachments(prev => [...prev, ...files]);
-  };
-
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   if (!chat) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-50">
         <div className="text-center text-gray-500">
-          <ChatBubbleLeftRightIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+          <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">💬</span>
+          </div>
           <p className="text-lg">Выберите чат для начала работы</p>
         </div>
       </div>
@@ -158,110 +193,21 @@ export function ChatView({
         )}
       </div>
 
-      {/* Сообщения */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Здесь будут отображаться сообщения */}
-        <div className="text-center text-gray-500">
-          <p>История сообщений будет загружена здесь</p>
-        </div>
-        <div ref={messagesEndRef} />
-      </div>
+      {/* Список сообщений */}
+      <MessageList
+        messages={messages}
+        loading={loadingMessages}
+        currentOperatorId={1}
+      />
 
       {/* Панель инструментов */}
-      <div className="p-4 border-t border-gray-200 bg-gray-50">
-        <div className="flex items-center space-x-2 mb-3">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-            title="Прикрепить файл"
-          >
-            <PaperClipIcon className="w-5 h-5" />
-          </button>
-          <button
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-            title="Заметка (внутренняя)"
-          >
-            <DocumentTextIcon className="w-5 h-5" />
-          </button>
-          <button
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-            title="Сохранённые ответы"
-          >
-            <ChatBubbleLeftRightIcon className="w-5 h-5" />
-          </button>
-          <button
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-            title="Инструкции"
-          >
-            <BookOpenIcon className="w-5 h-5" />
-          </button>
-          <button
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-            title="Улучшить ответ (AI)"
-          >
-            <SparklesIcon className="w-5 h-5" />
-          </button>
-          <button
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-            title="Улучшить ответ (Оператор)"
-          >
-            <UserIcon className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Вложения */}
-        {attachments.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
-            {attachments.map((file, index) => (
-              <div
-                key={index}
-                className="flex items-center space-x-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg"
-              >
-                <span className="text-sm text-blue-800 truncate max-w-32">
-                  {file.name}
-                </span>
-                <button
-                  onClick={() => removeAttachment(index)}
-                  className="text-blue-600 hover:text-blue-800"
-                  title="Удалить файл"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Поле ввода */}
-        <div className="flex space-x-2">
-          <textarea
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Введите сообщение..."
-            className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            rows={3}
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={!messageText.trim() && attachments.length === 0}
-            className="px-6 py-3 text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-lg transition-colors"
-          >
-            Отправить
-          </button>
-        </div>
-
-        {/* Скрытый input для файлов */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          onChange={handleFileSelect}
-          className="hidden"
-          accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
-          aria-label="Выбор файлов для прикрепления"
-        />
-      </div>
+      <ToolsPanel
+        onSendMessage={handleSendMessage}
+        onCreateNote={onCreateNote}
+        onImproveResponse={onImproveResponse}
+        currentMessageText={messageText}
+        onMessageTextChange={setMessageText}
+      />
     </div>
   );
 }

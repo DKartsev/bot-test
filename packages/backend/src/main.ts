@@ -2,18 +2,18 @@ import { createServer } from 'http';
 
 const server = createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'application/json' });
-  
+
   if (req.url === '/health') {
-    res.end(JSON.stringify({ 
-      status: 'ok', 
-      service: 'bot-backend', 
-      timestamp: new Date().toISOString() 
+    res.end(JSON.stringify({
+      status: 'ok',
+      service: 'bot-backend',
+      timestamp: new Date().toISOString(),
     }));
   } else if (req.url === '/') {
-    res.end(JSON.stringify({ 
-      message: 'Bot Backend Service', 
+    res.end(JSON.stringify({
+      message: 'Bot Backend Service',
       version: '1.0.0',
-      timestamp: new Date().toISOString() 
+      timestamp: new Date().toISOString(),
     }));
   } else {
     res.writeHead(404, { 'Content-Type': 'application/json' });

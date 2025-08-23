@@ -8,7 +8,7 @@
     "allowJs": true,
     "strict": false,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": false,
+    "forceConsistentCasingInFileNames": true,
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false,
@@ -25,26 +25,10 @@
     "exactOptionalPropertyTypes": false,
     "outDir": "./dist",
     "rootDir": "./",
-    "baseUrl": "./packages/backend/src",
+    "baseUrl": "./",
     "paths": {
       "@/*": ["./*"],
-      "@app/*": ["./app/*"],
-      "@bot/*": ["./bot/*"],
-      "@config/*": ["./config/*"],
-      "@domain/*": ["./domain/*"],
-      "@faq/*": ["./faq/*"],
-      "@http/*": ["./http/*"],
-      "@infra/*": ["./infra/*"],
-      "@kb/*": ["./kb/*"],
-      "@modules/*": ["./modules/*"],
-      "@nlp/*": ["./nlp/*"],
-      "@plugins/*": ["./plugins/*"],
-      "@shared/*": ["./shared/*"],
-      "@test/*": ["./test/*"],
-      "@types/*": ["./types/*"],
-      "@utils/*": ["./utils/*"],
-      "@validation/*": ["./validation/*"],
-      "@app/shared": ["../shared/src"]
+      "@shared/*": ["./packages/shared/src/*"]
     },
     "types": ["node"],
     "lib": ["ES2022"],
@@ -58,17 +42,15 @@
     "noEmit": false
   },
   "include": [
-    "packages/backend/src/**/*",
     "packages/shared/src/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
+    "packages/backend",
     "packages/operator-admin",
     "**/*.test.ts",
-    "**/*.spec.ts",
-    "**/*.test.js",
-    "**/*.spec.js"
+    "**/*.spec.ts"
   ],
   "ts-node": {
     "esm": true,

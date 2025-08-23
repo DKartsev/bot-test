@@ -9,7 +9,7 @@ export async function preloadEnv(): Promise<void> {
     const { config } = await import('dotenv-safe');
     config({
       allowEmptyValues: false,
-      example: path.resolve(process.cwd(), '.env.example'),
+      example: path.resolve(String(process.cwd()), '.env.example'),
     });
   }
 }

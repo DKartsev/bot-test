@@ -60,7 +60,7 @@ declare module 'telegraf' {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     catch(handler: (err: unknown, ctx: C) => any): void;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    on(event: string | any, handler: (ctx: C, next: () => Promise<void>) => Promise<void> | void): void;
+    on(event: string, handler: (ctx: C, next: () => Promise<void>) => Promise<void> | void): void;
   }
   export interface Context {
     chat?: { id?: number | string };

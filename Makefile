@@ -3,7 +3,57 @@
 
 .PHONY: help build up down restart logs status clean prod-up prod-down
 
+# ========================================
+# RAG Pipeline Management
+# ========================================
+
+# RAG Pipeline commands
+rag-install-deps:
+	@echo "📦 Installing RAG pipeline dependencies..."
+	cd packages/backend && npm install openai@^4.20.1
+
+rag-build:
+	@echo "🔨 Building RAG pipeline..."
+	cd packages/backend && npm run build
+
+rag-start:
+	@echo "🚀 Starting RAG pipeline backend..."
+	cd packages/backend && npm run dev
+
+rag-test:
+	@echo "🧪 Testing RAG pipeline..."
+	cd tools && python test_rag.py
+
+rag-test-single:
+	@echo "🧪 Testing single RAG component..."
+	cd tools && python test_rag.py --single-test $(TEST)
+
+rag-demo:
+	@echo "🎭 Running RAG pipeline demo..."
+	cd tools && python bot_search.py
+
+rag-health:
+	@echo "🏥 Checking RAG service health..."
+	curl -s http://localhost:3000/api/rag/health | jq '.'
+
+rag-stats:
+	@echo "📊 Getting RAG pipeline stats..."
+	curl -s http://localhost:3000/api/rag/stats | jq '.'
+
+rag-model-info:
+	@echo "🤖 Getting model information..."
+	curl -s http://localhost:3000/api/rag/model-info | jq '.'
+
+rag-test-query:
+	@echo "🔍 Testing RAG query..."
+	curl -X POST http://localhost:3000/api/rag/test \
+		-H "Content-Type: application/json" \
+		-d '{"testQuery": "Как пополнить баланс через QR-код?"}' | jq '.'
+
+# ========================================
 # Основные команды
+# ========================================
+
 help: ## Показать справку по командам
 	@echo "Доступные команды:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'

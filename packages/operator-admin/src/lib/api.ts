@@ -6,27 +6,50 @@ const TELEGRAM_BOT_TOKEN = process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN;
 class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE}${endpoint}`;
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    });
+    
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || 'test-token-1'}`,
+          ...options.headers,
+        },
+        ...options,
+      });
 
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorData.message || ''}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Network Error: ${error.message}`);
+      }
+      throw new Error('Unknown network error');
     }
-
-    return response.json();
   }
 
   // Чат-бот API
   async getChats(filters?: any): Promise<Chat[]> {
-    return this.request<Chat[]>('/api/chats', {
-      method: 'POST',
-      body: JSON.stringify(filters),
-    });
+    let endpoint = '/api/chats';
+    if (filters) {
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (Array.isArray(value)) {
+            params.append(key, value.join(','));
+          } else {
+            params.append(key, String(value));
+          }
+        }
+      });
+      if (params.toString()) {
+        endpoint += `?${params.toString()}`;
+      }
+    }
+    return this.request<Chat[]>(endpoint);
   }
 
   async getChat(chatId: number): Promise<Chat> {
@@ -119,6 +142,25 @@ class ApiClient {
   createWebSocket(): WebSocket {
     const wsUrl = API_BASE.replace('http', 'ws') + '/ws';
     return new WebSocket(wsUrl);
+  }
+
+  // Проверка соединения с backend
+  async healthCheck(): Promise<{ status: string; timestamp: string }> {
+    try {
+      return await this.request<{ status: string; timestamp: string }>('/api/health');
+    } catch (error) {
+      throw new Error('Backend недоступен');
+    }
+  }
+
+  // Получение статистики
+  async getStats(): Promise<{
+    total_chats: number;
+    waiting_chats: number;
+    active_operators: number;
+    avg_response_time: number;
+  }> {
+    return this.request('/api/stats');
   }
 }
 

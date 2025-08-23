@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Chat, FilterOptions } from '../types';
-import { ChevronDownIcon, PinIcon, StarIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, MapPinIcon, StarIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface ChatListProps {
   chats: Chat[];
@@ -11,6 +11,8 @@ interface ChatListProps {
   onUpdateFilters: (filters: Partial<FilterOptions>) => void;
   onResetFilters: () => void;
   loading: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 export function ChatList({
@@ -21,7 +23,9 @@ export function ChatList({
   filters,
   onUpdateFilters,
   onResetFilters,
-  loading
+  loading,
+  hasMore,
+  onLoadMore
 }: ChatListProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -226,7 +230,7 @@ export function ChatList({
                     </div>
                     <div className="flex items-center space-x-1">
                       {chat.is_pinned && (
-                        <PinIcon className="w-4 h-4 text-yellow-500" />
+                        <MapPinIcon className="w-4 h-4 text-yellow-500" />
                       )}
                       {chat.is_important && (
                         <StarIcon className="w-4 h-4 text-red-500" />
@@ -281,6 +285,35 @@ export function ChatList({
               )}
             </div>
           ))
+        )}
+        
+        {/* Кнопка "Загрузить еще" */}
+        {hasMore && (
+          <div className="p-4 text-center">
+            <button
+              onClick={onLoadMore}
+              disabled={loading}
+              className="px-4 py-2 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Загрузка...' : 'Загрузить еще'}
+            </button>
+          </div>
+        )}
+        
+        {/* Индикатор загрузки */}
+        {loading && chats.length === 0 && (
+          <div className="p-8 text-center text-gray-500">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p>Загрузка чатов...</p>
+          </div>
+        )}
+        
+        {/* Сообщение об отсутствии чатов */}
+        {!loading && chats.length === 0 && (
+          <div className="p-8 text-center text-gray-500">
+            <p>Чаты не найдены</p>
+            <p className="text-sm">Попробуйте изменить фильтры</p>
+          </div>
         )}
       </div>
     </div>

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { ChatList } from '../components/ChatList';
 import { ChatView } from '../components/ChatView';
 import { UserPanel } from '../components/UserPanel';
+import { Notifications, Notification } from '../components/Notifications';
+import { ConnectionStatus } from '../components/ConnectionStatus';
 import { useChats } from '../hooks/useChats';
 import { Chat, User } from '../types';
 import apiClient from '../lib/api';
@@ -11,48 +13,56 @@ import apiClient from '../lib/api';
 export default function OperatorPanel() {
   const {
     chats,
+    selectedChatId,
     loading,
     error,
     filters,
-    selectedChatId,
-    setSelectedChatId,
+    hasMore,
+    loadChats,
     takeChat,
     closeChat,
     updateFilters,
     resetFilters,
-    loadChats
+    selectChat,
+    sendMessage,
+    loadMore
   } = useChats();
 
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [notifications, setNotifications] = useState<string[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   // Загрузка выбранного чата
   useEffect(() => {
     if (selectedChatId) {
       const chat = chats.find(c => c.id === selectedChatId);
-      if (chat) {
-        setSelectedChat(chat);
-        setCurrentUser(chat.user);
-      }
+      setSelectedChat(chat || null);
     } else {
       setSelectedChat(null);
-      setCurrentUser(null);
     }
   }, [selectedChatId, chats]);
 
+  // Загрузка текущего пользователя
+  useEffect(() => {
+    if (selectedChat) {
+      setCurrentUser(selectedChat.user);
+    } else {
+      setCurrentUser(null);
+    }
+  }, [selectedChat]);
+
   // Обработка выбора чата
   const handleSelectChat = (chat: Chat) => {
-    setSelectedChatId(chat.id);
+    selectChat(chat);
   };
 
   // Обработка принятия чата
   const handleTakeChat = async (chatId: number) => {
     try {
       await takeChat(chatId);
-      addNotification('Чат успешно принят в работу');
+      addNotification('Чат принят в работу', 'success');
     } catch (err) {
-      addNotification('Ошибка при принятии чата');
+      addNotification('Ошибка при принятии чата', 'error');
     }
   };
 
@@ -61,24 +71,21 @@ export default function OperatorPanel() {
     if (selectedChat) {
       try {
         await closeChat(selectedChat.id);
-        addNotification('Чат успешно закрыт');
+        addNotification('Чат закрыт', 'success');
       } catch (err) {
-        addNotification('Ошибка при закрытии чата');
+        addNotification('Ошибка при закрытии чата', 'error');
       }
     }
   };
 
-  // Отправка сообщения
+  // Обработка отправки сообщения
   const handleSendMessage = async (text: string, attachments?: File[]) => {
     if (selectedChat) {
       try {
-        // Имитация отправки сообщения
-        await new Promise(resolve => setTimeout(resolve, 500));
-        addNotification('Сообщение отправлено');
-        // Обновляем чат после отправки
-        loadChats();
+        await sendMessage(selectedChat.id, text, attachments);
+        addNotification('Сообщение отправлено', 'success');
       } catch (err) {
-        addNotification('Ошибка при отправке сообщения');
+        addNotification('Ошибка при отправке сообщения', 'error');
       }
     }
   };
@@ -130,13 +137,49 @@ export default function OperatorPanel() {
     }
   };
 
+  // Создание заметки
+  const handleCreateNote = async (content: string, isInternal: boolean) => {
+    if (selectedChat) {
+      try {
+        // В реальном приложении здесь будет API вызов
+        await new Promise(resolve => setTimeout(resolve, 300));
+        addNotification(`Заметка ${isInternal ? 'внутренняя' : 'публичная'} создана`);
+      } catch (err) {
+        addNotification('Ошибка при создании заметки');
+      }
+    }
+  };
+
+  // Улучшение ответа
+  const handleImproveResponse = async (text: string, isOperator: boolean) => {
+    try {
+      // В реальном приложении здесь будет API вызов к AI сервису
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      addNotification(`Ответ улучшен ${isOperator ? '(операторский)' : '(AI)'}`);
+    } catch (err) {
+      addNotification('Ошибка при улучшении ответа');
+    }
+  };
+
+  // Обработка обновления чатов
+  const handleRefreshChats = () => {
+    loadChats(true);
+  };
+
   // Управление уведомлениями
-  const addNotification = (message: string) => {
-    const id = Date.now();
-    setNotifications(prev => [...prev, `${id}: ${message}`]);
+  const addNotification = (message: string, type: Notification['type'] = 'info') => {
+    const id = Date.now().toString();
+    const notification: Notification = { id, type, message };
+    setNotifications(prev => [...prev, notification]);
+    
+    // Автоматически удаляем уведомление через 5 секунд
     setTimeout(() => {
-      setNotifications(prev => prev.filter(n => !n.startsWith(`${id}:`)));
-    }, 3000);
+      removeNotification(id);
+    }, 5000);
+  };
+
+  const removeNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   // Обработка ошибок
@@ -148,7 +191,7 @@ export default function OperatorPanel() {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Ошибка загрузки</h1>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={loadChats}
+            onClick={() => loadChats(true)}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Попробовать снова
@@ -163,20 +206,8 @@ export default function OperatorPanel() {
       {/* Заголовок */}
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">О</span>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">Панель операторов</h1>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-sm text-gray-600">
-              Активных чатов: {chats.filter(c => c.status === 'waiting').length}
-            </div>
-            <div className="text-sm text-gray-600">
-              В работе: {chats.filter(c => c.status === 'in_progress').length}
-            </div>
-          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Панель операторов</h1>
+          <ConnectionStatus />
         </div>
       </header>
 
@@ -192,6 +223,8 @@ export default function OperatorPanel() {
           onUpdateFilters={updateFilters}
           onResetFilters={resetFilters}
           loading={loading}
+          hasMore={hasMore}
+          onLoadMore={loadMore}
         />
 
         {/* Центральная колонка - просмотр чата */}
@@ -201,6 +234,8 @@ export default function OperatorPanel() {
           onCloseChat={handleCloseChat}
           onCreateCase={handleCreateCase}
           onCopyLink={handleCopyLink}
+          onCreateNote={handleCreateNote}
+          onImproveResponse={handleImproveResponse}
         />
 
         {/* Правая колонка - информация о пользователе */}
@@ -215,18 +250,7 @@ export default function OperatorPanel() {
       </div>
 
       {/* Уведомления */}
-      {notifications.length > 0 && (
-        <div className="fixed bottom-4 right-4 space-y-2 z-50">
-          {notifications.map((notification, index) => (
-            <div
-              key={index}
-              className="bg-white border border-gray-200 rounded-lg shadow-lg px-4 py-3 max-w-sm fade-in"
-            >
-              <p className="text-sm text-gray-900">{notification.split(': ')[1]}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      <Notifications notifications={notifications} onRemove={removeNotification} />
     </div>
   );
 }
