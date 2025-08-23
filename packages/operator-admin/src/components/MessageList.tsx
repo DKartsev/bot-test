@@ -145,7 +145,7 @@ export function MessageList({ messages, loading, currentOperatorId }: MessageLis
                       <p className="text-xs text-gray-500">{formatFileSize(attachment.size)}</p>
                     </div>
                     <button
-                      onClick={() => window.open(attachment.url, '_blank')}
+                      onClick={() => (globalThis as any).open(attachment.url, '_blank')}
                       className="text-xs text-blue-600 hover:text-blue-800 underline"
                     >
                       Открыть
