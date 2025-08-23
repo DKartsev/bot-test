@@ -82,4 +82,4 @@ EXPOSE $PORT
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
   CMD node -e "const http=require('http');const p=process.env.PORT||3000;http.get(`http://127.0.0.1:${p}/api/health`,res=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
-CMD ["node","packages/backend/dist/http/main.js"]
+CMD ["node","packages/backend/dist/index.js"]

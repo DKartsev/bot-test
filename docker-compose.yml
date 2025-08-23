@@ -1,22 +1,6 @@
 version: '3.8'
 
 services:
-  # База данных PostgreSQL
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: bot_support
-      POSTGRES_USER: bot_user
-      POSTGRES_PASSWORD: bot_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./supabase/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
-    networks:
-      - bot-network
-
   # Redis для кэширования
   redis:
     image: redis:7-alpine
@@ -37,16 +21,18 @@ services:
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=3000
-      - DATABASE_URL=${DATABASE_URL:-postgresql://bot_user:bot_password@postgres:5432/bot_support}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TG_BOT_TOKEN=${TG_BOT_TOKEN}
+      - DB_SSL=true
     env_file:
       - .env
     depends_on:
-      - postgres
       - redis
     restart: unless-stopped
     networks:
@@ -69,7 +55,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=3000
-      - BACKEND_URL=http://bot-backend:3000
+      - NEXT_PUBLIC_API_BASE=http://bot-backend:3000
     env_file:
       - .env
     depends_on:
@@ -100,7 +86,6 @@ services:
       - .env
     depends_on:
       - redis
-      - postgres
     restart: unless-stopped
     networks:
       - bot-network
@@ -131,48 +116,11 @@ services:
     networks:
       - bot-network
 
-  # Development сервис (только для локальной разработки)
-  bot-backend-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
-      target: development
-    ports:
-      - "3002:3000"
-    environment:
-      - NODE_ENV=development
-      - PORT=3000
-      - DATABASE_URL=postgresql://bot_user:bot_password@postgres:5432/bot_support
-      - REDIS_URL=redis://redis:6379
-    env_file:
-      - .env
-    volumes:
-      - ./packages/backend:/app/packages/backend
-      - ./packages/shared:/app/packages/shared
-      - ./node_modules:/app/node_modules
-      - ./logs:/app/logs
-      - ./data:/app/data
-    depends_on:
-      - postgres
-      - redis
-    restart: unless-stopped
-    networks:
-      - bot-network
-    healthcheck:
-      test: ["CMD", "pgrep", "-f", "node.*backend"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    profiles:
-      - dev
-
 networks:
   bot-network:
     driver: bridge
 
 volumes:
-  postgres_data:
   redis_data:
   logs:
   data:
