@@ -102,12 +102,7 @@ export default function OperatorPanel() {
     if (selectedChat) {
       // Используем относительный путь вместо window.location.origin
       const link = `/chat/${selectedChat.id}`;
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        navigator.clipboard.writeText(link);
-        addNotification('Ссылка скопирована в буфер обмена');
-      } else {
-        addNotification('Копирование не поддерживается в этом браузере');
-      }
+      addNotification(`Ссылка: ${link} (скопируйте вручную)`, 'info');
     }
   };
 
