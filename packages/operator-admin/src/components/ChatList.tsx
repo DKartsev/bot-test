@@ -103,9 +103,8 @@ export function ChatList({
                   multiple
                   value={filters.status || []}
                   onChange={(e) => {
-                    const target = e.target as HTMLSelectElement;
-                    const values = Array.from(target.options)
-                      .filter(option => option.selected)
+                    const values = Array.from(e.target as HTMLSelectElement)
+                      .filter((option): option is HTMLOptionElement => option instanceof HTMLOptionElement)
                       .map(option => option.value);
                     onUpdateFilters({ status: values });
                   }}
@@ -124,9 +123,8 @@ export function ChatList({
                   multiple
                   value={filters.source || []}
                   onChange={(e) => {
-                    const target = e.target as HTMLSelectElement;
-                    const values = Array.from(target.options)
-                      .filter(option => option.selected)
+                    const values = Array.from(e.target as HTMLSelectElement)
+                      .filter((option): option is HTMLOptionElement => option instanceof HTMLOptionElement)
                       .map(option => option.value);
                     onUpdateFilters({ source: values });
                   }}
@@ -145,9 +143,8 @@ export function ChatList({
                   multiple
                   value={filters.priority || []}
                   onChange={(e) => {
-                    const target = e.target as HTMLSelectElement;
-                    const values = Array.from(target.options)
-                      .filter(option => option.selected)
+                    const values = Array.from(e.target as HTMLSelectElement)
+                      .filter((option): option is HTMLOptionElement => option instanceof HTMLOptionElement)
                       .map(option => option.value);
                     onUpdateFilters({ priority: values });
                   }}
