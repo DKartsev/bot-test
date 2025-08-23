@@ -66,10 +66,6 @@ RUN npm install --omit=dev -w packages/shared -w packages/backend --ignore-scrip
 COPY --from=backend_build /app/packages/shared/dist   ./packages/shared/dist
 COPY --from=backend_build /app/packages/backend/dist ./packages/backend/dist
 
-# copy data files
-COPY data/qa/faq.json        ./data/qa/faq.json
-COPY data/kb/                ./data/kb/
-
 # без root
 RUN chown -R node:node /app
 USER node
