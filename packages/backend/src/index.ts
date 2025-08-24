@@ -46,12 +46,12 @@ const PORT = env.PORT || 3000;
 
 // Базовые middleware
 app.use(helmet());
+
+// CORS настройка из переменных окружения
+const corsOrigins = env.api.cors.origin.split(',').map(origin => origin.trim());
 app.use(cors({
-  origin: [
-    'http://localhost:3001', // Admin панель
-    'http://localhost:3002', // RAG сервер
-  ],
-  credentials: true,
+  origin: corsOrigins,
+  credentials: env.api.cors.credentials,
 }));
 
 // Система обработки ошибок
