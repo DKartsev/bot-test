@@ -147,7 +147,7 @@ class ApiClient {
   // Проверка соединения с backend
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
     try {
-      return await this.request<{ status: string; timestamp: string }>('/api/health');
+      return await this.request<{ status: string; timestamp: string }>('/health');
     } catch (error) {
       throw new Error('Backend недоступен');
     }
