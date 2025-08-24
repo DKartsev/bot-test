@@ -19,6 +19,11 @@ export function useChats() {
   // Инициализация WebSocket соединения
   const initializeWebSocket = useCallback(() => {
     try {
+      // Временно отключаем WebSocket для отладки
+      console.log('WebSocket временно отключен для отладки');
+      setError(null);
+      return;
+      
       const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3000/ws';
       const ws = new (globalThis as any).WebSocket(wsUrl);
       
