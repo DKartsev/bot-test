@@ -47,6 +47,18 @@ WORKDIR /app
 # System deps for building
 RUN apk add --no-cache python3 build-base
 
+# Build arguments для Next.js переменных окружения
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_BASE_PATH
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+# Устанавливаем переменные окружения
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+
 # Копируем package.json файлы
 COPY packages/operator-admin/package*.json ./packages/operator-admin/
 COPY packages/shared/package*.json ./packages/shared/
