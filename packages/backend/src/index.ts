@@ -45,17 +45,33 @@ const app = express();
 const PORT = env.PORT || 3000;
 
 // CORS настройка из переменных окружения (должна быть первой!)
-const corsOrigins = env.api.cors.origin.split(',').map(origin => origin.trim());
-console.log('CORS Origins:', corsOrigins);
-console.log('CORS Credentials:', env.api.cors.credentials);
+try {
+  console.log('env.api.cors:', env.api);
+  console.log('env.api.cors.origin:', env.api.cors.origin);
+  console.log('env.api.cors.credentials:', env.api.cors.credentials);
+  
+  const corsOrigins = env.api.cors.origin.split(',').map(origin => origin.trim());
+  console.log('CORS Origins:', corsOrigins);
+  console.log('CORS Credentials:', env.api.cors.credentials);
 
-app.use(cors({
-  origin: corsOrigins,
-  credentials: env.api.cors.credentials,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Length', 'X-Request-Id'],
-}));
+  app.use(cors({
+    origin: corsOrigins,
+    credentials: env.api.cors.credentials,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Content-Length', 'X-Request-Id'],
+  }));
+  
+  console.log('CORS middleware настроен успешно');
+} catch (error) {
+  console.error('Ошибка настройки CORS:', error);
+  // Fallback CORS настройка
+  app.use(cors({
+    origin: ['http://158.160.169.147:3001'],
+    credentials: true,
+  }));
+  console.log('Используется fallback CORS настройка');
+}
 
 // Базовые middleware
 app.use(helmet());
