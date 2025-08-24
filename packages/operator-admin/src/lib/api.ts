@@ -22,7 +22,7 @@ class ApiClient {
         throw new Error(`API Error: ${response.status} ${response.statusText} - ${(errorData as any).message || ''}`);
       }
 
-      return response.json();
+      return response.json() as any;
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Network Error: ${error.message}`);
