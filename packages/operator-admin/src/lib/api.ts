@@ -139,9 +139,9 @@ class ApiClient {
   }
 
   // WebSocket для real-time обновлений
-  createWebSocket(): WebSocket {
+  createWebSocket(): any {
     const wsUrl = API_BASE.replace('http', 'ws') + '/ws';
-    return new WebSocket(wsUrl);
+    return new (globalThis as any).WebSocket(wsUrl);
   }
 
   // Проверка соединения с backend
