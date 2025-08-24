@@ -19,11 +19,6 @@ export function useChats() {
   // Инициализация WebSocket соединения
   const initializeWebSocket = useCallback(() => {
     try {
-      // Временно отключаем WebSocket для отладки
-      console.log('WebSocket временно отключен для отладки');
-      setError(null);
-      return;
-      
       const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3000/ws';
       const ws = new (globalThis as any).WebSocket(wsUrl);
       
@@ -132,6 +127,12 @@ export function useChats() {
     try {
       setLoading(true);
       setError(null);
+      
+      // Временно отключаем загрузку чатов для отладки
+      console.log('Загрузка чатов временно отключена для отладки');
+      setChats([]);
+      setIsInitialized(true);
+      return;
       
       const currentPage = reset ? 1 : page;
       const response = await apiClient.getChats({

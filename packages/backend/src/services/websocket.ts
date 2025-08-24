@@ -25,7 +25,10 @@ export class WebSocketService {
   private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor(server: HttpServer) {
-    this.wss = new WebSocketServer({ server });
+    this.wss = new WebSocketServer({ 
+      server,
+      path: '/ws'
+    });
 
     this.setupWebSocketServer();
     this.startPingInterval();
