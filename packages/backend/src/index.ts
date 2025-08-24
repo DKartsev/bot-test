@@ -44,15 +44,18 @@ import { WebSocketService } from './services/websocket';
 const app = express();
 const PORT = env.PORT || 3000;
 
-// Базовые middleware
-app.use(helmet());
-
-// CORS настройка из переменных окружения
+// CORS настройка из переменных окружения (должна быть первой!)
 const corsOrigins = env.api.cors.origin.split(',').map(origin => origin.trim());
 app.use(cors({
   origin: corsOrigins,
   credentials: env.api.cors.credentials,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length', 'X-Request-Id'],
 }));
+
+// Базовые middleware
+app.use(helmet());
 
 // Система обработки ошибок
 app.use(requestIdMiddleware);
