@@ -29,6 +29,7 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - TG_BOT_TOKEN=${TG_BOT_TOKEN}
+      - ADMIN_API_TOKENS=${ADMIN_API_TOKENS}
       - DB_SSL=true
     env_file:
       - .env
