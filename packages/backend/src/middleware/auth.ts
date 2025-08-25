@@ -26,6 +26,13 @@ if (process.env.NODE_ENV === 'development' && !process.env.JWT_SECRET) {
   console.warn('⚠️  JWT_SECRET не установлен, используется значение по умолчанию для разработки');
 }
 
+// Отладочная информация для разработки
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔍 [AUTH MIDDLEWARE] JWT_SECRET:', process.env.JWT_SECRET);
+  console.log('🔍 [AUTH MIDDLEWARE] Used JWT_SECRET:', JWT_SECRET);
+  console.log('🔍 [AUTH MIDDLEWARE] NODE_ENV:', process.env.NODE_ENV);
+}
+
 export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   try {
     const authHeader = req.headers.authorization;
@@ -40,8 +47,20 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
 
     const token = authHeader.substring(7); // Убираем 'Bearer '
 
+    // Отладочная информация для разработки
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 [AUTH MIDDLEWARE] Verifying token:', token.substring(0, 20) + '...');
+      console.log('🔍 [AUTH MIDDLEWARE] Using JWT_SECRET:', JWT_SECRET);
+    }
+
     try {
       const decoded = jwt.verify(token, JWT_SECRET as string) as Record<string, unknown>;
+
+      // Отладочная информация для разработки
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 [AUTH MIDDLEWARE] Token verified successfully');
+        console.log('🔍 [AUTH MIDDLEWARE] Decoded token:', decoded);
+      }
 
       // Проверяем структуру токена
       if (!decoded['id'] || !decoded['email'] || !decoded['role']) {
