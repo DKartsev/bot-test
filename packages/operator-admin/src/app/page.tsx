@@ -18,6 +18,7 @@ export default function OperatorPanel() {
     error,
     filters,
     hasMore,
+    useFallbackData,
     loadChats,
     takeChat,
     closeChat,
@@ -206,7 +207,14 @@ export default function OperatorPanel() {
       {/* Заголовок */}
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Панель операторов</h1>
+          <div className="flex items-center space-x-4">
+            <h1 className="text-2xl font-bold text-gray-900">Панель операторов</h1>
+            {useFallbackData && (
+              <div className="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-full border border-yellow-200">
+                🔄 Демо режим (Backend недоступен)
+              </div>
+            )}
+          </div>
           <ConnectionStatus />
         </div>
       </header>

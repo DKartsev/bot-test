@@ -1,4 +1,5 @@
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import { requireOperator } from '../middleware/auth';
 import { cacheMiddleware, createCacheInvalidationMiddleware } from '../middleware/cache';
 import { rateLimitMiddleware } from '../services/rateLimiter';
@@ -503,6 +504,123 @@ router.get('/stats', requireOperator, cacheMiddleware.short, asyncHandler(async 
     res.status(500).json({ 
       success: false, 
       error: 'Не удалось получить статистику чатов' 
+    });
+  }
+}));
+
+// Создание тестового оператора (только для разработки)
+router.post('/test-operator', asyncHandler(async (req, res) => {
+  try {
+    // Проверяем, что это только для разработки
+    if (process.env.NODE_ENV === 'production') {
+      res.status(403).json({ 
+        success: false, 
+        error: 'Создание тестовых операторов запрещено в продакшене' 
+      });
+      return;
+    }
+
+    const operatorService = new OperatorService();
+    const testOperator = await operatorService.createOperator({
+      name: 'Test Operator',
+      email: 'test@operator.com',
+      role: 'admin',
+      is_active: true,
+      max_chats: 10
+    });
+
+    // Создаем JWT токен для тестового оператора
+    const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-key-32-chars-minimum-required';
+    
+    const token = jwt.sign({
+      id: testOperator.id,
+      email: testOperator.email,
+      role: testOperator.role,
+      operatorId: testOperator.id
+    }, JWT_SECRET, { expiresIn: '30d' });
+
+    res.json({
+      success: true,
+      data: {
+        operator: testOperator,
+        token: token
+      },
+      message: 'Тестовый оператор создан успешно'
+    });
+  } catch (error) {
+    console.error('Ошибка создания тестового оператора:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Не удалось создать тестового оператора' 
+    });
+  }
+}));
+
+// Получение JWT токена для существующего оператора (только для разработки)
+router.post('/login-test-operator', asyncHandler(async (req, res) => {
+  try {
+    // Проверяем, что это только для разработки
+    if (process.env.NODE_ENV === 'production') {
+      res.status(403).json({ 
+        success: false, 
+        error: 'Вход тестовых операторов запрещен в продакшене' 
+      });
+      return;
+    }
+
+    const { email } = req.body;
+    
+    if (!email) {
+      res.status(400).json({ 
+        success: false, 
+        error: 'Email обязателен' 
+      });
+      return;
+    }
+
+    const operatorService = new OperatorService();
+    const operator = await operatorService.getOperatorByEmail(email);
+    
+    if (!operator) {
+      res.status(404).json({ 
+        success: false, 
+        error: 'Оператор не найден' 
+      });
+      return;
+    }
+
+    // Создаем JWT токен для оператора
+    const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-key-32-chars-minimum-required';
+    
+    const token = jwt.sign(
+      { 
+        id: operator.id, 
+        email: operator.email, 
+        role: operator.role,
+        type: 'operator'
+      },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      success: true,
+      data: {
+        operator: {
+          id: operator.id,
+          name: operator.name,
+          email: operator.email,
+          role: operator.role
+        },
+        token
+      }
+    });
+    
+  } catch (error) {
+    console.error('Ошибка входа тестового оператора:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Не удалось войти в систему'
     });
   }
 }));

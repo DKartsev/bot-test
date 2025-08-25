@@ -47,7 +47,7 @@ RUN npm --prefix packages/backend run build
 # ---------- runtime ----------
 FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
-ENV NODE_ENV=production
+ENV NODE_ENV=development
 
 # Устанавливаем runtime зависимости для hnswlib-node
 RUN apt-get update && apt-get install -y \

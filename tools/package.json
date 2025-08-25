@@ -1,0 +1,29 @@
+{
+  "name": "bot-tools",
+  "version": "1.0.0",
+  "description": "Инструменты для диагностики и обслуживания бота",
+  "main": "db-diagnostics.js",
+  "scripts": {
+    "db-diagnostics": "node db-diagnostics.js",
+    "db-tables": "node db-diagnostics.js tables",
+    "db-structure": "node db-diagnostics.js structure",
+    "db-data": "node db-diagnostics.js data",
+    "db-query": "node db-diagnostics.js query",
+    "check-backend": "node check-backend.js",
+    "check-backend:watch": "node check-backend.js --watch"
+  },
+  "dependencies": {
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.10.9"
+  },
+  "keywords": [
+    "database",
+    "diagnostics",
+    "postgresql",
+    "support"
+  ],
+  "author": "Support Team",
+  "license": "MIT"
+}

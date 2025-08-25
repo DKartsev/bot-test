@@ -1,34 +1,49 @@
 import { Chat, Message, User, Operator, CannedResponse, Note, Case } from '../types';
+import { API_CONFIG } from '../config/api';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const TELEGRAM_BOT_TOKEN = process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN;
 
 class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_BASE}${endpoint}`;
+    // Пробуем разные URL для подключения
+    const urls = [API_CONFIG.BASE_URL, ...API_CONFIG.FALLBACK_URLS];
     
-    try {
-      const response = await fetch(url, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(globalThis as any).localStorage?.getItem('auth_token') || 'test-token-1'}`,
-          ...options.headers,
-        },
-        ...options,
-      });
+    for (const baseUrl of urls) {
+      try {
+        const url = `${baseUrl}${endpoint}`;
+        console.log(`🔄 Попытка подключения к: ${url}`);
+        
+        const response = await fetch(url, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(globalThis as any).localStorage?.getItem('auth_token') || 'test-token-1'}`,
+            ...options.headers,
+          },
+          ...options,
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API Error: ${response.status} ${response.statusText} - ${(errorData as any).message || ''}`);
-      }
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`API Error: ${response.status} ${response.statusText} - ${(errorData as any).message || ''}`);
+        }
 
-      return response.json() as any;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`Network Error: ${error.message}`);
+        console.log(`✅ Успешное подключение к: ${baseUrl}`);
+        return response.json() as any;
+      } catch (error) {
+        console.warn(`❌ Ошибка подключения к ${baseUrl}:`, error);
+        if (baseUrl === urls[urls.length - 1]) {
+          // Последняя попытка - выбрасываем ошибку
+          if (error instanceof Error) {
+            throw new Error(`Network Error: ${error.message}`);
+          }
+          throw new Error('Unknown network error');
+        }
+        // Продолжаем с следующим URL
+        continue;
       }
-      throw new Error('Unknown network error');
     }
+    
+    throw new Error('Все попытки подключения не удались');
   }
 
   // Чат-бот API
@@ -140,7 +155,7 @@ class ApiClient {
 
   // WebSocket для real-time обновлений
   createWebSocket(): any {
-    const wsUrl = API_BASE.replace('http', 'ws') + '/ws';
+    const wsUrl = API_CONFIG.WS_URL;
     return new (globalThis as any).WebSocket(wsUrl);
   }
 
