@@ -18,6 +18,9 @@ import {
   performanceMonitor,
 } from './middleware/errorHandler';
 
+// Импорт системы аутентификации
+import { authMiddleware } from './middleware/auth';
+
 // Импорт системы метрик
 import {
   httpMetricsMiddleware,
@@ -141,7 +144,7 @@ app.get('/health', async (req, res) => {
 });
 
 // API маршруты
-app.use('/api', operatorRoutes);
+app.use('/api', authMiddleware, operatorRoutes);
 app.use('/telegram', telegramRoutes);
 app.use('/upload', uploadRoutes);
 app.use('/rate-limit', rateLimitRoutes);
