@@ -41,8 +41,7 @@ import swaggerRoutes from './routes/swagger';
 import metricsRoutes from './routes/metrics';
 import ragRoutes from './routes/rag';
 
-// Импорт тестовых маршрутов (только для разработки)
-import devRoutes from './routes/dev';
+
 
 // Импорт WebSocket сервиса
 import { WebSocketService } from './services/websocket';
