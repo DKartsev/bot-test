@@ -41,6 +41,9 @@ import swaggerRoutes from './routes/swagger';
 import metricsRoutes from './routes/metrics';
 import ragRoutes from './routes/rag';
 
+// Импорт тестовых маршрутов (только для разработки)
+import devRoutes from './routes/dev';
+
 // Импорт WebSocket сервиса
 import { WebSocketService } from './services/websocket';
 
@@ -172,6 +175,30 @@ if (env.NODE_ENV === 'development') {
     } catch (error) {
       console.error('Ошибка генерации токена:', error);
       res.status(500).json({ success: false, error: 'Не удалось сгенерировать токен' });
+    }
+  });
+}
+
+// Тестовый endpoint для получения токена (только для разработки)
+if (env.NODE_ENV === 'development') {
+  app.get('/api/dev-token', (req, res) => {
+    try {
+      const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-key-32-chars-minimum-required';
+      const testPayload = { 
+        operator_id: 1, 
+        role: 'operator',
+        permissions: ['read:chats', 'write:chats', 'read:messages', 'write:messages']
+      };
+      const token = require('jsonwebtoken').sign(testPayload, JWT_SECRET, { expiresIn: '24h' });
+      
+      res.json({
+        token: token,
+        message: 'Тестовый токен для разработки (действителен 24 часа)',
+        expires_in: '24h'
+      });
+    } catch (error) {
+      console.error('Ошибка генерации токена:', error);
+      res.status(500).json({ error: 'Не удалось сгенерировать токен' });
     }
   });
 }
