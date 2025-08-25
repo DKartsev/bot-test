@@ -625,4 +625,48 @@ router.post('/login-test-operator', asyncHandler(async (req, res) => {
   }
 }));
 
+// Отладочный эндпоинт для проверки JWT_SECRET (только для разработки)
+router.get('/debug-jwt', asyncHandler(async (req, res) => {
+  try {
+    // Проверяем, что это только для разработки
+    if (process.env.NODE_ENV === 'production') {
+      res.status(403).json({ 
+        success: false, 
+        error: 'Отладочные эндпоинты запрещены в продакшене' 
+      });
+      return;
+    }
+
+    const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-key-32-chars-minimum-required';
+    
+    // Генерируем тестовый токен
+    const testPayload = {
+      id: 1,
+      email: 'test@operator.com',
+      role: 'admin',
+      type: 'operator'
+    };
+
+    const token = jwt.sign(testPayload, JWT_SECRET, { expiresIn: '1h' });
+
+    res.json({
+      success: true,
+      data: {
+        process_env_jwt_secret: process.env.JWT_SECRET,
+        used_jwt_secret: JWT_SECRET,
+        node_env: process.env.NODE_ENV,
+        test_token: token,
+        test_payload: testPayload
+      }
+    });
+    
+  } catch (error) {
+    console.error('Ошибка отладки JWT:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Не удалось выполнить отладку JWT'
+    });
+  }
+}));
+
 export default router;
