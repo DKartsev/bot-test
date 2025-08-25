@@ -24,7 +24,7 @@
     "noPropertyAccessFromIndexSignature": false,
     "exactOptionalPropertyTypes": false,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "baseUrl": "./src",
     "paths": {
       "@/*": ["./*"],
@@ -48,13 +48,15 @@
   },
   "include": [
     "src/**/*",
+    "scripts/**/*",
     "src/types/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "scripts/setup-telegram.ts"
   ],
   "ts-node": {
     "esm": false,

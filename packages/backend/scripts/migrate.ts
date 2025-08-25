@@ -7,7 +7,7 @@ async function runMigrations() {
     console.log('🚀 Запуск миграций базы данных...');
     
     // Проверяем подключение к БД
-    const isConnected = await db.ping();
+    const isConnected = await db.isConnected();
     if (!isConnected) {
       throw new Error('Не удалось подключиться к базе данных');
     }
