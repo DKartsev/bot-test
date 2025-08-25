@@ -180,7 +180,7 @@ if (env.NODE_ENV === 'development') {
 
 // Тестовый endpoint для получения токена (только для разработки)
 if (env.NODE_ENV === 'development') {
-  app.get('/api/dev-token', (req, res) => {
+  app.get('/dev-token', (req, res) => {
     try {
       const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-key-32-chars-minimum-required';
       const testPayload = { 
