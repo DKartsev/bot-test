@@ -1,51 +1,39 @@
-const { db } = require('./packages/backend/dist/database/connection');
+const { Pool } = require('pg');
 
-async function checkDatabase() {
+const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL 
+});
+
+async function checkTables() {
   try {
-    console.log('🔍 Проверяем структуру базы данных...');
-    
-    // Проверяем таблицы
-    const tablesResult = await db.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public'
-      ORDER BY table_name
+    // Проверяем структуру таблицы messages
+    console.log('🔍 Проверяем структуру таблицы messages...');
+    const columnsResult = await pool.query(`
+      SELECT column_name, data_type, is_nullable 
+      FROM information_schema.columns 
+      WHERE table_name = 'messages' 
+      ORDER BY ordinal_position
     `);
-    
-    console.log('📋 Найденные таблицы:');
-    tablesResult.rows.forEach(row => {
-      console.log(`  - ${row.table_name}`);
+    console.log('Колонки таблицы messages:');
+    columnsResult.rows.forEach(col => {
+      console.log(`  ${col.column_name}: ${col.data_type} (nullable: ${col.is_nullable})`);
     });
     
-    // Проверяем таблицу operators
-    if (tablesResult.rows.some(r => r.table_name === 'operators')) {
-      console.log('\n👥 Проверяем таблицу operators...');
-      const operatorsResult = await db.query('SELECT COUNT(*) as count FROM operators');
-      console.log(`  Количество операторов: ${operatorsResult.rows[0].count}`);
-      
-      if (parseInt(operatorsResult.rows[0].count) > 0) {
-        const operators = await db.query('SELECT id, name, email, role, is_active FROM operators LIMIT 5');
-        console.log('  Первые операторы:');
-        operators.rows.forEach(op => {
-          console.log(`    ID: ${op.id}, Имя: ${op.name}, Email: ${op.email}, Роль: ${op.role}, Активен: ${op.is_active}`);
-        });
-      }
+    // Проверяем количество сообщений
+    const messagesResult = await pool.query('SELECT COUNT(*) as count FROM messages');
+    console.log(`\nКоличество сообщений: ${messagesResult.rows[0].count}`);
+    
+    if (parseInt(messagesResult.rows[0].count) > 0) {
+      const sampleMessages = await pool.query('SELECT * FROM messages LIMIT 1');
+      console.log('Пример сообщения:');
+      console.log(JSON.stringify(sampleMessages.rows[0], null, 2));
     }
     
-    // Проверяем таблицу chats
-    if (tablesResult.rows.some(r => r.table_name === 'chats')) {
-      console.log('\n💬 Проверяем таблицу chats...');
-      const chatsResult = await db.query('SELECT COUNT(*) as count FROM chats');
-      console.log(`  Количество чатов: ${chatsResult.rows[0].count}`);
-    }
-    
-    console.log('\n✅ Проверка завершена');
-    process.exit(0);
-    
-  } catch (error) {
-    console.error('❌ Ошибка проверки БД:', error);
-    process.exit(1);
+    pool.end();
+  } catch (err) {
+    console.error('Error:', err.message);
+    pool.end();
   }
 }
 
-checkDatabase();
+checkTables();

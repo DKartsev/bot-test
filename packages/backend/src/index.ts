@@ -47,15 +47,17 @@ import { WebSocketService } from './services/websocket';
 const app = express();
 const PORT = env.PORT || 3000;
 
+// Настройки для Windows
+process.env.LANG = 'en_US.UTF-8';
+process.env.LC_ALL = 'en_US.UTF-8';
+
 // CORS настройка из переменных окружения (должна быть первой!)
 try {
-  console.log('env.api.cors:', env.api);
-  console.log('env.api.cors.origin:', env.api.cors.origin);
-  console.log('env.api.cors.credentials:', env.api.cors.credentials);
+  console.log('CORS Origin:', env.api.cors.origin);
+  console.log('CORS Credentials:', env.api.cors.credentials);
   
   const corsOrigins = env.api.cors.origin.split(',').map(origin => origin.trim());
   console.log('CORS Origins:', corsOrigins);
-  console.log('CORS Credentials:', env.api.cors.credentials);
 
   app.use(cors({
     origin: corsOrigins,
@@ -70,7 +72,7 @@ try {
   console.error('Ошибка настройки CORS:', error);
   // Fallback CORS настройка
   app.use(cors({
-    origin: ['http://158.160.169.147:3001'],
+    origin: ['http://localhost:3001', 'http://158.160.169.147:3001'],
     credentials: true,
   }));
   console.log('Используется fallback CORS настройка');

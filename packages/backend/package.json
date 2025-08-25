@@ -14,10 +14,16 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "type-check": "tsc --noEmit",
     "migrate": "ts-node scripts/migrate.ts",
-    "migrate:build": "npm run build && node dist/scripts/migrate.js",
+    "migrate:build": "npm run build && node dist/scripts/setup-db.js",
     "setup-telegram": "ts-node scripts/setup-telegram.ts",
     "setup-telegram:build": "npm run build && node dist/scripts/setup-telegram.js",
-    "test-websocket": "ts-node scripts/test-websocket.ts"
+    "test-websocket": "ts-node scripts/test-websocket.ts",
+    "check-db": "ts-node scripts/check-db.ts",
+    "setup-db": "ts-node scripts/setup-db.ts",
+    "setup-db:build": "npm run build && node dist/scripts/setup-db.js",
+    "fix-issues": "ts-node scripts/fix-issues.ts",
+    "migrate-from-supabase": "ts-node scripts/migrate-from-supabase.ts",
+    "migrate-from-supabase:build": "npm run build && node dist/scripts/migrate-from-supabase.js"
   },
   "dependencies": {
     "@types/js-yaml": "^4.0.9",

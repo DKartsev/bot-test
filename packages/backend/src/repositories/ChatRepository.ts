@@ -2,10 +2,65 @@ import { db } from '../database/connection';
 import type { Chat, ChatStats, FilterOptions } from '../types';
 
 export class ChatRepository {
-  // Получение списка чатов с фильтрацией
+    // Получение списка чатов с фильтрацией
   async findWithFilters(filters: FilterOptions): Promise<Chat[]> {
     try {
-      let query = `
+      // Сначала проверяем существование таблиц
+      const tablesCheck = await db.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'support_chats'
+        ) as chats_table_exists,
+        EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'users'
+        ) as users_table_exists,
+        EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'messages'
+        ) as messages_table_exists
+      `);
+
+      const { chats_table_exists, users_table_exists, messages_table_exists } = tablesCheck.rows[0];
+
+      if (!chats_table_exists || !users_table_exists) {
+        console.warn('Таблицы support_chats или users не существуют, возвращаем пустой массив');
+        return [];
+      }
+
+      // Если таблица messages не существует, используем упрощенный запрос
+      const useSimpleQuery = !messages_table_exists;
+
+      let query = useSimpleQuery ? `
+        SELECT 
+          c.*,
+          u.id as user_id,
+          u.telegram_id,
+          u.username,
+          u.first_name,
+          u.last_name,
+          u.avatar_url,
+          u.balance,
+          u.deals_count,
+          u.flags,
+          u.is_blocked,
+          u.is_verified,
+          u.created_at as user_created_at,
+          u.last_activity,
+          NULL as message_id,
+          NULL as message_author_type,
+          NULL as message_author_id,
+          NULL as message_text,
+          NULL as message_timestamp,
+          NULL as message_is_read,
+          '{}'::jsonb as message_metadata
+        FROM support_chats c
+        JOIN users u ON c.user_id = u.id
+        WHERE 1=1
+      ` : `
         SELECT 
           c.*,
           u.id as user_id,
@@ -35,7 +90,7 @@ export class ChatRepository {
           WHERE chat_id = c.id 
           ORDER BY timestamp DESC 
           LIMIT 1
-        ) m ON true
+          ) m ON true
         WHERE 1=1
       `;
 
