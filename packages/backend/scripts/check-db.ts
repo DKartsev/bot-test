@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { db } from '../src/database/connection';
 import { logInfo, logError } from '../src/utils/logger';
 
