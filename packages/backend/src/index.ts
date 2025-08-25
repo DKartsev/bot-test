@@ -19,7 +19,7 @@ import {
 } from './middleware/errorHandler';
 
 // Импорт системы аутентификации
-import { authMiddleware } from './middleware/auth';
+import { authenticateToken } from './middleware/auth';
 
 // Импорт системы метрик
 import {
@@ -32,6 +32,7 @@ import { metricsCollector } from './services/metricsCollector';
 
 // Импорт маршрутов
 import operatorRoutes from './routes/operator';
+import authRoutes from './routes/auth';
 import telegramRoutes from './routes/telegram';
 import uploadRoutes from './routes/upload';
 import rateLimitRoutes from './routes/rateLimit';
@@ -151,7 +152,8 @@ app.get('/health', async (req, res) => {
 });
 
 // API маршруты
-app.use('/api', authMiddleware, operatorRoutes);
+app.use('/api/auth', authRoutes); // Маршруты аутентификации (без middleware)
+app.use('/api', authenticateToken, operatorRoutes); // Защищенные маршруты
 
 // Временный отладочный эндпоинт для получения JWT токена (только для разработки)
 if (env.NODE_ENV === 'development') {

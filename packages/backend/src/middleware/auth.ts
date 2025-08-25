@@ -1,295 +1,266 @@
-import type { NextFunction, Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { logError, logWarning } from '../utils/logger';
+import { logError, logWarn } from '../utils/logger';
 
 // Расширяем интерфейс Request для добавления пользователя
-// Типы для расширения Express Request
-interface AuthUser {
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: number;
+        email: string;
+        role: string;
+        type: string;
+      };
+      operator?: {
+        id: number;
+        email: string;
+        role: string;
+      };
+    }
+  }
+}
+
+// Интерфейс для JWT payload
+interface JWTPayload {
   id: number;
   email: string;
   role: string;
-  operatorId?: number;
+  type: string;
 }
 
-declare module 'express-serve-static-core' {
-  interface Request {
-    user?: AuthUser;
+// Функция для извлечения токена из заголовка
+const extractToken = (req: Request): string | null => {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader) {
+    return null;
   }
-}
 
-// Проверяем наличие обязательных переменных окружения
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-key-32-chars-minimum-required';
-// const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET; // Не используется
+  // Поддерживаем разные форматы: "Bearer <token>" и просто "<token>"
+  if (authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
 
-// Предупреждение для разработки
-if (process.env.NODE_ENV === 'development' && !process.env.JWT_SECRET) {
-  console.warn('⚠️  JWT_SECRET не установлен, используется значение по умолчанию для разработки');
-}
+  return authHeader;
+};
 
-// Отладочная информация для разработки
-if (process.env.NODE_ENV === 'development') {
-  console.log('🔍 [AUTH MIDDLEWARE] JWT_SECRET:', process.env.JWT_SECRET);
-  console.log('🔍 [AUTH MIDDLEWARE] Used JWT_SECRET:', JWT_SECRET);
-  console.log('🔍 [AUTH MIDDLEWARE] NODE_ENV:', process.env.NODE_ENV);
-}
-
-export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+// Основной middleware аутентификации
+export const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = extractToken(req);
+    
+    if (!token) {
+      logWarn('Ошибка аутентификации', {
+        error: { code: 'MISSING_TOKEN', message: 'Токен аутентификации не предоставлен' },
+        ip: req.ip,
+        method: req.method,
+        path: req.path,
+        userAgent: req.get('User-Agent')
+      });
+      
       res.status(401).json({
+        success: false,
         error: 'Токен аутентификации не предоставлен',
-        code: 'MISSING_TOKEN',
+        code: 'MISSING_TOKEN'
       });
       return;
     }
 
-    const token = authHeader.substring(7); // Убираем 'Bearer '
-
-    // Отладочная информация для разработки
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 [AUTH MIDDLEWARE] Verifying token:', token.substring(0, 20) + '...');
-      console.log('🔍 [AUTH MIDDLEWARE] Using JWT_SECRET:', JWT_SECRET);
-    }
-
+    // Верификация JWT токена
+    const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-key-32-chars-minimum-required';
+    
     try {
-      const decoded = jwt.verify(token, JWT_SECRET as string) as Record<string, unknown>;
-
-      // Отладочная информация для разработки
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 [AUTH MIDDLEWARE] Token verified successfully');
-        console.log('🔍 [AUTH MIDDLEWARE] Decoded token:', decoded);
-      }
-
-      // Проверяем структуру токена
-      if (!decoded['id'] || !decoded['email'] || !decoded['role']) {
-        logWarning('Недействительная структура JWT токена', {
-          decoded,
+      const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+      
+      // Проверяем тип токена
+      if (decoded.type !== 'operator') {
+        logWarn('Ошибка аутентификации', {
+          error: { code: 'INVALID_TOKEN_TYPE', message: 'Неверный тип токена' },
           ip: req.ip,
+          method: req.method,
+          path: req.path,
           userAgent: req.get('User-Agent'),
+          tokenType: decoded.type
         });
-
+        
         res.status(401).json({
-          error: 'Недействительная структура токена',
-          code: 'INVALID_TOKEN_STRUCTURE',
+          success: false,
+          error: 'Неверный тип токена',
+          code: 'INVALID_TOKEN_TYPE'
         });
         return;
       }
 
+      // Добавляем информацию о пользователе в request
       req.user = {
-        id: Number(decoded['id']),
-        email: String(decoded['email']),
-        role: String(decoded['role']),
-        operatorId: decoded['operatorId'] ? Number(decoded['operatorId']) : undefined,
+        id: decoded.id,
+        email: decoded.email,
+        role: decoded.role,
+        type: decoded.type
+      };
+
+      // Для совместимости добавляем также в operator
+      req.operator = {
+        id: decoded.id,
+        email: decoded.email,
+        role: decoded.role
       };
 
       next();
+      
     } catch (jwtError) {
-      if (jwtError instanceof jwt.TokenExpiredError) {
-        logWarning('JWT токен истек', {
-          token: `${token.substring(0, 20)}...`,
-          ip: req.ip,
-          userAgent: req.get('User-Agent'),
-        });
-
-        res.status(401).json({
-          error: 'Токен аутентификации истек',
-          code: 'TOKEN_EXPIRED',
-        });
-        return;
-      }
-
-      if (jwtError instanceof jwt.JsonWebTokenError) {
-        logWarning('Недействительный JWT токен', {
-          token: `${token.substring(0, 20)}...`,
-          ip: req.ip,
-          userAgent: req.get('User-Agent'),
-        });
-
-        res.status(401).json({
-          error: 'Недействительный токен аутентификации',
-          code: 'INVALID_TOKEN',
-        });
-        return;
-      }
-
-      logError('Ошибка верификации JWT токена', {
-        error: jwtError,
+      logWarn('Ошибка аутентификации', {
+        error: { code: 'INVALID_TOKEN', message: 'Недействительный токен аутентификации' },
         ip: req.ip,
+        method: req.method,
+        path: req.path,
         userAgent: req.get('User-Agent'),
+        jwtError: jwtError instanceof Error ? jwtError.message : 'Unknown JWT error'
       });
-
+      
       res.status(401).json({
-        error: 'Ошибка верификации токена',
-        code: 'TOKEN_VERIFICATION_ERROR',
+        success: false,
+        error: 'Недействительный токен аутентификации',
+        code: 'INVALID_TOKEN'
       });
-      return;
     }
+    
   } catch (error) {
-    logError('Ошибка аутентификации', {
-      error,
-      ip: req.ip,
-      userAgent: req.get('User-Agent'),
-      url: req.url,
-      method: req.method,
-    });
-
+    logError('Ошибка middleware аутентификации', error);
     res.status(500).json({
-      error: 'Ошибка аутентификации',
-      code: 'AUTH_ERROR',
+      success: false,
+      error: 'Внутренняя ошибка сервера аутентификации'
     });
-    return;
   }
 };
 
+// Middleware для проверки роли оператора
+export const requireOperator = (req: Request, res: Response, next: NextFunction): void => {
+  authenticateToken(req, res, next);
+};
+
+// Middleware для проверки роли администратора
+export const requireAdmin = (req: Request, res: Response, next: NextFunction): void => {
+  authenticateToken(req, res, (err) => {
+    if (err) return next(err);
+    
+    if (req.user?.role !== 'admin' && req.user?.role !== 'supervisor') {
+      logWarn('Ошибка доступа', {
+        error: { code: 'INSUFFICIENT_PERMISSIONS', message: 'Недостаточно прав для доступа' },
+        ip: req.ip,
+        method: req.method,
+        path: req.path,
+        userAgent: req.get('User-Agent'),
+        userRole: req.user?.role,
+        requiredRole: 'admin'
+      });
+      
+      res.status(403).json({
+        success: false,
+        error: 'Недостаточно прав для доступа',
+        code: 'INSUFFICIENT_PERMISSIONS'
+      });
+      return;
+    }
+    
+    next();
+  });
+};
+
+// Middleware для проверки роли супервизора
+export const requireSupervisor = (req: Request, res: Response, next: NextFunction): void => {
+  authenticateToken(req, res, (err) => {
+    if (err) return next(err);
+    
+    if (req.user?.role !== 'supervisor') {
+      logWarn('Ошибка доступа', {
+        error: { code: 'INSUFFICIENT_PERMISSIONS', message: 'Недостаточно прав для доступа' },
+        ip: req.ip,
+        method: req.method,
+        path: req.path,
+        userAgent: req.get('User-Agent'),
+        userRole: req.user?.role,
+        requiredRole: 'supervisor'
+      });
+      
+      res.status(403).json({
+        success: false,
+        error: 'Недостаточно прав для доступа',
+        code: 'INSUFFICIENT_PERMISSIONS'
+      });
+      return;
+    }
+    
+    next();
+  });
+};
+
+// Middleware для проверки конкретной роли
 export const requireRole = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      res.status(401).json({
-        error: 'Требуется аутентификация',
-        code: 'AUTHENTICATION_REQUIRED',
-      });
-      return;
-    }
-
-    if (!allowedRoles.includes(req.user.role)) {
-      logWarning('Попытка доступа к защищенному ресурсу', {
-        user: req.user,
-        requiredRoles: allowedRoles,
-        ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        url: req.url,
-        method: req.method,
-      });
-
-      res.status(403).json({
-        error: 'Недостаточно прав для выполнения операции',
-        code: 'INSUFFICIENT_PERMISSIONS',
-        requiredRoles: allowedRoles,
-        userRole: req.user.role,
-      });
-      return;
-    }
-
-    next();
-  };
-};
-
-export const requireOperator = requireRole(['operator', 'senior_operator', 'admin']);
-export const requireSeniorOperator = requireRole(['senior_operator', 'admin']);
-export const requireAdmin = requireRole(['admin']);
-
-// Middleware для проверки активности оператора
-export const requireActiveOperator = (req: Request, res: Response, next: NextFunction): void => {
-  if (!req.user) {
-    res.status(401).json({
-      error: 'Требуется аутентификация',
-      code: 'AUTHENTICATION_REQUIRED',
-    });
-    return;
-  }
-
-  // Проверяем, что пользователь является оператором
-  if (!['operator', 'senior_operator', 'admin'].includes(req.user.role)) {
-    res.status(403).json({
-      error: 'Доступ только для операторов',
-      code: 'OPERATOR_ACCESS_REQUIRED',
-    });
-    return;
-  }
-
-  // Здесь можно добавить проверку активности оператора в БД
-  // Пока что просто пропускаем
-  next();
-};
-
-// Middleware для проверки владения ресурсом
-export const requireResourceOwnership = (resourceType: 'chat' | 'message' | 'note' | 'case') => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    if (!req.user) {
-      res.status(401).json({
-        error: 'Требуется аутентификация',
-        code: 'AUTHENTICATION_REQUIRED',
-      });
-      return;
-    }
-
-    // Администраторы и старшие операторы имеют доступ ко всем ресурсам
-    if (['admin', 'senior_operator'].includes(req.user.role)) {
-      next();
-      return;
-    }
-
-    // Для обычных операторов проверяем владение ресурсом
-    try {
-      const resourceId = parseInt(req.params['id'] || '0');
-      if (isNaN(resourceId) || resourceId <= 0) {
-        res.status(400).json({
-          error: 'Недействительный ID ресурса',
-          code: 'INVALID_RESOURCE_ID',
-        });
-        return;
-      }
-
-      // Здесь должна быть логика проверки владения ресурсом
-      // Пока что просто пропускаем
-      next();
-    } catch (error) {
-      logError('Ошибка проверки владения ресурсом', {
-        error,
-        resourceType,
-        resourceId: req.params['id'],
-        user: req.user,
-      });
-
-      res.status(500).json({
-        error: 'Ошибка проверки доступа к ресурсу',
-        code: 'RESOURCE_ACCESS_CHECK_ERROR',
-      });
-      return;
-    }
-  };
-};
-
-// Middleware для rate limiting (базовая реализация)
-export const rateLimit = (options: {
-  windowMs: number;
-  maxRequests: number;
-  message?: string;
-}) => {
-  const { windowMs, maxRequests, message = 'Слишком много запросов' } = options;
-  const requests = new Map<string, { count: number; resetTime: number }>();
-
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const key = req.ip || 'unknown';
-    const now = Date.now();
-
-    if (!requests.has(key) || now > requests.get(key)!.resetTime) {
-      requests.set(key, { count: 1, resetTime: now + windowMs });
-    } else {
-      const current = requests.get(key)!;
-      current.count++;
-
-      if (current.count > maxRequests) {
-        logWarning('Превышен лимит запросов', {
+    authenticateToken(req, res, (err) => {
+      if (err) return next(err);
+      
+      if (!req.user || !allowedRoles.includes(req.user.role)) {
+        logWarn('Ошибка доступа', {
+          error: { 
+            code: 'INSUFFICIENT_PERMISSIONS', 
+            message: 'Недостаточно прав для доступа' 
+          },
           ip: req.ip,
-          userAgent: req.get('User-Agent'),
-          url: req.url,
           method: req.method,
-          count: current.count,
-          limit: maxRequests,
+          path: req.path,
+          userAgent: req.get('User-Agent'),
+          userRole: req.user?.role,
+          requiredRoles: allowedRoles
         });
-
-        res.status(429).json({
-          error: message,
-          code: 'RATE_LIMIT_EXCEEDED',
-          retryAfter: Math.ceil(windowMs / 1000),
+        
+        res.status(403).json({
+          success: false,
+          error: 'Недостаточно прав для доступа',
+          code: 'INSUFFICIENT_PERMISSIONS'
         });
         return;
       }
-    }
-
-    next();
+      
+      next();
+    });
   };
+};
+
+// Middleware для проверки владения ресурсом (например, оператор может редактировать только свои чаты)
+export const requireResourceOwnership = (resourceType: string, resourceIdExtractor: (req: Request) => number | null) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    authenticateToken(req, res, (err) => {
+      if (err) return next(err);
+      
+      // Админы и супервизоры имеют доступ ко всем ресурсам
+      if (req.user?.role === 'admin' || req.user?.role === 'supervisor') {
+        return next();
+      }
+      
+      const resourceId = resourceIdExtractor(req);
+      if (!resourceId) {
+        res.status(400).json({
+          success: false,
+          error: 'Неверный ID ресурса'
+        });
+        return;
+      }
+      
+      // Здесь можно добавить логику проверки владения ресурсом
+      // Например, проверить, что чат принадлежит оператору
+      // Пока что просто пропускаем для операторов
+      next();
+    });
+  };
+};
+
+// Middleware для логирования аутентификации (для отладки)
+export const logAuth = (req: Request, res: Response, next: NextFunction): void => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🔐 Auth Log: ${req.method} ${req.path} - User: ${req.user?.email || 'Unauthenticated'}`);
+  }
+  next();
 };

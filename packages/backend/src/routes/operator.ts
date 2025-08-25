@@ -1,6 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import { requireOperator } from '../middleware/auth';
+import { requireOperator, requireAdmin } from '../middleware/auth';
 import { cacheMiddleware, createCacheInvalidationMiddleware } from '../middleware/cache';
 import { rateLimitMiddleware } from '../services/rateLimiter';
 import { queryAnalyzerMiddleware } from '../middleware/queryAnalyzer';
