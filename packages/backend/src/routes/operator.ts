@@ -669,4 +669,69 @@ router.get('/debug-jwt', asyncHandler(async (req, res) => {
   }
 }));
 
+// Отладочный эндпоинт для проверки JWT_SECRET в middleware (только для разработки)
+router.get('/debug-auth', asyncHandler(async (req, res) => {
+  try {
+    // Проверяем, что это только для разработки
+    if (process.env.NODE_ENV === 'production') {
+      res.status(403).json({ 
+        success: false, 
+        error: 'Отладочные эндпоинты запрещены в продакшене' 
+      });
+      return;
+    }
+
+    // Имитируем логику middleware аутентификации
+    const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-key-32-chars-minimum-required';
+    
+    // Генерируем тестовый токен с тем же секретом
+    const testPayload = {
+      id: 1,
+      email: 'test@operator.com',
+      role: 'admin',
+      type: 'operator'
+    };
+
+    const token = jwt.sign(testPayload, JWT_SECRET, { expiresIn: '1h' });
+
+    // Теперь попробуем верифицировать токен как в middleware
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET as string) as Record<string, unknown>;
+      
+      res.json({
+        success: true,
+        data: {
+          process_env_jwt_secret: process.env.JWT_SECRET,
+          used_jwt_secret: JWT_SECRET,
+          node_env: process.env.NODE_ENV,
+          test_token: token,
+          test_payload: testPayload,
+          verification_success: true,
+          decoded_token: decoded
+        }
+      });
+    } catch (verificationError) {
+      res.json({
+        success: false,
+        data: {
+          process_env_jwt_secret: process.env.JWT_SECRET,
+          used_jwt_secret: JWT_SECRET,
+          node_env: process.env.NODE_ENV,
+          test_token: token,
+          test_payload: testPayload,
+          verification_success: false,
+          verification_error: verificationError.message
+        }
+      });
+    }
+    
+  } catch (error) {
+    console.error('Ошибка отладки аутентификации:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Не удалось выполнить отладку аутентификации'
+    });
+  }
+}));
+
 export default router;
