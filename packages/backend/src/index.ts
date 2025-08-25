@@ -74,6 +74,9 @@ try {
   app.use(cors({
     origin: ['http://localhost:3001', 'http://158.160.169.147:3001'],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Content-Length', 'X-Request-Id'],
   }));
   console.log('Используется fallback CORS настройка');
 }
