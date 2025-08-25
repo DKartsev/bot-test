@@ -246,7 +246,7 @@ export function useChats() {
           setPage(1);
         } else {
           setChats(prev => [...prev, ...FALLBACK_CHATS]);
-          setPage(currentPage + 1);
+          setPage(page + 1);
         }
         
         setHasMore(false);
