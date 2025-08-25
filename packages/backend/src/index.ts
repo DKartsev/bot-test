@@ -145,6 +145,31 @@ app.get('/health', async (req, res) => {
 
 // API маршруты
 app.use('/api', authMiddleware, operatorRoutes);
+
+// Временный отладочный эндпоинт для получения JWT токена (только для разработки)
+if (env.NODE_ENV === 'development') {
+  app.get('/debug-token', (req, res) => {
+    try {
+      const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-key-32-chars-minimum-required';
+      const testPayload = { id: 1, email: 'test@operator.com', role: 'admin', type: 'operator' };
+      const token = require('jsonwebtoken').sign(testPayload, JWT_SECRET, { expiresIn: '1h' });
+      
+      res.json({
+        success: true,
+        data: {
+          process_env_jwt_secret: process.env.JWT_SECRET,
+          used_jwt_secret: JWT_SECRET,
+          node_env: env.NODE_ENV,
+          test_token: token,
+          test_payload: testPayload
+        }
+      });
+    } catch (error) {
+      console.error('Ошибка генерации токена:', error);
+      res.status(500).json({ success: false, error: 'Не удалось сгенерировать токен' });
+    }
+  });
+}
 app.use('/telegram', telegramRoutes);
 app.use('/upload', uploadRoutes);
 app.use('/rate-limit', rateLimitRoutes);
