@@ -19,12 +19,19 @@ export interface WebSocketConnection {
 }
 
 export class WebSocketService {
-  private wss: WebSocketServer;
+  private wss: WebSocketServer | undefined;
   private connections: Map<string, WebSocketConnection> = new Map();
   private pingInterval: NodeJS.Timeout | null = null;
   private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor(server: HttpServer) {
+    // В production отключаем WebSocket для упрощения
+    if (process.env.NODE_ENV === 'production') {
+      logInfo('WebSocket отключен в production режиме');
+      this.wss = undefined;
+      return;
+    }
+
     this.wss = new WebSocketServer({ 
       server,
       path: '/ws'
@@ -38,6 +45,8 @@ export class WebSocketService {
   }
 
   private setupWebSocketServer(): void {
+    if (!this.wss) return; // WebSocket отключен в production
+
     this.wss.on('connection', (ws: WebSocket, request: any) => {
       const connectionId = this.generateConnectionId();
       const clientIp = request.socket.remoteAddress || 'unknown';
@@ -206,6 +215,8 @@ export class WebSocketService {
   }
 
   private startPingInterval(): void {
+    if (!this.wss) return; // WebSocket отключен в production
+
     this.pingInterval = setInterval(() => {
       this.connections.forEach((connection, connectionId) => {
         if (!connection.isAlive) {
@@ -222,6 +233,8 @@ export class WebSocketService {
   }
 
   private startCleanupInterval(): void {
+    if (!this.wss) return; // WebSocket отключен в production
+
     this.cleanupInterval = setInterval(() => {
       const now = Date.now();
       const maxIdleTime = 5 * 60 * 1000; // 5 минут
@@ -271,6 +284,8 @@ export class WebSocketService {
 
   // Отправка сообщения конкретному соединению
   public sendToConnection(connectionId: string, message: Record<string, unknown>): boolean {
+    if (!this.wss) return false; // WebSocket отключен в production
+
     const connection = this.connections.get(connectionId);
     if (connection) {
       try {
@@ -292,6 +307,8 @@ export class WebSocketService {
 
   // Получение статистики канала
   public getChannelSubscriberCount(channel: string): number {
+    if (!this.wss) return 0; // WebSocket отключен в production
+
     let count = 0;
     this.connections.forEach((connection) => {
       if (connection.subscriptions.has(channel)) {
@@ -303,6 +320,14 @@ export class WebSocketService {
 
   // Получение статистики соединений
   public getConnectionStats() {
+    if (!this.wss) {
+      return {
+        totalConnections: 0,
+        activeConnections: 0,
+        totalSubscriptions: 0,
+      };
+    }
+
     return {
       totalConnections: this.connections.size,
       activeConnections: Array.from(this.connections.values()).filter(c => c.isAlive).length,
@@ -322,18 +347,17 @@ export class WebSocketService {
       this.cleanupInterval = null;
     }
 
-    // Закрываем все соединения
-    this.connections.forEach((connection) => {
-      try {
-        connection.ws.close();
-      } catch (error) {
-        // Игнорируем ошибки при закрытии
-      }
-    });
-
-    this.connections.clear();
-
+    // Закрываем все соединения только если WebSocket активен
     if (this.wss) {
+      this.connections.forEach((connection) => {
+        try {
+          connection.ws.close();
+        } catch (error) {
+          // Игнорируем ошибки при закрытии
+        }
+      });
+
+      this.connections.clear();
       this.wss.close();
     }
 
