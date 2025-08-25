@@ -251,8 +251,8 @@ export class ChatRepository {
         SELECT 
           COUNT(*) as total_chats,
           COUNT(*) FILTER (WHERE status = 'waiting') as waiting_chats,
-          COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress_chats,
-          COUNT(*) FILTER (WHERE status = 'closed') as closed_chats
+          COUNT(*) FILTER (WHERE status = 'waiting') as in_progress_chats,
+          COUNT(*) FILTER (WHERE status = 'waiting') as closed_chats
         FROM support_chats
       `);
 
@@ -276,7 +276,7 @@ export class ChatRepository {
       const resolutionTimeResult = await db.query(`
         SELECT AVG(EXTRACT(EPOCH FROM (c.updated_at - c.created_at))) as avg_resolution_seconds
         FROM support_chats c
-        WHERE c.status = 'closed'
+        WHERE c.status = 'waiting'
       `);
 
       const avgResponseSeconds = responseTimeResult.rows[0]?.avg_response_seconds || 0;
