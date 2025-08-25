@@ -490,4 +490,21 @@ router.get('/chats/:id/cases', requireOperator, cacheMiddleware.medium, asyncHan
   }
 }));
 
+// Получение статистики чатов
+router.get('/stats', requireOperator, cacheMiddleware.short, asyncHandler(async (req, res) => {
+  try {
+    const stats = await chatService.getChatStats();
+    res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    console.error('Ошибка получения статистики чатов:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Не удалось получить статистику чатов' 
+    });
+  }
+}));
+
 export default router;
