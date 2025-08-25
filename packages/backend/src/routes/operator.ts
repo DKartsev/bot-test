@@ -55,6 +55,33 @@ router.get('/test-token', async (req, res) => {
   }
 });
 
+// Тестовый endpoint для получения токена без аутентификации (только для разработки)
+router.get('/dev-token', async (req, res) => {
+  try {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Тестовый токен недоступен в production' });
+    }
+    
+    const testToken = jwt.sign(
+      { 
+        operator_id: 1, 
+        role: 'operator',
+        permissions: ['read:chats', 'write:chats', 'read:messages', 'write:messages']
+      },
+      process.env.JWT_SECRET || 'dev-jwt-secret-key-32-chars-minimum-required',
+      { expiresIn: '24h' }
+    );
+    
+    res.json({ 
+      token: testToken,
+      message: 'Тестовый токен для разработки (действителен 24 часа)',
+      expires_in: '24h'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Ошибка генерации тестового токена' });
+  }
+});
+
 /**
  * @swagger
  * /api/chats:
