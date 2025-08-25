@@ -28,7 +28,7 @@ export class ChatRepository {
           m.timestamp as message_timestamp,
           m.is_read as message_is_read,
           m.metadata as message_metadata
-        FROM chats c
+        FROM support_chats c
         JOIN users u ON c.user_id = u.id
         LEFT JOIN LATERAL (
           SELECT * FROM messages 
@@ -112,7 +112,7 @@ export class ChatRepository {
           m.timestamp as message_timestamp,
           m.is_read as message_is_read,
           m.metadata as message_metadata
-        FROM chats c
+        FROM support_chats c
         JOIN users u ON c.user_id = u.id
         LEFT JOIN LATERAL (
           SELECT * FROM messages 
@@ -253,7 +253,7 @@ export class ChatRepository {
           COUNT(*) FILTER (WHERE status = 'waiting') as waiting_chats,
           COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress_chats,
           COUNT(*) FILTER (WHERE status = 'closed') as closed_chats
-        FROM chats
+        FROM support_chats
       `);
 
       const stats = result.rows[0];
@@ -261,7 +261,7 @@ export class ChatRepository {
       // Получаем среднее время ответа
       const responseTimeResult = await db.query(`
         SELECT AVG(EXTRACT(EPOCH FROM (m.timestamp - c.created_at))) as avg_response_seconds
-        FROM chats c
+        FROM support_chats c
         JOIN messages m ON c.id = m.chat_id
         WHERE m.author_type = 'operator' 
         AND m.id = (
@@ -275,7 +275,7 @@ export class ChatRepository {
       // Получаем среднее время разрешения
       const resolutionTimeResult = await db.query(`
         SELECT AVG(EXTRACT(EPOCH FROM (c.updated_at - c.created_at))) as avg_resolution_seconds
-        FROM chats c
+        FROM support_chats c
         WHERE c.status = 'closed'
       `);
 
