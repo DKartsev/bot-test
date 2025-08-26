@@ -15,7 +15,8 @@ const loginSchema = z.object({
 });
 
 const registerSchema = z.object({
-  name: z.string().min(2, 'Имя должно быть не менее 2 символов'),
+  first_name: z.string().min(2, 'Имя должно быть не менее 2 символов'),
+  last_name: z.string().min(2, 'Фамилия должна быть не менее 2 символов'),
   email: z.string().email('Неверный формат email'),
   password: z.string().min(6, 'Пароль должен быть не менее 6 символов'),
   role: z.enum(['operator', 'admin', 'supervisor']).default('operator')
@@ -93,7 +94,7 @@ router.post('/login', rateLimitMiddleware.auth(), asyncHandler(async (req, res) 
       data: {
         operator: {
           id: operator.id,
-          name: operator.name,
+          name: `${operator.first_name} ${operator.last_name}`,
           email: operator.email,
           role: operator.role,
           is_active: operator.is_active
@@ -151,7 +152,8 @@ router.post('/register', rateLimitMiddleware.auth(), asyncHandler(async (req, re
 
     // Создание оператора
     const newOperator = await operatorService.createOperator({
-      name: validatedData.name,
+      first_name: validatedData.first_name,
+      last_name: validatedData.last_name,
       email: validatedData.email,
       password_hash: passwordHash,
       role: validatedData.role,
@@ -167,7 +169,7 @@ router.post('/register', rateLimitMiddleware.auth(), asyncHandler(async (req, re
       data: {
         operator: {
           id: newOperator.id,
-          name: newOperator.name,
+          name: `${newOperator.first_name} ${newOperator.last_name}`,
           email: newOperator.email,
           role: newOperator.role,
           is_active: newOperator.is_active
@@ -303,7 +305,7 @@ router.get('/profile', asyncHandler(async (req, res) => {
       data: {
         operator: {
           id: operator.id,
-          name: operator.name,
+          name: `${operator.first_name} ${operator.last_name}`,
           email: operator.email,
           role: operator.role,
           is_active: operator.is_active,
@@ -336,7 +338,8 @@ router.post('/create-test-operator', asyncHandler(async (req, res) => {
     // Создаем тестового оператора
     const passwordHash = await bcrypt.hash('test123', 12);
     const testOperator = await operatorService.createOperator({
-      name: 'Test Operator',
+      first_name: 'Test',
+      last_name: 'Operator',
       email: 'test@operator.com',
       password_hash: passwordHash,
       role: 'admin',
@@ -352,7 +355,7 @@ router.post('/create-test-operator', asyncHandler(async (req, res) => {
       data: {
         operator: {
           id: testOperator.id,
-          name: testOperator.name,
+          name: `${testOperator.first_name} ${testOperator.last_name}`,
           email: testOperator.email,
           role: testOperator.role
         },
