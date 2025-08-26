@@ -227,8 +227,8 @@ export class ChatRepository {
         FROM conversations c
         JOIN messages m ON c.id = m.conversation_id
         WHERE m.sender = 'operator' 
-        AND m.id = (
-          SELECT MIN(m2.id) 
+        AND m.created_at = (
+          SELECT MIN(m2.created_at) 
           FROM messages m2 
           WHERE m2.conversation_id = c.id 
           AND m2.sender = 'operator'
