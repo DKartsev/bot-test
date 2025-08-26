@@ -33,6 +33,28 @@ export default function OperatorPanel() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [loginEmail, setLoginEmail] = useState('test@operator.com');
+  const [loginPassword, setLoginPassword] = useState('test123');
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = (globalThis as any).localStorage?.getItem('auth_token');
+    setIsAuthenticated(Boolean(token));
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+    try {
+      await apiClient.login(loginEmail, loginPassword);
+      setIsAuthenticated(true);
+      loadChats(true);
+    } catch (err) {
+      setLoginError('Неверный email или пароль');
+    }
+  };
+
   // Загрузка выбранного чата
   useEffect(() => {
     if (selectedChatId) {
@@ -182,6 +204,30 @@ export default function OperatorPanel() {
   const removeNotification = (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
+
+  // Экран логина
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-white p-6 rounded-lg shadow">
+          <h1 className="text-xl font-semibold text-gray-900 mb-4">Вход оператора</h1>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm text-gray-700 mb-1" htmlFor="login-email">Email</label>
+              <input id="login-email" aria-label="Email" placeholder="Введите email" value={loginEmail} onChange={(e) => setLoginEmail((e.target as any).value)} type="email" className="w-full border border-gray-300 rounded-lg px-3 py-2" required />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1" htmlFor="login-password">Пароль</label>
+              <input id="login-password" aria-label="Пароль" placeholder="Введите пароль" value={loginPassword} onChange={(e) => setLoginPassword((e.target as any).value)} type="password" className="w-full border border-gray-300 rounded-lg px-3 py-2" required />
+            </div>
+            {loginError && <div className="text-sm text-red-600">{loginError}</div>}
+            <button type="submit" className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Войти</button>
+          </form>
+          <p className="text-xs text-gray-500 mt-3">Для теста: test@operator.com / test123</p>
+        </div>
+      </div>
+    );
+  }
 
   // Обработка ошибок
   if (error) {

@@ -16,7 +16,9 @@ class ApiClient {
         const response = await fetch(url, {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(globalThis as any).localStorage?.getItem('auth_token') || 'test-token-1'}`,
+            ...(globalThis as any).localStorage?.getItem('auth_token')
+              ? { 'Authorization': `Bearer ${(globalThis as any).localStorage.getItem('auth_token')}` }
+              : {},
             ...options.headers,
           },
           ...options,
@@ -45,6 +47,26 @@ class ApiClient {
     
     throw new Error('Все попытки подключения не удались');
   }
+  // Аутентификация
+  async login(email: string, password: string): Promise<{ access: string; refresh: string }> {
+    const result = await this.request<{ success: boolean; data: { tokens: { access: string; refresh: string } } }>(
+      '/api/auth/login',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      },
+    );
+    const tokens = result.data.tokens;
+    (globalThis as any).localStorage?.setItem('auth_token', tokens.access);
+    (globalThis as any).localStorage?.setItem('refresh_token', tokens.refresh);
+    return { access: tokens.access, refresh: tokens.refresh };
+  }
+
+  logout(): void {
+    (globalThis as any).localStorage?.removeItem('auth_token');
+    (globalThis as any).localStorage?.removeItem('refresh_token');
+  }
+
 
   // Чат-бот API
   async getChats(filters?: any): Promise<Chat[]> {
