@@ -91,7 +91,7 @@ export class ChatRepository {
   }
 
   // Получение конкретного чата
-  async findById(id: string): Promise<Chat | null> {
+  async findById(id: number): Promise<Chat | null> {
     try {
       const result = await db.query(`
         SELECT 
@@ -122,7 +122,7 @@ export class ChatRepository {
   }
 
   // Создание нового чата
-  async create(userTelegramId: string, source: string = 'telegram'): Promise<Chat> {
+  async create(userTelegramId: number, source: string = 'telegram'): Promise<Chat> {
     try {
       const result = await db.query(`
         INSERT INTO conversations (id, user_telegram_id, status, handoff)
@@ -131,7 +131,7 @@ export class ChatRepository {
       `, [userTelegramId]);
 
       // Получаем полную информацию о чате
-      return await this.findById(result.rows[0]['id'] as string);
+      return await this.findById(Number(result.rows[0]['id']));
     } catch (error) {
       console.error('Ошибка создания чата:', error);
       throw error;
@@ -139,7 +139,7 @@ export class ChatRepository {
   }
 
   // Обновление статуса чата
-  async updateStatus(id: string, status: string, operatorId?: string): Promise<Chat | null> {
+  async updateStatus(id: number, status: string, operatorId?: number): Promise<Chat | null> {
     try {
       const result = await db.query(`
         UPDATE conversations 
@@ -158,7 +158,7 @@ export class ChatRepository {
   }
 
   // Принятие чата в работу
-  async takeChat(id: string, operatorId: string): Promise<Chat | null> {
+  async takeChat(id: number, operatorId: number): Promise<Chat | null> {
     try {
       const result = await db.query(`
         UPDATE conversations 
@@ -177,7 +177,7 @@ export class ChatRepository {
   }
 
   // Закрытие чата
-  async closeChat(id: string, operatorId: string): Promise<Chat | null> {
+  async closeChat(id: number, operatorId: number): Promise<Chat | null> {
     try {
       const result = await db.query(`
         UPDATE conversations 
@@ -196,7 +196,7 @@ export class ChatRepository {
   }
 
   // Обновление приоритета чата
-  async updatePriority(id: string, priority: string): Promise<Chat | null> {
+  async updatePriority(id: number, priority: string): Promise<Chat | null> {
     try {
       // В новой схеме priority не существует
       console.warn('Приоритет не поддерживается в новой схеме');
@@ -261,47 +261,47 @@ export class ChatRepository {
 
   // Преобразование строки БД в объект Chat
   private mapRowToChat(row: Record<string, unknown>): Chat {
-    return {
-      id: String(row['id']),
-      user_id: String(row['user_telegram_id']),
-      user: {
-        id: String(row['user_telegram_id']),
-        telegram_id: String(row['user_telegram_id']),
-        username: String(row['user_telegram_id']),
-        first_name: String(row['user_telegram_id']),
-        last_name: '',
-        avatar_url: '',
-        balance: 0,
-        deals_count: 0,
-        flags: [],
-        is_blocked: false,
-        is_verified: false,
-        created_at: new Date(row['created_at'] as string).toISOString(),
-        last_activity: new Date(row['last_message_at'] as string || row['created_at'] as string).toISOString(),
-      },
-      last_message: row['message_id'] ? {
-        id: String(row['message_id']),
-        chat_id: String(row['id']),
-        conversation_id: String(row['id']),
-        sender: String(row['message_sender']),
-        content: String(row['message_content'] || ''),
-        author_type: String(row['message_sender']) as 'user' | 'bot' | 'operator',
-        author_id: String(row['message_sender']),
-        text: String(row['message_content'] || ''),
-        timestamp: new Date(row['message_created_at'] as string).toISOString(),
-        is_read: true,
-        created_at: new Date(row['message_created_at'] as string).toISOString(),
-        metadata: {
-          source: 'telegram',
-          channel: 'default',
-          media_urls: row['message_media_urls'] as any || [],
-          media_types: row['message_media_types'] as string[] || [],
+          return {
+        id: Number(row['id']),
+        user_id: Number(row['user_telegram_id']),
+              user: {
+          id: Number(row['user_telegram_id']),
+          telegram_id: Number(row['user_telegram_id']),
+          username: String(row['user_telegram_id']),
+          first_name: String(row['user_telegram_id']),
+          last_name: '',
+          avatar_url: '',
+          balance: 0,
+          deals_count: 0,
+          flags: [],
+          is_blocked: false,
+          is_verified: false,
+          created_at: new Date(row['created_at'] as string).toISOString(),
+          last_activity: new Date(row['last_message_at'] as string || row['created_at'] as string).toISOString(),
         },
-      } : null,
+              last_message: row['message_id'] ? {
+          id: Number(row['message_id']),
+          chat_id: Number(row['id']),
+          conversation_id: Number(row['id']),
+          sender: String(row['message_sender']),
+          content: String(row['message_content'] || ''),
+          author_type: String(row['message_sender']) as 'user' | 'bot' | 'operator',
+          author_id: Number(row['message_sender']),
+          text: String(row['message_content'] || ''),
+          timestamp: new Date(row['message_created_at'] as string).toISOString(),
+          is_read: true,
+          created_at: new Date(row['message_created_at'] as string).toISOString(),
+          metadata: {
+            source: 'telegram',
+            channel: 'default',
+            media_urls: row['message_media_urls'] as any || [],
+            media_types: row['message_media_types'] as string[] || [],
+          },
+        } : null,
       status: String(row['status']) as 'waiting' | 'in_progress' | 'closed' | 'waiting_for_operator',
       priority: 'medium', // В новой схеме priority не существует
       source: 'telegram', // В новой схеме source не существует
-      operator_id: row['assignee_id'] ? String(row['assignee_id']) : null,
+              operator_id: row['assignee_id'] ? Number(row['assignee_id']) : null,
       is_pinned: false, // В новой схеме не существует
       is_important: false, // В новой схеме не существует
       unread_count: 0, // В новой схеме не существует
@@ -310,5 +310,17 @@ export class ChatRepository {
       tags: [], // В новой схеме tags не существует
       escalation_reason: null, // В новой схеме не существует
     };
+  }
+
+  // Добавление тегов к чату (заглушка для совместимости)
+  async addTags(chatId: number, tags: string[]): Promise<Chat | null> {
+    try {
+      // В новой схеме tags не поддерживаются, возвращаем чат без изменений
+      console.warn('Теги не поддерживаются в новой схеме');
+      return await this.findById(chatId);
+    } catch (error) {
+      console.error('Ошибка добавления тегов к чату:', error);
+      return null;
+    }
   }
 }

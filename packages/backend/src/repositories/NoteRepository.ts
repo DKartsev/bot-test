@@ -24,6 +24,7 @@ export class NoteRepository {
       return {
         id: noteRow.id,
         chat_id: noteRow.chat_id,
+        conversation_id: noteRow.chat_id, // Используем chat_id как conversation_id
         content: noteRow.content,
         author_id: noteRow.author_id,
         author_name: noteRow.author_name || 'Unknown',
@@ -171,6 +172,7 @@ export class NoteRepository {
       return {
         id: Number(noteRow.id),
         chat_id: Number(noteRow.chat_id),
+        conversation_id: Number(noteRow.chat_id), // Используем chat_id как conversation_id
         content: String(noteRow.content),
         author_id: Number(noteRow.operator_id),
         author_name: String(noteRow.author_name || 'Unknown'),
@@ -226,6 +228,7 @@ export class NoteRepository {
       return {
         id: updatedNote.id,
         chat_id: updatedNote.chat_id,
+        conversation_id: updatedNote.chat_id, // Используем chat_id как conversation_id
         content: updatedNote.content,
         author_id: updatedNote.operator_id,
         author_name: updatedNote.author_name || 'Unknown',

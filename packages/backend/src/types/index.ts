@@ -1,6 +1,6 @@
 export interface User {
-  id: string;
-  telegram_id: string;
+  id: number;
+  telegram_id: number;
   username?: string;
   first_name: string;
   last_name?: string;
@@ -15,14 +15,14 @@ export interface User {
 }
 
 export interface Message {
-  id: string;
-  chat_id: string;
-  conversation_id: string;
+  id: number;
+  chat_id: number;
+  conversation_id: number;
   sender: string;
   content: string;
   text: string;
   author_type: 'user' | 'bot' | 'operator';
-  author_id: string;
+  author_id: number;
   timestamp: string;
   is_read: boolean;
   media_urls?: any[];
@@ -35,18 +35,21 @@ export interface Message {
     channel: string;
     media_urls?: any[];
     media_types?: string[];
+    telegram_message_id?: number;
+    telegram_edit_date?: number;
+    is_edited?: boolean;
   };
 }
 
 export interface Chat {
-  id: string;
-  user_id: string;
+  id: number;
+  user_id: number;
   user: User;
   last_message: Message | null;
   status: 'waiting' | 'in_progress' | 'closed' | 'waiting_for_operator';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   source: 'telegram' | 'website' | 'p2p';
-  operator_id?: string;
+  operator_id?: number;
   is_pinned: boolean;
   is_important: boolean;
   unread_count: number;
@@ -57,7 +60,7 @@ export interface Chat {
 }
 
 export interface Operator {
-  id: string;
+  id: number;
   username: string;
   first_name: string;
   last_name: string;
@@ -72,7 +75,7 @@ export interface Operator {
 }
 
 export interface CannedResponse {
-  id: string;
+  id: number;
   title: string;
   content: string;
   category: string;
@@ -85,11 +88,11 @@ export interface CannedResponse {
 }
 
 export interface Note {
-  id: string;
-  chat_id: string;
-  conversation_id: string;
+  id: number;
+  chat_id: number;
+  conversation_id: number;
   content: string;
-  author_id: string;
+  author_id: number;
   author_name: string;
   type: 'internal' | 'public' | 'resolution';
   is_private: boolean;
@@ -98,15 +101,15 @@ export interface Note {
 }
 
 export interface Case {
-  id: string;
-  chat_id: string;
-  conversation_id: string;
+  id: number;
+  chat_id: number;
+  conversation_id: number;
   title: string;
   description: string;
   status: 'open' | 'in_progress' | 'resolved' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  assigned_to?: string;
-  created_by: string;
+  assigned_to?: number;
+  created_by: number;
   created_at: string;
   updated_at: string;
   resolved_at?: string;
@@ -117,8 +120,8 @@ export interface FilterOptions {
   source?: string[];
   priority?: string[];
   has_attachments?: boolean;
-  operator_id?: string;
-  user_id?: string;
+  operator_id?: number;
+  user_id?: number;
   page?: number;
   limit?: number;
 }
@@ -143,9 +146,9 @@ export interface ChatStats {
 }
 
 export interface Attachment {
-  id: string;
-  conversation_id: string;
-  message_id?: string;
+  id: number;
+  conversation_id: number;
+  message_id?: number;
   file_name: string;
   file_path: string;
   file_size: number;
@@ -157,7 +160,7 @@ export interface Attachment {
 }
 
 export interface CreateUserData {
-  telegram_id: string;
+  telegram_id: number;
   username?: string;
   first_name: string;
   last_name?: string;
