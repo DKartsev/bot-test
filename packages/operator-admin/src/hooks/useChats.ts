@@ -104,6 +104,10 @@ export function useChats() {
   // Инициализация WebSocket соединения
   const initializeWebSocket = useCallback(() => {
     try {
+      const token = (globalThis as any).localStorage?.getItem('auth_token');
+      if (!token) {
+        return;
+      }
       const wsUrl = API_CONFIG.WS_URL;
       const ws = new (globalThis as any).WebSocket(wsUrl);
       
@@ -351,6 +355,10 @@ export function useChats() {
 
   // Инициализация при монтировании
   useEffect(() => {
+    const token = (globalThis as any).localStorage?.getItem('auth_token');
+    if (!token) {
+      return;
+    }
     initializeWebSocket();
     loadChats(true);
     

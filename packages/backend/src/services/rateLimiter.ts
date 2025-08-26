@@ -69,8 +69,8 @@ export class RateLimiterService {
 
     // Строгий лимит для аутентификации
     this.addConfig('auth', {
-      windowMs: 15 * 60 * 1000, // 15 минут
-      maxRequests: 5, // Максимум 5 попыток входа
+      windowMs: parseInt(process.env.ADMIN_RATE_WINDOW_MS || '900000', 10),
+      maxRequests: parseInt(process.env.ADMIN_RATE_MAX || '30', 10),
       message: 'Слишком много попыток аутентификации',
       statusCode: 429,
       headers: true,
