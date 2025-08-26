@@ -177,7 +177,66 @@ if (env.NODE_ENV === 'development') {
       });
     } catch (error) {
       console.error('Ошибка генерации токена:', error);
-      res.status(500).json({ success: false, error: 'Не удалось сгенерировать токен' });
+      
+      res.status(500).json({
+        success: false,
+        error: 'Ошибка генерации токена',
+        details: error.message
+      });
+    }
+  });
+
+  // Простой эндпоинт для создания тестового оператора (только для разработки)
+  app.post('/create-test-operator', async (req, res) => {
+    try {
+      const { OperatorService } = await import('./services/operator');
+      const { generateTokens } = await import('./routes/auth');
+      const bcrypt = await import('bcrypt');
+      
+      const operatorService = new OperatorService();
+      
+      // Создаем тестового оператора
+      const passwordHash = await bcrypt.hash('test123', 12);
+      const testOperator = await operatorService.createOperator({
+        name: 'Test Operator',
+        email: 'test@operator.com',
+        password_hash: passwordHash,
+        role: 'admin',
+        is_active: true,
+        max_chats: 10
+      });
+
+      // Генерируем токены
+      const { accessToken, refreshToken } = generateTokens(testOperator);
+
+      res.json({
+        success: true,
+        data: {
+          operator: {
+            id: testOperator.id,
+            name: testOperator.name,
+            email: testOperator.email,
+            role: testOperator.role
+          },
+          tokens: {
+            access: accessToken,
+            refresh: refreshToken
+          },
+          credentials: {
+            email: 'test@operator.com',
+            password: 'test123'
+          }
+        },
+        message: 'Тестовый оператор создан успешно'
+      });
+
+    } catch (error) {
+      console.error('Ошибка создания тестового оператора:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Не удалось создать тестового оператора',
+        details: error.message
+      });
     }
   });
 }
