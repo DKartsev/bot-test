@@ -153,9 +153,9 @@ app.get('/health', async (req, res) => {
 
 // API маршруты
 app.use('/api/auth', authRoutes); // Маршруты аутентификации (без middleware)
-app.use('/api', authenticateToken, operatorRoutes); // Защищенные маршруты
 app.use('/api/metrics', metricsRoutes);
 app.use('/api/rag', ragRoutes);
+app.use('/api', authenticateToken, operatorRoutes); // Защищенные маршруты
 
 // Временный отладочный эндпоинт для получения JWT токена (только для разработки)
 if (env.NODE_ENV === 'development') {
