@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Chat, Message, FilterOptions } from '../types';
 import apiClient from '../lib/api';
+import { API_CONFIG } from '../config/api';
 
 // Fallback данные для демонстрации
 const FALLBACK_CHATS: Chat[] = [
@@ -103,7 +104,7 @@ export function useChats() {
   // Инициализация WebSocket соединения
   const initializeWebSocket = useCallback(() => {
     try {
-      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3000/ws';
+      const wsUrl = API_CONFIG.WS_URL;
       const ws = new (globalThis as any).WebSocket(wsUrl);
       
       ws.onopen = () => {

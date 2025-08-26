@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Chat, Message, User } from '../types';
 import { MessageList } from './MessageList';
 import { ToolsPanel } from './ToolsPanel';
+import apiClient from '../lib/api';
 import { 
   SparklesIcon
 } from '@heroicons/react/24/outline';
@@ -39,18 +40,7 @@ export function ChatView({
   const loadMessages = async (chatId: number) => {
     setLoadingMessages(true);
     try {
-      const response = await fetch(`http://localhost:3000/api/chats/${chatId}/messages`, {
-        headers: {
-          'Authorization': `Bearer ${(globalThis as any).localStorage?.getItem('auth_token') || 'test-token-1'}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to load messages: ${response.statusText}`);
-      }
-      
-      const messages = await response.json();
+      const messages = await apiClient.getChatMessages(chatId);
       setMessages(messages as any);
     } catch (error) {
       console.error('Ошибка загрузки сообщений:', error);
@@ -65,21 +55,7 @@ export function ChatView({
     if (!chat || !text.trim()) return;
 
     try {
-      // Отправляем сообщение через API
-      const response = await fetch(`http://localhost:3000/api/chats/${chat.id}/messages`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${(globalThis as any).localStorage?.getItem('auth_token') || 'test-token-1'}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ text })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to send message: ${response.statusText}`);
-      }
-
-      const newMessage = await response.json();
+      const newMessage = await apiClient.sendMessage(chat.id, text, attachments);
       
       // Добавляем сообщение в список
       setMessages(prev => [...prev, newMessage as any]);

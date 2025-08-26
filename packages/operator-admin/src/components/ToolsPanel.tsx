@@ -9,6 +9,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 import { CannedResponse } from '../types';
+import apiClient from '../lib/api';
 
 interface ToolsPanelProps {
   onSendMessage: (text: string, attachments?: File[]) => void;
@@ -45,29 +46,8 @@ export function ToolsPanel({
   const loadCannedResponses = async () => {
     setLoadingResponses(true);
     try {
-      const response = await fetch('http://localhost:3000/api/canned-responses', {
-        headers: {
-          'Authorization': `Bearer ${(globalThis as any).localStorage?.getItem('auth_token') || 'test-token-1'}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const responses = await response.json();
-        setCannedResponses(responses as any);
-      } else {
-        // Fallback к базовым шаблонам
-        setCannedResponses([
-          {
-            id: 1,
-            title: 'Приветствие',
-            content: 'Здравствуйте! Чем могу помочь?',
-            category: 'Общие',
-            tags: ['приветствие', 'начало'],
-            shortcut: '1'
-          }
-        ]);
-      }
+      const responses = await apiClient.getCannedResponses();
+      setCannedResponses(responses as any);
     } catch (error) {
       console.error('Ошибка загрузки готовых ответов:', error);
       // Fallback к базовым шаблонам
