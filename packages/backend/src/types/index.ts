@@ -38,6 +38,8 @@ export interface Message {
     telegram_message_id?: number;
     telegram_edit_date?: number;
     is_edited?: boolean;
+    transcript?: string;
+    vision_summary?: string;
   };
 }
 
