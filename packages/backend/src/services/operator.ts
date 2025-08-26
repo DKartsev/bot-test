@@ -57,10 +57,15 @@ export class OperatorService {
   }
 
   // Создание нового оператора
-  async createOperator(operatorData: Partial<Operator>): Promise<Operator> {
+  async createOperator(operatorData: { first_name: string; last_name: string; email: string; role?: string; is_active?: boolean; max_chats?: number; password_hash?: string }): Promise<Operator> {
     try {
+      // Проверяем обязательные поля
+      if (!operatorData.first_name || !operatorData.last_name || !operatorData.email) {
+        throw new Error('Имя, фамилия и email обязательны для создания оператора');
+      }
+
       // Проверяем уникальность email
-      const existingOperator = await this.operatorRepository.findByEmail(operatorData.email!);
+      const existingOperator = await this.operatorRepository.findByEmail(operatorData.email);
       if (existingOperator) {
         throw new Error('Оператор с таким email уже существует');
       }

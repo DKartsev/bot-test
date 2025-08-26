@@ -159,7 +159,7 @@ router.post('/register', rateLimitMiddleware.auth(), asyncHandler(async (req, re
       role: validatedData.role,
       is_active: true,
       max_chats: 10
-    } as any);
+    });
 
     // Генерация токенов
     const { accessToken, refreshToken } = generateTokens(newOperator);

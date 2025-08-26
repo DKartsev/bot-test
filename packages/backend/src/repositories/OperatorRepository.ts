@@ -63,18 +63,20 @@ export class OperatorRepository {
   }
 
   // Создание нового оператора
-  async create(operatorData: Partial<Operator>): Promise<Operator> {
+  async create(operatorData: { first_name: string; last_name: string; email: string; role?: string; is_active?: boolean; max_chats?: number; password_hash?: string }): Promise<Operator> {
     try {
       const result = await db.query<Operator>(`
-        INSERT INTO operators (name, email, role, is_active, max_chats)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO operators (first_name, last_name, email, role, is_active, max_chats, password_hash)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
       `, [
-        operatorData.name,
+        operatorData.first_name,
+        operatorData.last_name,
         operatorData.email,
         operatorData.role || 'operator',
         operatorData.is_active !== false,
         operatorData.max_chats || 5,
+        operatorData.password_hash || null,
       ]);
 
       const operator = result.rows[0];
@@ -95,9 +97,13 @@ export class OperatorRepository {
       const values = [];
       let paramIndex = 1;
 
-      if (updates.name !== undefined) {
-        fields.push(`name = $${paramIndex++}`);
-        values.push(updates.name);
+      if (updates.first_name !== undefined) {
+        fields.push(`first_name = $${paramIndex++}`);
+        values.push(updates.first_name);
+      }
+      if (updates.last_name !== undefined) {
+        fields.push(`last_name = $${paramIndex++}`);
+        values.push(updates.last_name);
       }
       if (updates.email !== undefined) {
         fields.push(`email = $${paramIndex++}`);
@@ -153,7 +159,7 @@ export class OperatorRepository {
   async findByRole(role: string): Promise<Operator[]> {
     try {
       const result = await db.query<Operator>(`
-        SELECT * FROM operators WHERE role = $1 ORDER BY name
+        SELECT * FROM operators WHERE role = $1 ORDER BY first_name
       `, [role]);
 
       return result.rows;
