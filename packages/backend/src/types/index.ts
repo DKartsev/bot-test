@@ -52,7 +52,9 @@ export interface Chat {
 
 export interface Operator {
   id: number;
-  name: string;
+  username: string;
+  first_name: string;
+  last_name: string;
   email: string;
   role: 'operator' | 'admin' | 'supervisor';
   is_active: boolean;

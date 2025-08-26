@@ -59,12 +59,19 @@ export interface Chat {
 
 export interface Operator {
   id: number;
-  name: string;
+  username: string;
+  first_name: string;
+  last_name: string;
   email: string;
+  password_hash?: string;
   role: 'operator' | 'senior_operator' | 'admin';
+  is_active: boolean;
+  max_chats: number;
   avatar_url?: string;
   is_online: boolean;
   last_activity: string;
+  created_at: string;
+  last_login?: string;
 }
 
 export interface CannedResponse {

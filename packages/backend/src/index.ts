@@ -219,7 +219,7 @@ if (env.NODE_ENV === 'development') {
         data: {
           operator: {
             id: testOperator.id,
-            name: testOperator.name,
+            name: `${testOperator.first_name} ${testOperator.last_name}`,
             email: testOperator.email,
             role: testOperator.role
           },

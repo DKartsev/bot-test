@@ -60,7 +60,17 @@ class ApiClient {
       throw new Error(`API Error: ${message}`);
     }
     const result = await response.json() as any;
-    const tokens = result.data.tokens as { access: string; refresh: string };
+    
+    // Handle both old and new response formats
+    let tokens;
+    if (result.data?.tokens) {
+      tokens = result.data.tokens;
+    } else if (result.tokens) {
+      tokens = result.tokens;
+    } else {
+      throw new Error('Invalid response format: no tokens found');
+    }
+    
     (globalThis as any).localStorage?.setItem('auth_token', tokens.access);
     (globalThis as any).localStorage?.setItem('refresh_token', tokens.refresh);
     return { access: tokens.access, refresh: tokens.refresh };
