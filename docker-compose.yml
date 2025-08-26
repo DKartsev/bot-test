@@ -1,6 +1,21 @@
 version: '3.8'
 
 services:
+  # PostgreSQL база данных
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=support_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - bot-network
+
   # Redis для кэширования
   redis:
     image: redis:7-alpine
@@ -35,6 +50,7 @@ services:
     env_file:
       - .env
     depends_on:
+      - postgres
       - redis
     restart: unless-stopped
     networks:
@@ -87,4 +103,5 @@ networks:
     driver: bridge
 
 volumes:
+  postgres_data:
   redis_data:
