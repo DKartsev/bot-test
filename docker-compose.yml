@@ -46,7 +46,7 @@ services:
       - TG_BOT_TOKEN=${TG_BOT_TOKEN}
       - ADMIN_API_TOKENS=${ADMIN_API_TOKENS}
       - CORS_ORIGIN=${CORS_ORIGIN}
-      - DB_SSL=true
+      - DB_SSL=false
     env_file:
       - .env
     depends_on:
