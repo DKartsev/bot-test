@@ -190,7 +190,6 @@ if (env.NODE_ENV === 'development') {
   app.post('/create-test-operator', async (req, res) => {
     try {
       const { OperatorService } = await import('./services/operator');
-      const { generateTokens } = await import('./routes/auth');
       const bcrypt = await import('bcrypt');
       
       const operatorService = new OperatorService();
@@ -206,8 +205,14 @@ if (env.NODE_ENV === 'development') {
         max_chats: 10
       });
 
-      // Генерируем токены
-      const { accessToken, refreshToken } = generateTokens(testOperator);
+      // Генерируем токены напрямую через jsonwebtoken
+      const jwt = require('jsonwebtoken');
+      const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-key-32-chars-minimum-required';
+      const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
+
+      const accessPayload = { id: testOperator.id, email: testOperator.email, role: testOperator.role, type: 'operator' };
+      const accessToken = jwt.sign(accessPayload, JWT_SECRET, { expiresIn: '1h' });
+      const refreshToken = jwt.sign({ id: testOperator.id, type: 'refresh' }, JWT_REFRESH_SECRET, { expiresIn: '7d' });
 
       res.json({
         success: true,
