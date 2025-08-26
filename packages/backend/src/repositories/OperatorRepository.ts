@@ -63,13 +63,14 @@ export class OperatorRepository {
   }
 
   // Создание нового оператора
-  async create(operatorData: { first_name: string; last_name: string; email: string; role?: string; is_active?: boolean; max_chats?: number; password_hash?: string }): Promise<Operator> {
+  async create(operatorData: { username: string; first_name: string; last_name: string; email: string; role?: string; is_active?: boolean; max_chats?: number; password_hash?: string }): Promise<Operator> {
     try {
       const result = await db.query<Operator>(`
-        INSERT INTO operators (first_name, last_name, email, role, is_active, max_chats, password_hash)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO operators (username, first_name, last_name, email, role, is_active, max_chats, password_hash)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
       `, [
+        operatorData.username,
         operatorData.first_name,
         operatorData.last_name,
         operatorData.email,

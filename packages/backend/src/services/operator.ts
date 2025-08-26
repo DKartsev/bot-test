@@ -57,7 +57,7 @@ export class OperatorService {
   }
 
   // Создание нового оператора
-  async createOperator(operatorData: { first_name: string; last_name: string; email: string; role?: string; is_active?: boolean; max_chats?: number; password_hash?: string }): Promise<Operator> {
+  async createOperator(operatorData: { username: string; first_name: string; last_name: string; email: string; role?: string; is_active?: boolean; max_chats?: number; password_hash?: string }): Promise<Operator> {
     try {
       // Проверяем обязательные поля
       if (!operatorData.first_name || !operatorData.last_name || !operatorData.email) {

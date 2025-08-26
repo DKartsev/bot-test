@@ -197,6 +197,7 @@ if (env.NODE_ENV === 'development') {
       // Создаем тестового оператора
       const passwordHash = await bcrypt.hash('test123', 12);
       const testOperator = await operatorService.createOperator({
+        username: 'test_operator',
         first_name: 'Test',
         last_name: 'Operator',
         email: 'test@operator.com',

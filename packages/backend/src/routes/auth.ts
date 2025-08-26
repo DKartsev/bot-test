@@ -151,7 +151,9 @@ router.post('/register', rateLimitMiddleware.auth(), asyncHandler(async (req, re
     const passwordHash = await bcrypt.hash(validatedData.password, 12);
 
     // Создание оператора
+    const username = `${validatedData.first_name.toLowerCase()}_${validatedData.last_name.toLowerCase()}`;
     const newOperator = await operatorService.createOperator({
+      username,
       first_name: validatedData.first_name,
       last_name: validatedData.last_name,
       email: validatedData.email,
@@ -337,7 +339,9 @@ router.post('/create-test-operator', asyncHandler(async (req, res) => {
 
     // Создаем тестового оператора
     const passwordHash = await bcrypt.hash('test123', 12);
+    const username = 'test_operator';
     const testOperator = await operatorService.createOperator({
+      username,
       first_name: 'Test',
       last_name: 'Operator',
       email: 'test@operator.com',

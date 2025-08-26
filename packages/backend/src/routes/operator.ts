@@ -575,6 +575,7 @@ router.post('/test-operator', asyncHandler(async (req, res) => {
     }
 
     const testOperator = await operatorService.createOperator({
+      username: 'test_operator',
       first_name: 'Test',
       last_name: 'Operator',
       email: 'test@operator.com',
