@@ -8,9 +8,7 @@ export const API_CONFIG = {
   
   // Fallback URL'ы для разработки
   FALLBACK_URLS: [
-    'http://158.160.169.147:3000',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
+    'http://158.160.169.147:3000'
   ],
   
   // Таймауты

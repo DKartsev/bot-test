@@ -10,13 +10,8 @@ export class ChatRepository {
         SELECT EXISTS (
           SELECT FROM information_schema.tables 
           WHERE table_schema = 'public' 
-          AND table_name = 'support_chats'
-        ) as chats_table_exists,
-        EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' 
-          AND table_name = 'users'
-        ) as users_table_exists,
+          AND table_name = 'conversations'
+        ) as conversations_table_exists,
         EXISTS (
           SELECT FROM information_schema.tables 
           WHERE table_schema = 'public' 
@@ -24,71 +19,27 @@ export class ChatRepository {
         ) as messages_table_exists
       `);
 
-      const { chats_table_exists, users_table_exists, messages_table_exists } = tablesCheck.rows[0];
+      const { conversations_table_exists, messages_table_exists } = tablesCheck.rows[0];
 
-      if (!chats_table_exists || !users_table_exists) {
-        console.warn('Таблицы support_chats или users не существуют, возвращаем пустой массив');
+      if (!conversations_table_exists) {
+        console.warn('Таблица conversations не существует, возвращаем пустой массив');
         return [];
       }
 
-      // Если таблица messages не существует, используем упрощенный запрос
-      const useSimpleQuery = !messages_table_exists;
-
-      let query = useSimpleQuery ? `
+      let query = `
         SELECT 
           c.*,
-          u.id as user_id,
-          u.telegram_id,
-          u.username,
-          u.first_name,
-          u.last_name,
-          u.avatar_url,
-          u.balance,
-          u.deals_count,
-          u.flags,
-          u.is_blocked,
-          u.is_verified,
-          u.created_at as user_created_at,
-          u.last_activity,
-          NULL as message_id,
-          NULL as message_author_type,
-          NULL as message_author_id,
-          NULL as message_text,
-          NULL as message_timestamp,
-          NULL as message_is_read,
-          '{}'::jsonb as message_metadata
-        FROM support_chats c
-        JOIN users u ON c.user_id = u.id
-        WHERE 1=1
-      ` : `
-        SELECT 
-          c.*,
-          u.id as user_id,
-          u.telegram_id,
-          u.username,
-          u.first_name,
-          u.last_name,
-          u.avatar_url,
-          u.balance,
-          u.deals_count,
-          u.flags,
-          u.is_blocked,
-          u.is_verified,
-          u.created_at as user_created_at,
-          u.last_activity,
           m.id as message_id,
-          m.author_type as message_author_type,
-          m.author_id as message_author_id,
-          m.text as message_text,
-          m.timestamp as message_timestamp,
-          m.is_read as message_is_read,
-          m.metadata as message_metadata
-        FROM support_chats c
-        JOIN users u ON c.user_id = u.id
+          m.sender as message_sender,
+          m.content as message_content,
+          m.created_at as message_created_at,
+          m.media_urls as message_media_urls,
+          m.media_types as message_media_types
+        FROM conversations c
         LEFT JOIN LATERAL (
           SELECT * FROM messages 
-          WHERE chat_id = c.id 
-          ORDER BY timestamp DESC 
+          WHERE conversation_id = c.id 
+          ORDER BY created_at DESC 
           LIMIT 1
           ) m ON true
         WHERE 1=1
@@ -104,22 +55,20 @@ export class ChatRepository {
       }
 
       if (filters.source && filters.source.length > 0) {
-        query += ` AND c.source = ANY($${paramIndex++})`;
-        params.push(filters.source);
+        // В новой схеме source не существует, пропускаем
       }
 
       if (filters.priority && filters.priority.length > 0) {
-        query += ` AND c.priority = ANY($${paramIndex++})`;
-        params.push(filters.priority);
+        // В новой схеме priority не существует, пропускаем
       }
 
       if (filters.operator_id) {
-        query += ` AND c.operator_id = $${paramIndex++}`;
+        query += ` AND c.assignee_id = $${paramIndex++}`;
         params.push(filters.operator_id);
       }
 
       // Сортировка и пагинация
-      query += ' ORDER BY c.updated_at DESC';
+      query += ' ORDER BY c.last_message_at DESC NULLS LAST';
 
       if (filters.limit) {
         query += ` LIMIT $${paramIndex++}`;
@@ -142,37 +91,22 @@ export class ChatRepository {
   }
 
   // Получение конкретного чата
-  async findById(id: number): Promise<Chat | null> {
+  async findById(id: string): Promise<Chat | null> {
     try {
       const result = await db.query(`
         SELECT 
           c.*,
-          u.id as user_id,
-          u.telegram_id,
-          u.username,
-          u.first_name,
-          u.last_name,
-          u.avatar_url,
-          u.balance,
-          u.deals_count,
-          u.flags,
-          u.is_blocked,
-          u.is_verified,
-          u.created_at as user_created_at,
-          u.last_activity,
           m.id as message_id,
-          m.author_type as message_author_type,
-          m.author_id as message_author_id,
-          m.text as message_text,
-          m.timestamp as message_timestamp,
-          m.is_read as message_is_read,
-          m.metadata as message_metadata
-        FROM support_chats c
-        JOIN users u ON c.user_id = u.id
+          m.sender as message_sender,
+          m.content as message_content,
+          m.created_at as message_created_at,
+          m.media_urls as message_media_urls,
+          m.media_types as message_media_types
+        FROM conversations c
         LEFT JOIN LATERAL (
           SELECT * FROM messages 
-          WHERE chat_id = c.id 
-          ORDER BY timestamp DESC 
+          WHERE conversation_id = c.id 
+          ORDER BY created_at DESC 
           LIMIT 1
         ) m ON true
         WHERE c.id = $1
@@ -188,16 +122,16 @@ export class ChatRepository {
   }
 
   // Создание нового чата
-  async create(userId: number, source: string = 'telegram'): Promise<Chat> {
+  async create(userTelegramId: string, source: string = 'telegram'): Promise<Chat> {
     try {
       const result = await db.query(`
-        INSERT INTO chats (user_id, source, status, priority, tags)
-        VALUES ($1, $2, 'waiting', 'medium', '{}')
+        INSERT INTO conversations (id, user_telegram_id, status, handoff)
+        VALUES (gen_random_uuid(), $1, 'open', 'bot')
         RETURNING *
-      `, [userId, source]);
+      `, [userTelegramId]);
 
       // Получаем полную информацию о чате
-      return await this.findById(Number(result.rows[0]['id']));
+      return await this.findById(result.rows[0]['id'] as string);
     } catch (error) {
       console.error('Ошибка создания чата:', error);
       throw error;
@@ -205,11 +139,11 @@ export class ChatRepository {
   }
 
   // Обновление статуса чата
-  async updateStatus(id: number, status: string, operatorId?: number): Promise<Chat | null> {
+  async updateStatus(id: string, status: string, operatorId?: string): Promise<Chat | null> {
     try {
       const result = await db.query(`
-        UPDATE chats 
-        SET status = $1, operator_id = $2, updated_at = NOW()
+        UPDATE conversations 
+        SET status = $1, assignee_id = $2
         WHERE id = $3
         RETURNING *
       `, [status, operatorId, id]);
@@ -224,12 +158,12 @@ export class ChatRepository {
   }
 
   // Принятие чата в работу
-  async takeChat(id: number, operatorId: number): Promise<Chat | null> {
+  async takeChat(id: string, operatorId: string): Promise<Chat | null> {
     try {
       const result = await db.query(`
-        UPDATE chats 
-        SET status = 'in_progress', operator_id = $1, updated_at = NOW()
-        WHERE id = $2 AND status = 'waiting'
+        UPDATE conversations 
+        SET status = 'in_progress', assignee_id = $1
+        WHERE id = $2 AND status = 'open'
         RETURNING *
       `, [operatorId, id]);
 
@@ -243,12 +177,12 @@ export class ChatRepository {
   }
 
   // Закрытие чата
-  async closeChat(id: number, operatorId: number): Promise<Chat | null> {
+  async closeChat(id: string, operatorId: string): Promise<Chat | null> {
     try {
       const result = await db.query(`
-        UPDATE chats 
-        SET status = 'closed', updated_at = NOW()
-        WHERE id = $1 AND operator_id = $2
+        UPDATE conversations 
+        SET status = 'closed'
+        WHERE id = $1 AND assignee_id = $2
         RETURNING *
       `, [id, operatorId]);
 
@@ -262,39 +196,13 @@ export class ChatRepository {
   }
 
   // Обновление приоритета чата
-  async updatePriority(id: number, priority: string): Promise<Chat | null> {
+  async updatePriority(id: string, priority: string): Promise<Chat | null> {
     try {
-      const result = await db.query(`
-        UPDATE chats 
-        SET priority = $1, updated_at = NOW()
-        WHERE id = $2
-        RETURNING *
-      `, [priority, id]);
-
-      if (result.rows.length === 0) return null;
-
+      // В новой схеме priority не существует
+      console.warn('Приоритет не поддерживается в новой схеме');
       return await this.findById(id);
     } catch (error) {
       console.error('Ошибка обновления приоритета чата:', error);
-      throw error;
-    }
-  }
-
-  // Добавление тегов к чату
-  async addTags(id: number, tags: string[]): Promise<Chat | null> {
-    try {
-      const result = await db.query(`
-        UPDATE chats 
-        SET tags = array_cat(tags, $1), updated_at = NOW()
-        WHERE id = $2
-        RETURNING *
-      `, [tags, id]);
-
-      if (result.rows.length === 0) return null;
-
-      return await this.findById(id);
-    } catch (error) {
-      console.error('Ошибка добавления тегов к чату:', error);
       throw error;
     }
   }
@@ -305,33 +213,33 @@ export class ChatRepository {
       const result = await db.query(`
         SELECT 
           COUNT(*) as total_chats,
-          COUNT(*) FILTER (WHERE status = 'waiting') as waiting_chats,
-          COUNT(*) FILTER (WHERE status = 'waiting') as in_progress_chats,
-          COUNT(*) FILTER (WHERE status = 'waiting') as closed_chats
-        FROM support_chats
+          COUNT(*) FILTER (WHERE status = 'open') as waiting_chats,
+          COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress_chats,
+          COUNT(*) FILTER (WHERE status = 'closed') as closed_chats
+        FROM conversations
       `);
 
       const stats = result.rows[0];
 
       // Получаем среднее время ответа
       const responseTimeResult = await db.query(`
-        SELECT AVG(EXTRACT(EPOCH FROM (m.timestamp - c.created_at))) as avg_response_seconds
-        FROM support_chats c
-        JOIN messages m ON c.id = m.chat_id
-        WHERE m.author_type = 'operator' 
+        SELECT AVG(EXTRACT(EPOCH FROM (m.created_at - c.created_at))) as avg_response_seconds
+        FROM conversations c
+        JOIN messages m ON c.id = m.conversation_id
+        WHERE m.sender = 'operator' 
         AND m.id = (
           SELECT MIN(m2.id) 
           FROM messages m2 
-          WHERE m2.chat_id = c.id 
-          AND m2.author_type = 'operator'
+          WHERE m2.conversation_id = c.id 
+          AND m2.sender = 'operator'
         )
       `);
 
       // Получаем среднее время разрешения
       const resolutionTimeResult = await db.query(`
-        SELECT AVG(EXTRACT(EPOCH FROM (c.updated_at - c.created_at))) as avg_resolution_seconds
-        FROM support_chats c
-        WHERE c.status = 'waiting'
+        SELECT AVG(EXTRACT(EPOCH FROM (c.last_message_at - c.created_at))) as avg_resolution_seconds
+        FROM conversations c
+        WHERE c.status = 'closed'
       `);
 
       const avgResponseSeconds = responseTimeResult.rows[0]?.avg_response_seconds || 0;
@@ -354,48 +262,53 @@ export class ChatRepository {
   // Преобразование строки БД в объект Chat
   private mapRowToChat(row: Record<string, unknown>): Chat {
     return {
-      id: Number(row['id']),
-      user_id: Number(row['user_id']),
+      id: String(row['id']),
+      user_id: String(row['user_telegram_id']),
       user: {
-        id: Number(row['user_id']),
-        telegram_id: Number(row['telegram_id']),
-        username: String(row['username']),
-        first_name: String(row['first_name']),
-        last_name: String(row['last_name']),
-        avatar_url: String(row['avatar_url']),
-        balance: parseFloat(String(row['balance'])),
-        deals_count: parseInt(String(row['deals_count'])),
-        flags: row['flags'] as string[] || [],
-        is_blocked: Boolean(row['is_blocked']),
-        is_verified: Boolean(row['is_verified']),
-        created_at: new Date(row['user_created_at'] as string).toISOString(),
-        last_activity: new Date(row['last_activity'] as string).toISOString(),
+        id: String(row['user_telegram_id']),
+        telegram_id: String(row['user_telegram_id']),
+        username: String(row['user_telegram_id']),
+        first_name: String(row['user_telegram_id']),
+        last_name: '',
+        avatar_url: '',
+        balance: 0,
+        deals_count: 0,
+        flags: [],
+        is_blocked: false,
+        is_verified: false,
+        created_at: new Date(row['created_at'] as string).toISOString(),
+        last_activity: new Date(row['last_message_at'] as string || row['created_at'] as string).toISOString(),
       },
-      last_message: {
-        id: Number(row['message_id']),
-        chat_id: Number(row['id']),
-        author_type: String(row['message_author_type']) as 'user' | 'bot' | 'operator',
-        author_id: Number(row['message_author_id']),
-        text: String(row['message_text']),
-        timestamp: new Date(row['message_timestamp'] as string).toISOString(),
-        is_read: Boolean(row['message_is_read']),
+      last_message: row['message_id'] ? {
+        id: String(row['message_id']),
+        chat_id: String(row['id']),
+        conversation_id: String(row['id']),
+        sender: String(row['message_sender']),
+        content: String(row['message_content'] || ''),
+        author_type: String(row['message_sender']) as 'user' | 'bot' | 'operator',
+        author_id: String(row['message_sender']),
+        text: String(row['message_content'] || ''),
+        timestamp: new Date(row['message_created_at'] as string).toISOString(),
+        is_read: true,
+        created_at: new Date(row['message_created_at'] as string).toISOString(),
         metadata: {
-          ...(row['message_metadata'] as Record<string, unknown>),
-          source: String(row['source'] || 'telegram'),
-          channel: String(row['channel'] || 'default'),
+          source: 'telegram',
+          channel: 'default',
+          media_urls: row['message_media_urls'] as any || [],
+          media_types: row['message_media_types'] as string[] || [],
         },
-      },
+      } : null,
       status: String(row['status']) as 'waiting' | 'in_progress' | 'closed' | 'waiting_for_operator',
-      priority: String(row['priority']) as 'low' | 'medium' | 'high' | 'urgent',
-      source: String(row['source']) as 'telegram' | 'website' | 'p2p',
-      operator_id: row['operator_id'] ? Number(row['operator_id']) : null,
-      is_pinned: Boolean(row['is_pinned']),
-      is_important: Boolean(row['is_important']),
-      unread_count: Number(row['unread_count']),
+      priority: 'medium', // В новой схеме priority не существует
+      source: 'telegram', // В новой схеме source не существует
+      operator_id: row['assignee_id'] ? String(row['assignee_id']) : null,
+      is_pinned: false, // В новой схеме не существует
+      is_important: false, // В новой схеме не существует
+      unread_count: 0, // В новой схеме не существует
       created_at: new Date(row['created_at'] as string).toISOString(),
-      updated_at: new Date(row['updated_at'] as string).toISOString(),
-      tags: row['tags'] as string[] || [],
-      escalation_reason: row['escalation_reason'] ? String(row['escalation_reason']) : null,
+      updated_at: new Date(row['last_message_at'] as string || row['created_at'] as string).toISOString(),
+      tags: [], // В новой схеме tags не существует
+      escalation_reason: null, // В новой схеме не существует
     };
   }
 }
