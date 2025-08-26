@@ -224,7 +224,7 @@ export class OperatorService {
       // Фильтруем по приоритету (если есть старшие операторы)
       if (priority === 'high' || priority === 'urgent') {
         const seniorOperators = availableOperators.filter(op =>
-          op.role === 'senior_operator' || op.role === 'admin',
+          op.role === 'supervisor' || op.role === 'admin',
         );
         if (seniorOperators.length > 0) {
           return seniorOperators;
