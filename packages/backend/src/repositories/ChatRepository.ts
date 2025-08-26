@@ -261,47 +261,47 @@ export class ChatRepository {
 
   // Преобразование строки БД в объект Chat
   private mapRowToChat(row: Record<string, unknown>): Chat {
-          return {
-        id: Number(row['id']),
-        user_id: Number(row['user_telegram_id']),
-              user: {
-          id: Number(row['user_telegram_id']),
-          telegram_id: Number(row['user_telegram_id']),
-          username: String(row['user_telegram_id']),
-          first_name: String(row['user_telegram_id']),
-          last_name: '',
-          avatar_url: '',
-          balance: 0,
-          deals_count: 0,
-          flags: [],
-          is_blocked: false,
-          is_verified: false,
-          created_at: new Date(row['created_at'] as string).toISOString(),
-          last_activity: new Date(row['last_message_at'] as string || row['created_at'] as string).toISOString(),
+    return {
+      id: Number(row['id']),
+      user_id: Number(row['user_telegram_id']),
+      user: {
+        id: Number(row['user_telegram_id']),
+        telegram_id: Number(row['user_telegram_id']),
+        username: String(row['user_telegram_id']),
+        first_name: String(row['user_telegram_id']),
+        last_name: '',
+        avatar_url: '',
+        balance: 0,
+        deals_count: 0,
+        flags: [],
+        is_blocked: false,
+        is_verified: false,
+        created_at: new Date(row['created_at'] as string).toISOString(),
+        last_activity: new Date(row['last_message_at'] as string || row['created_at'] as string).toISOString(),
+      },
+      last_message: row['message_id'] ? {
+        id: Number(row['message_id']),
+        chat_id: Number(row['id']),
+        conversation_id: Number(row['id']),
+        sender: String(row['message_sender']),
+        content: String(row['message_content'] || ''),
+        author_type: String(row['message_sender']) as 'user' | 'bot' | 'operator',
+        author_id: Number(row['message_sender']),
+        text: String(row['message_content'] || ''), // Добавляем text для совместимости с фронтендом
+        timestamp: new Date(row['message_created_at'] as string).toISOString(),
+        is_read: true,
+        created_at: new Date(row['message_created_at'] as string).toISOString(),
+        metadata: {
+          source: 'telegram',
+          channel: 'default',
+          media_urls: row['message_media_urls'] as any || [],
+          media_types: row['message_media_types'] as string[] || [],
         },
-              last_message: row['message_id'] ? {
-          id: Number(row['message_id']),
-          chat_id: Number(row['id']),
-          conversation_id: Number(row['id']),
-          sender: String(row['message_sender']),
-          content: String(row['message_content'] || ''),
-          author_type: String(row['message_sender']) as 'user' | 'bot' | 'operator',
-          author_id: Number(row['message_sender']),
-          text: String(row['message_content'] || ''),
-          timestamp: new Date(row['message_created_at'] as string).toISOString(),
-          is_read: true,
-          created_at: new Date(row['message_created_at'] as string).toISOString(),
-          metadata: {
-            source: 'telegram',
-            channel: 'default',
-            media_urls: row['message_media_urls'] as any || [],
-            media_types: row['message_media_types'] as string[] || [],
-          },
-        } : null,
+      } : null,
       status: String(row['status']) as 'waiting' | 'in_progress' | 'closed' | 'waiting_for_operator',
       priority: 'medium', // В новой схеме priority не существует
       source: 'telegram', // В новой схеме source не существует
-              operator_id: row['assignee_id'] ? Number(row['assignee_id']) : null,
+      operator_id: row['assignee_id'] ? Number(row['assignee_id']) : null,
       is_pinned: false, // В новой схеме не существует
       is_important: false, // В новой схеме не существует
       unread_count: 0, // В новой схеме не существует
