@@ -48,6 +48,16 @@ const extractToken = (req: Request): string | null => {
 // Основной middleware аутентификации
 export const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
   try {
+    // Явно пропускаем открытые маршруты аутентификации
+    // Примеры путей: baseUrl: "/api/auth", path: "/create-test-operator"
+    if (
+      req.baseUrl?.includes('/api/auth') ||
+      req.path.startsWith('/auth') ||
+      req.originalUrl.startsWith('/api/auth')
+    ) {
+      return next();
+    }
+
     const token = extractToken(req);
     
     if (!token) {
