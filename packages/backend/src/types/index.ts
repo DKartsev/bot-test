@@ -54,11 +54,13 @@ export interface Operator {
   id: number;
   name: string;
   email: string;
-  role: 'operator' | 'senior_operator' | 'admin';
+  role: 'operator' | 'admin' | 'supervisor';
   is_active: boolean;
   max_chats: number;
+  password_hash?: string;
   created_at: string;
   last_activity?: string;
+  last_login?: string;
 }
 
 export interface CannedResponse {

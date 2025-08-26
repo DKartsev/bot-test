@@ -79,6 +79,10 @@ export const logWarning = (message: string, context?: any) => {
   logger.warn(message, { context });
 };
 
+export const logWarn = (message: string, context?: any) => {
+  logger.warn(message, { context });
+};
+
 export const logInfo = (message: string, context?: any) => {
   logger.info(message, { context });
 };

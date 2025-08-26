@@ -287,4 +287,16 @@ export class OperatorService {
       throw new Error('Не удалось обновить статус оператора');
     }
   }
+
+  // Обновление времени последнего входа
+  async updateLastLogin(id: number): Promise<Operator | null> {
+    try {
+      return await this.operatorRepository.update(id, {
+        last_login: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Ошибка обновления времени входа:', error);
+      throw new Error('Не удалось обновить время входа');
+    }
+  }
 }

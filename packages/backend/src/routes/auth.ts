@@ -22,7 +22,7 @@ const registerSchema = z.object({
 });
 
 // Helper функция для обертывания async handlers
-const asyncHandler = (fn: (req: express.Request, res: express.Response) => Promise<void>) => 
+const asyncHandler = (fn: (req: express.Request, res: express.Response) => Promise<any>) => 
   (req: express.Request, res: express.Response) => { void fn(req, res); };
 
 // Генерация JWT токенов
@@ -106,21 +106,21 @@ router.post('/login', rateLimitMiddleware.auth(), asyncHandler(async (req, res) 
       message: 'Успешный вход в систему'
     });
 
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
+      } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Ошибка валидации данных',
+          details: error.issues 
+        });
+      }
+
+      console.error('Ошибка входа:', error);
+      res.status(500).json({ 
         success: false, 
-        error: 'Ошибка валидации данных',
-        details: error.errors 
+        error: 'Внутренняя ошибка сервера' 
       });
     }
-
-    console.error('Ошибка входа:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Внутренняя ошибка сервера' 
-    });
-  }
 }));
 
 // Регистрация нового оператора (только для разработки)
@@ -157,7 +157,7 @@ router.post('/register', rateLimitMiddleware.auth(), asyncHandler(async (req, re
       role: validatedData.role,
       is_active: true,
       max_chats: 10
-    });
+    } as any);
 
     // Генерация токенов
     const { accessToken, refreshToken } = generateTokens(newOperator);
@@ -180,21 +180,21 @@ router.post('/register', rateLimitMiddleware.auth(), asyncHandler(async (req, re
       message: 'Оператор успешно зарегистрирован'
     });
 
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
+      } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Ошибка валидации данных',
+          details: error.issues 
+        });
+      }
+
+      console.error('Ошибка регистрации:', error);
+      res.status(500).json({ 
         success: false, 
-        error: 'Ошибка валидации данных',
-        details: error.errors 
+        error: 'Внутренняя ошибка сервера' 
       });
     }
-
-    console.error('Ошибка регистрации:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Внутренняя ошибка сервера' 
-    });
-  }
 }));
 
 // Обновление токена
