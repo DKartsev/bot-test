@@ -154,6 +154,8 @@ app.get('/health', async (req, res) => {
 // API маршруты
 app.use('/api/auth', authRoutes); // Маршруты аутентификации (без middleware)
 app.use('/api', authenticateToken, operatorRoutes); // Защищенные маршруты
+app.use('/api/metrics', metricsRoutes);
+app.use('/api/rag', ragRoutes);
 
 // Временный отладочный эндпоинт для получения JWT токена (только для разработки)
 if (env.NODE_ENV === 'development') {
@@ -208,8 +210,6 @@ app.use('/upload', uploadRoutes);
 app.use('/rate-limit', rateLimitRoutes);
 app.use('/query-optimizer', queryOptimizerRoutes);
 app.use('/error-handler', errorHandlerRoutes);
-app.use('/api/metrics', metricsRoutes);
-app.use('/api/rag', ragRoutes);
 
 // Swagger документация
 app.use('/docs', swaggerRoutes);
