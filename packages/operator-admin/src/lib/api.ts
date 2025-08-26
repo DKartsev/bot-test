@@ -49,14 +49,18 @@ class ApiClient {
   }
   // Аутентификация
   async login(email: string, password: string): Promise<{ access: string; refresh: string }> {
-    const result = await this.request<{ success: boolean; data: { tokens: { access: string; refresh: string } } }>(
-      '/api/auth/login',
-      {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      },
-    );
-    const tokens = result.data.tokens;
+    const url = `${API_CONFIG.BASE_URL}/api/auth/login`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!response.ok) {
+      const message = `${response.status} ${response.statusText}`;
+      throw new Error(`API Error: ${message}`);
+    }
+    const result = await response.json() as any;
+    const tokens = result.data.tokens as { access: string; refresh: string };
     (globalThis as any).localStorage?.setItem('auth_token', tokens.access);
     (globalThis as any).localStorage?.setItem('refresh_token', tokens.refresh);
     return { access: tokens.access, refresh: tokens.refresh };
