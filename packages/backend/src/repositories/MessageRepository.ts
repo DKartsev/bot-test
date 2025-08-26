@@ -23,8 +23,8 @@ export class MessageRepository {
     try {
       const result = await db.query<Message>(`
         SELECT * FROM messages 
-        WHERE chat_id = $1 
-        ORDER BY timestamp DESC 
+        WHERE conversation_id = $1 
+        ORDER BY created_at DESC 
         LIMIT $2 OFFSET $3
       `, [chatId, limit, offset]);
 
@@ -39,8 +39,8 @@ export class MessageRepository {
     try {
       const result = await db.query<Message>(`
         SELECT * FROM messages 
-        WHERE chat_id = $1 
-        ORDER BY timestamp DESC 
+        WHERE conversation_id = $1 
+        ORDER BY created_at DESC 
         LIMIT 1
       `, [chatId]);
 
@@ -59,8 +59,8 @@ export class MessageRepository {
     try {
       const result = await db.query<Message>(`
         SELECT * FROM messages 
-        WHERE chat_id = $1 AND is_read = false 
-        ORDER BY timestamp ASC
+        WHERE conversation_id = $1 
+        ORDER BY created_at ASC
       `, [chatId]);
 
       return result.rows;
@@ -74,15 +74,17 @@ export class MessageRepository {
   async create(messageData: Partial<Message>): Promise<Message> {
     try {
       const result = await db.query<Message>(`
-        INSERT INTO messages (chat_id, author_type, author_id, text, metadata)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO messages (conversation_id, sender, content, media_urls, media_types, transcript, vision_summary)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
       `, [
         messageData.chat_id,
         messageData.author_type,
-        messageData.author_id,
         messageData.text,
-        messageData.metadata || {},
+        messageData.metadata?.media_urls || [],
+        messageData.metadata?.media_types || [],
+        messageData.metadata?.transcript || null,
+        messageData.metadata?.vision_summary || null,
       ]);
 
       const message = result.rows[0];
@@ -100,10 +102,17 @@ export class MessageRepository {
   async createBotMessage(chatId: number, text: string, metadata?: any): Promise<Message> {
     try {
       const result = await db.query<Message>(`
-        INSERT INTO messages (chat_id, author_type, author_id, text, metadata)
-        VALUES ($1, 'bot', NULL, $2, $3)
+        INSERT INTO messages (conversation_id, sender, content, media_urls, media_types, transcript, vision_summary)
+        VALUES ($1, 'bot', $2, $3, $4, $5, $6)
         RETURNING *
-      `, [chatId, text, metadata || {}]);
+      `, [
+        chatId, 
+        text, 
+        metadata?.media_urls || [],
+        metadata?.media_types || [],
+        metadata?.transcript || null,
+        metadata?.vision_summary || null
+      ]);
 
       const message = result.rows[0];
       if (!message) {
@@ -120,10 +129,17 @@ export class MessageRepository {
   async createOperatorMessage(chatId: number, operatorId: number, text: string, metadata?: any): Promise<Message> {
     try {
       const result = await db.query<Message>(`
-        INSERT INTO messages (chat_id, author_type, author_id, text, metadata)
-        VALUES ($1, 'operator', $2, $3, $4)
+        INSERT INTO messages (conversation_id, sender, content, media_urls, media_types, transcript, vision_summary)
+        VALUES ($1, 'operator', $2, $3, $4, $5, $6)
         RETURNING *
-      `, [chatId, operatorId, text, metadata || {}]);
+      `, [
+        chatId, 
+        text, 
+        metadata?.media_urls || [],
+        metadata?.media_types || [],
+        metadata?.transcript || null,
+        metadata?.vision_summary || null
+      ]);
 
       const message = result.rows[0];
       if (!message) {
@@ -140,10 +156,17 @@ export class MessageRepository {
   async createUserMessage(chatId: number, userId: number, text: string, metadata?: any): Promise<Message> {
     try {
       const result = await db.query<Message>(`
-        INSERT INTO messages (chat_id, author_type, author_id, text, metadata)
-        VALUES ($1, 'user', $2, $3, $4)
+        INSERT INTO messages (conversation_id, sender, content, media_urls, media_types, transcript, vision_summary)
+        VALUES ($1, 'user', $2, $3, $4, $5, $6)
         RETURNING *
-      `, [chatId, userId, text, metadata || {}]);
+      `, [
+        chatId, 
+        text, 
+        metadata?.media_urls || [],
+        metadata?.media_types || [],
+        metadata?.transcript || null,
+        metadata?.vision_summary || null
+      ]);
 
       const message = result.rows[0];
       if (!message) {
@@ -156,14 +179,11 @@ export class MessageRepository {
     }
   }
 
-  // Обновление статуса прочтения сообщения
+  // Обновление статуса прочтения сообщения (не поддерживается в новой схеме)
   async markAsRead(messageId: number): Promise<void> {
     try {
-      await db.query(`
-        UPDATE messages 
-        SET is_read = true 
-        WHERE id = $1
-      `, [messageId]);
+      console.warn('Поле is_read не поддерживается в новой схеме');
+      // В новой схеме нет поля is_read
     } catch (error) {
       console.error('Ошибка обновления статуса сообщения:', error);
       throw error;
