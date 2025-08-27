@@ -57,44 +57,68 @@ router.post('/login', rateLimitMiddleware.auth(), asyncHandler(async (req, res) 
     // Валидация входных данных
     const validatedData = loginSchema.parse(req.body);
     
+    console.log('🔐 Попытка входа для email:', validatedData.email);
+    
     // Поиск оператора по email
     const operator = await operatorService.getOperatorByEmail(validatedData.email);
     if (!operator) {
+      console.log('❌ Оператор не найден:', validatedData.email);
       return res.status(401).json({ 
         success: false, 
         error: 'Неверный email или пароль' 
       });
     }
+
+    console.log('✅ Оператор найден:', {
+      id: operator.id,
+      email: operator.email,
+      hasPasswordHash: !!operator.password_hash,
+      passwordHashLength: operator.password_hash?.length,
+      isActive: operator.is_active
+    });
 
     // Проверка пароля строго через bcrypt и хеш из БД
     let isValidPassword = false;
     try {
+      console.log('🔍 Сравнение паролей...');
+      console.log('📝 Введённый пароль:', validatedData.password);
+      console.log('🔑 Хеш из БД:', operator.password_hash);
+      
       isValidPassword = await bcrypt.compare(validatedData.password, operator.password_hash);
+      console.log('✅ Результат сравнения bcrypt:', isValidPassword);
     } catch (error) {
-      console.error('Ошибка сравнения пароля через bcrypt:', error);
+      console.error('❌ Ошибка сравнения пароля через bcrypt:', error);
       isValidPassword = false;
     }
     
     if (!isValidPassword) {
+      console.log('❌ Пароль неверный');
       return res.status(401).json({ 
         success: false, 
         error: 'Неверный email или пароль' 
       });
     }
 
+    console.log('✅ Пароль верный, проверяем активность...');
+
     // Проверка активности оператора
     if (!operator.is_active) {
+      console.log('❌ Оператор заблокирован');
       return res.status(403).json({ 
         success: false, 
         error: 'Аккаунт заблокирован' 
       });
     }
 
+    console.log('✅ Оператор активен, генерируем токены...');
+
     // Генерация токенов
     const { accessToken, refreshToken } = generateTokens(operator);
 
     // Обновление последнего входа
     await operatorService.updateLastLogin(operator.id);
+
+    console.log('✅ Вход успешен, токены сгенерированы');
 
     res.json({
       success: true,
@@ -114,21 +138,22 @@ router.post('/login', rateLimitMiddleware.auth(), asyncHandler(async (req, res) 
       message: 'Успешный вход в систему'
     });
 
-      } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Ошибка валидации данных',
-          details: error.issues 
-        });
-      }
-
-      console.error('Ошибка входа:', error);
-      res.status(500).json({ 
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.log('❌ Ошибка валидации:', error.issues);
+      return res.status(400).json({ 
         success: false, 
-        error: 'Внутренняя ошибка сервера' 
+        error: 'Ошибка валидации данных',
+        details: error.issues 
       });
     }
+
+    console.error('❌ Ошибка входа:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Внутренняя ошибка сервера' 
+    });
+  }
 }));
 
 // Регистрация отключена по требованиям: эндпоинт удалён
