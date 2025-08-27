@@ -74,7 +74,7 @@ export function ChatList({
     if (filters.status && filters.status.length > 0 && !filters.status.includes(chat.status)) return false;
     if (filters.source && filters.source.length > 0 && !filters.source.includes(chat.source)) return false;
     if (filters.priority && filters.priority.length > 0 && !filters.priority.includes(chat.priority)) return false;
-    if (filters.has_attachments && chat.last_message.attachments?.length === 0) return false;
+    if (filters.has_attachments && (!chat.last_message || chat.last_message.attachments?.length === 0)) return false;
     return true;
   });
 
@@ -240,7 +240,7 @@ export function ChatList({
 
                   {/* Последнее сообщение */}
                   <p className="text-sm text-gray-600 truncate mb-2">
-                    {chat.last_message.text}
+                    {chat.last_message ? chat.last_message.text : 'Нет сообщений'}
                   </p>
 
                   {/* Метаданные */}
@@ -263,7 +263,7 @@ export function ChatList({
                           {chat.unread_count}
                         </span>
                       )}
-                      <span>{formatTime(chat.last_message.timestamp)}</span>
+                      <span>{chat.last_message ? formatTime(chat.last_message.timestamp) : 'Нет сообщений'}</span>
                     </div>
                   </div>
                 </div>
