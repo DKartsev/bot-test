@@ -91,7 +91,7 @@ export class ChatRepository {
   }
 
   // Получение конкретного чата
-  async findById(id: number): Promise<Chat | null> {
+  async findById(id: string): Promise<Chat | null> {
     try {
       const result = await db.query(`
         SELECT 
@@ -131,7 +131,7 @@ export class ChatRepository {
       `, [userTelegramId]);
 
       // Получаем полную информацию о чате
-      return await this.findById(Number(result.rows[0]['id']));
+      return await this.findById(String(result.rows[0]['id']));
     } catch (error) {
       console.error('Ошибка создания чата:', error);
       throw error;
@@ -139,7 +139,7 @@ export class ChatRepository {
   }
 
   // Обновление статуса чата
-  async updateStatus(id: number, status: string, operatorId?: number): Promise<Chat | null> {
+  async updateStatus(id: string, status: string, operatorId?: number): Promise<Chat | null> {
     try {
       const result = await db.query(`
         UPDATE conversations 
@@ -196,7 +196,7 @@ export class ChatRepository {
   }
 
   // Обновление приоритета чата
-  async updatePriority(id: number, priority: string): Promise<Chat | null> {
+  async updatePriority(id: string, priority: string): Promise<Chat | null> {
     try {
       // В новой схеме priority не существует
       console.warn('Приоритет не поддерживается в новой схеме');
@@ -262,14 +262,14 @@ export class ChatRepository {
   // Преобразование строки БД в объект Chat
   private mapRowToChat(row: Record<string, unknown>): Chat {
     // Убеждаемся, что id чата не null
-    const chatId = row['id'] || row['conversation_id'];
+    const chatId = row['id'];
     if (!chatId) {
       console.warn('Chat ID is null, skipping chat:', row);
       throw new Error('Chat ID cannot be null');
     }
 
     return {
-      id: Number(chatId),
+      id: String(chatId), // Используем UUID как строку
       user_id: Number(row['user_telegram_id']),
       user: {
         id: Number(row['user_telegram_id']),
@@ -287,13 +287,13 @@ export class ChatRepository {
         last_activity: new Date(row['last_message_at'] as string || row['created_at'] as string).toISOString(),
       },
       last_message: row['message_id'] ? {
-        id: Number(row['message_id']),
-        chat_id: Number(chatId),
-        conversation_id: Number(chatId),
+        id: String(row['message_id']), // UUID как строка
+        chat_id: String(chatId), // UUID как строка
+        conversation_id: String(chatId), // UUID как строка
         sender: String(row['message_sender']),
         content: String(row['message_content'] || ''),
         author_type: String(row['message_sender']) as 'user' | 'bot' | 'operator',
-        author_id: Number(row['message_sender']),
+        author_id: String(row['message_sender']), // Используем sender как author_id
         text: String(row['message_content'] || ''), // Добавляем text для совместимости с фронтендом
         timestamp: new Date(row['message_created_at'] as string).toISOString(),
         is_read: true,
@@ -320,7 +320,7 @@ export class ChatRepository {
   }
 
   // Добавление тегов к чату (заглушка для совместимости)
-  async addTags(chatId: number, tags: string[]): Promise<Chat | null> {
+  async addTags(chatId: string, tags: string[]): Promise<Chat | null> {
     try {
       // В новой схеме tags не поддерживаются, возвращаем чат без изменений
       console.warn('Теги не поддерживаются в новой схеме');
