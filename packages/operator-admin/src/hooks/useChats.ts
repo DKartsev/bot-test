@@ -134,7 +134,7 @@ export function useChats() {
         reconnectTimeoutRef.current = setTimeout(initializeWebSocket, 5000);
       };
       
-      ws.onerror = (error) => {
+      ws.onerror = (error: Event) => {
         console.error('WebSocket ошибка:', error);
         setError('Ошибка WebSocket соединения');
       };
