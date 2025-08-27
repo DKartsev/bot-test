@@ -52,7 +52,7 @@ const generateTokens = (operator: any) => {
 };
 
 // Логин оператора
-router.post('/login', rateLimitMiddleware.auth(), asyncHandler(async (req, res) => {
+router.post('/login', asyncHandler(async (req, res) => {
   console.log('🚀 === НАЧАЛО ОБРАБОТКИ ЗАПРОСА /login ===');
   console.log('📝 Метод:', req.method);
   console.log('🔗 URL:', req.url);
