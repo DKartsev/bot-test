@@ -131,74 +131,7 @@ router.post('/login', rateLimitMiddleware.auth(), asyncHandler(async (req, res) 
     }
 }));
 
-// Регистрация нового оператора
-router.post('/register', rateLimitMiddleware.auth(), asyncHandler(async (req, res) => {
-  try {
-    // Валидация входных данных
-    const validatedData = registerSchema.parse(req.body);
-    
-    // Проверка существования оператора
-    const existingOperator = await operatorService.getOperatorByEmail(validatedData.email);
-    if (existingOperator) {
-      return res.status(409).json({ 
-        success: false, 
-        error: 'Оператор с таким email уже существует' 
-      });
-    }
-
-    // Хеширование пароля
-    const passwordHash = await bcrypt.hash(validatedData.password, 12);
-
-    // Создание оператора
-    const username = `${validatedData.first_name.toLowerCase()}_${validatedData.last_name.toLowerCase()}`;
-    const newOperator = await operatorService.createOperator({
-      username,
-      first_name: validatedData.first_name,
-      last_name: validatedData.last_name,
-      email: validatedData.email,
-      password_hash: passwordHash,
-      role: validatedData.role,
-      is_active: true,
-      max_chats: 10
-    });
-
-    // Генерация токенов
-    const { accessToken, refreshToken } = generateTokens(newOperator);
-
-    res.status(201).json({
-      success: true,
-      data: {
-        operator: {
-          id: newOperator.id,
-          name: `${newOperator.first_name} ${newOperator.last_name}`,
-          email: newOperator.email,
-          role: newOperator.role,
-          is_active: newOperator.is_active
-        },
-        tokens: {
-          access: accessToken,
-          refresh: refreshToken
-        }
-      },
-      message: 'Оператор успешно зарегистрирован'
-    });
-
-      } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Ошибка валидации данных',
-          details: error.issues 
-        });
-      }
-
-      console.error('Ошибка регистрации:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Внутренняя ошибка сервера' 
-      });
-    }
-}));
+// Регистрация отключена по требованиям: эндпоинт удалён
 
 // Обновление токена
 router.post('/refresh', asyncHandler(async (req, res) => {
