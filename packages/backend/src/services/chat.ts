@@ -25,7 +25,7 @@ export class ChatService {
   }
 
   // Получение чата по ID
-  async getChatById(id: number): Promise<Chat | null> {
+  async getChatById(id: string): Promise<Chat | null> {
     try {
       return await this.chatRepository.findById(id);
     } catch (error) {
@@ -60,7 +60,7 @@ export class ChatService {
   }
 
   // Обновление статуса чата
-  async updateChatStatus(id: number, status: string): Promise<Chat | null> {
+  async updateChatStatus(id: string, status: string): Promise<Chat | null> {
     try {
       return await this.chatRepository.updateStatus(id, status);
     } catch (error) {
@@ -70,7 +70,7 @@ export class ChatService {
   }
 
   // Принятие чата оператором
-  async takeChat(chatId: number, operatorId: number): Promise<Chat | null> {
+  async takeChat(chatId: string, operatorId: number): Promise<Chat | null> {
     try {
       // Проверяем существование оператора
       const operator = await this.operatorRepository.findById(operatorId);
@@ -101,7 +101,7 @@ export class ChatService {
   }
 
   // Закрытие чата
-  async closeChat(chatId: number, operatorId: number): Promise<Chat | null> {
+  async closeChat(chatId: string, operatorId: number): Promise<Chat | null> {
     try {
       return await this.chatRepository.closeChat(chatId, operatorId);
     } catch (error) {
@@ -111,7 +111,7 @@ export class ChatService {
   }
 
   // Обновление приоритета чата
-  async updateChatPriority(chatId: number, priority: string): Promise<Chat | null> {
+  async updateChatPriority(chatId: string, priority: string): Promise<Chat | null> {
     try {
       return await this.chatRepository.updatePriority(chatId, priority);
     } catch (error) {
@@ -121,12 +121,12 @@ export class ChatService {
   }
 
   // Добавление тегов к чату
-  async addTags(chatId: number, tags: string[]): Promise<Chat | null> {
+  async addTags(chatId: string, tags: string[]): Promise<Chat | null> {
     return this.addChatTags(chatId, tags);
   }
 
   // Добавление тегов к чату
-  async addChatTags(chatId: number, _tags: string[]): Promise<Chat> {
+  async addChatTags(chatId: string, _tags: string[]): Promise<Chat> {
     try {
               const result = await this.chatRepository.addTags(chatId, _tags);
       if (!result) {
