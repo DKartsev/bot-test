@@ -84,7 +84,7 @@ data/
 *.zip
 
 # Package manager
-package-lock.json
+# package-lock.json  # Нужен для Docker build
 yarn.lock
 pnpm-lock.yaml
 
