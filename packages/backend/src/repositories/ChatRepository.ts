@@ -158,7 +158,7 @@ export class ChatRepository {
   }
 
   // Принятие чата в работу
-  async takeChat(id: number, operatorId: number): Promise<Chat | null> {
+  async takeChat(id: string, operatorId: number): Promise<Chat | null> {
     try {
       const result = await db.query(`
         UPDATE conversations 
@@ -177,7 +177,7 @@ export class ChatRepository {
   }
 
   // Закрытие чата
-  async closeChat(id: number, operatorId: number): Promise<Chat | null> {
+  async closeChat(id: string, operatorId: number): Promise<Chat | null> {
     try {
       const result = await db.query(`
         UPDATE conversations 
