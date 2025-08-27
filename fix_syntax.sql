@@ -1,0 +1,3 @@
+-- Этот файл создан для напоминания об исправлении синтаксической ошибки
+-- В ChatRepository.ts строка 249: waiting_chats: parseInt(String(stats['waiting_chats'])),
+-- Нужно убрать лишнюю скобку в конце
