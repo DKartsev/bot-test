@@ -38,7 +38,9 @@ COPY packages/shared ./packages/shared
 COPY packages/backend ./packages/backend
 
 # корневые tsconfig* нужны, т.к. пакеты делают extends на tsconfig.base.json
-COPY tsconfig*.json ./
+# Попробуем скопировать файлы по отдельности, если они существуют
+COPY tsconfig.base.json ./tsconfig.base.json
+COPY tsconfig.json ./tsconfig.json
 
 # СНАЧАЛА собираем shared, потом backend
 RUN npm --prefix packages/shared run build
