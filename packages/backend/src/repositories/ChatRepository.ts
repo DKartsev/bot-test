@@ -261,8 +261,15 @@ export class ChatRepository {
 
   // Преобразование строки БД в объект Chat
   private mapRowToChat(row: Record<string, unknown>): Chat {
+    // Убеждаемся, что id чата не null
+    const chatId = row['id'] || row['conversation_id'];
+    if (!chatId) {
+      console.warn('Chat ID is null, skipping chat:', row);
+      throw new Error('Chat ID cannot be null');
+    }
+
     return {
-      id: Number(row['id']),
+      id: Number(chatId),
       user_id: Number(row['user_telegram_id']),
       user: {
         id: Number(row['user_telegram_id']),
@@ -281,8 +288,8 @@ export class ChatRepository {
       },
       last_message: row['message_id'] ? {
         id: Number(row['message_id']),
-        chat_id: Number(row['id']),
-        conversation_id: Number(row['id']),
+        chat_id: Number(chatId),
+        conversation_id: Number(chatId),
         sender: String(row['message_sender']),
         content: String(row['message_content'] || ''),
         author_type: String(row['message_sender']) as 'user' | 'bot' | 'operator',
