@@ -53,6 +53,13 @@ const generateTokens = (operator: any) => {
 
 // Логин оператора
 router.post('/login', rateLimitMiddleware.auth(), asyncHandler(async (req, res) => {
+  console.log('🚀 === НАЧАЛО ОБРАБОТКИ ЗАПРОСА /login ===');
+  console.log('📝 Метод:', req.method);
+  console.log('🔗 URL:', req.url);
+  console.log('📍 Путь:', req.path);
+  console.log('📊 Заголовки:', req.headers);
+  console.log('📦 Тело запроса:', req.body);
+  
   try {
     // Валидация входных данных
     const validatedData = loginSchema.parse(req.body);
