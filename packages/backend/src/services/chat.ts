@@ -239,7 +239,7 @@ export class ChatService {
   }
 
   // Эскалация чата (передача от бота оператору)
-  async escalateChat(chatId: number, reason: string): Promise<Chat | null> {
+  async escalateChat(chatId: string, reason: string): Promise<Chat | null> {
     try {
       // Находим доступного оператора
       const availableOperator = await this.operatorRepository.findLeastLoaded();
@@ -289,7 +289,7 @@ export class ChatService {
   }
 
   // Получение количества непрочитанных сообщений для чата
-  async getUnreadMessageCount(chatId: number): Promise<number> {
+  async getUnreadMessageCount(chatId: string): Promise<number> {
     try {
       return await this.messageRepository.getUnreadCount(chatId);
     } catch (error) {
@@ -299,7 +299,7 @@ export class ChatService {
   }
 
   // Получение последнего сообщения чата
-  async getLastMessage(chatId: number) {
+  async getLastMessage(chatId: string) {
     try {
       return await this.messageRepository.getLastMessage(chatId);
     } catch (error) {
