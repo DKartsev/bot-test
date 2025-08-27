@@ -8,6 +8,22 @@ import { rateLimitMiddleware } from '../services/rateLimiter';
 const router = express.Router();
 const operatorService = new OperatorService();
 
+console.log('🔧 AUTH ROUTER: Инициализация auth роутера');
+
+// Добавляем отладочный middleware для всех запросов к auth роутеру
+router.use((req, res, next) => {
+  console.log('🚀 AUTH ROUTER: Получен запрос', {
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    baseUrl: req.baseUrl,
+    url: req.url,
+    headers: req.headers,
+    body: req.body
+  });
+  next();
+});
+
 // Схемы валидации
 const loginSchema = z.object({
   email: z.string().email('Неверный формат email'),
