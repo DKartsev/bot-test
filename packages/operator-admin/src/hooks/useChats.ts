@@ -116,7 +116,7 @@ export function useChats() {
         setError(null);
       };
       
-      ws.onmessage = (event) => {
+      ws.onmessage = (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
           handleWebSocketMessage(data);
