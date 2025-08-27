@@ -4,7 +4,7 @@ import { logError } from '../utils/logger';
 
 export class NoteRepository {
   // Получение заметки по ID
-  async findById(id: number): Promise<Note> {
+  async findById(id: string): Promise<Note> {
     try {
       const result = await db.query<Note>(`
         SELECT 
@@ -170,9 +170,9 @@ export class NoteRepository {
 
       // Преобразуем в нужный формат
       return {
-        id: Number(noteRow.id),
-        chat_id: Number(noteRow.chat_id),
-        conversation_id: Number(noteRow.chat_id), // Используем chat_id как conversation_id
+        id: String(noteRow.id),
+        chat_id: String(noteRow.chat_id),
+        conversation_id: String(noteRow.chat_id), // Используем chat_id как conversation_id
         content: String(noteRow.content),
         author_id: Number(noteRow.operator_id),
         author_name: String(noteRow.author_name || 'Unknown'),
@@ -188,7 +188,7 @@ export class NoteRepository {
   }
 
   // Обновление заметки
-  async update(id: number, updates: Record<string, unknown>): Promise<Note | null> {
+  async update(id: string, updates: Record<string, unknown>): Promise<Note | null> {
     try {
       const fields: string[] = [];
       const values: unknown[] = [];
@@ -226,9 +226,9 @@ export class NoteRepository {
 
       // Преобразуем в нужный формат
       return {
-        id: updatedNote.id,
-        chat_id: updatedNote.chat_id,
-        conversation_id: updatedNote.chat_id, // Используем chat_id как conversation_id
+        id: String(updatedNote.id),
+        chat_id: String(updatedNote.chat_id),
+        conversation_id: String(updatedNote.chat_id), // Используем chat_id как conversation_id
         content: updatedNote.content,
         author_id: updatedNote.operator_id,
         author_name: updatedNote.author_name || 'Unknown',
@@ -244,7 +244,7 @@ export class NoteRepository {
   }
 
   // Удаление заметки
-  async delete(id: number): Promise<boolean> {
+  async delete(id: string): Promise<boolean> {
     try {
       const result = await db.query(`
         DELETE FROM notes WHERE id = $1
@@ -258,7 +258,7 @@ export class NoteRepository {
   }
 
   // Получение статистики заметок
-  async getStats(chatId: number): Promise<{
+  async getStats(chatId: string): Promise<{
     total: number;
     internal: number;
     public: number;

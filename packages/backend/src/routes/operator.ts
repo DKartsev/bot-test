@@ -471,8 +471,8 @@ router.get('/chats/:id/notes', requireOperator, cacheMiddleware.short, asyncHand
 // Создание заметки
 router.post('/chats/:id/notes', requireOperator, asyncHandler(async (req, res) => {
   try {
-    const chatId = parseInt(req.params['id'] || '0');
-    if (isNaN(chatId) || chatId <= 0) {
+    const chatId = req.params['id'];
+    if (!chatId) {
       res.status(400).json({ error: 'Недействительный ID чата' });
       return;
     }
@@ -514,8 +514,8 @@ router.get('/canned-responses', requireOperator, cacheMiddleware.long, asyncHand
 // Получение вложений чата
 router.get('/chats/:id/attachments', requireOperator, cacheMiddleware.medium, asyncHandler(async (req, res) => {
   try {
-    const chatId = parseInt(req.params['id'] || '0');
-    if (isNaN(chatId) || chatId <= 0) {
+    const chatId = req.params['id'];
+    if (!chatId) {
       res.status(400).json({ error: 'Недействительный ID чата' });
       return;
     }
@@ -531,8 +531,8 @@ router.get('/chats/:id/attachments', requireOperator, cacheMiddleware.medium, as
 // Получение кейсов чата
 router.get('/chats/:id/cases', requireOperator, cacheMiddleware.medium, asyncHandler(async (req, res) => {
   try {
-    const chatId = parseInt(req.params['id'] || '0');
-    if (isNaN(chatId) || chatId <= 0) {
+    const chatId = req.params['id'];
+    if (!chatId) {
       res.status(400).json({ error: 'Недействительный ID чата' });
       return;
     }
