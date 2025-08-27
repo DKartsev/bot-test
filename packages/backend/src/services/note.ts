@@ -34,7 +34,7 @@ export class NoteService {
     }
   }
 
-  async getByChatId(chatId: number): Promise<Note[]> {
+  async getByChatId(chatId: string): Promise<Note[]> {
     try {
       return await this.noteRepository.findByChatId(chatId);
     } catch (error) {
@@ -44,7 +44,7 @@ export class NoteService {
   }
 
   // Alias для совместимости с routes
-  async getNotesByChatId(chatId: number): Promise<Note[]> {
+  async getNotesByChatId(chatId: string): Promise<Note[]> {
     return this.getByChatId(chatId);
   }
 
@@ -80,7 +80,7 @@ export class NoteService {
     }
   }
 
-  async getPublicByChatId(chatId: number): Promise<Note[]> {
+  async getPublicByChatId(chatId: string): Promise<Note[]> {
     try {
       return await this.noteRepository.findPublicByChatId(chatId);
     } catch (error) {
@@ -89,7 +89,7 @@ export class NoteService {
     }
   }
 
-  async getInternalByChatId(chatId: number, _operatorId: number): Promise<Note[]> {
+  async getInternalByChatId(chatId: string, _operatorId: number): Promise<Note[]> {
     try {
       return await this.noteRepository.findInternalByChatId(chatId);
     } catch (error) {

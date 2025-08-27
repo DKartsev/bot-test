@@ -39,7 +39,7 @@ export class NoteRepository {
     }
   }
 
-  async findByChatId(chatId: number): Promise<Note[]> {
+  async findByChatId(chatId: string): Promise<Note[]> {
     try {
       const result = await db.query<Note>(`
         SELECT 
@@ -103,7 +103,7 @@ export class NoteRepository {
   }
 
   // Получение внутренних заметок чата
-  async findInternalByChatId(chatId: number): Promise<Note[]> {
+  async findInternalByChatId(chatId: string): Promise<Note[]> {
     try {
       const result = await db.query<Note>(`
         SELECT 
@@ -126,7 +126,7 @@ export class NoteRepository {
   }
 
   // Получение публичных заметок чата
-  async findPublicByChatId(chatId: number): Promise<Note[]> {
+  async findPublicByChatId(chatId: string): Promise<Note[]> {
     try {
       const result = await db.query<Note>(`
         SELECT 

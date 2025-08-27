@@ -19,7 +19,7 @@ export class MessageRepository {
     }
   }
 
-  async findByChatId(chatId: number, limit: number = 100, offset: number = 0): Promise<Message[]> {
+  async findByChatId(chatId: string, limit: number = 100, offset: number = 0): Promise<Message[]> {
     try {
       const result = await db.query<Message>(`
         SELECT * FROM messages 
@@ -35,7 +35,7 @@ export class MessageRepository {
     }
   }
 
-  async findLatestByChatId(chatId: number): Promise<Message> {
+  async findLatestByChatId(chatId: string): Promise<Message> {
     try {
       const result = await db.query<Message>(`
         SELECT * FROM messages 
@@ -55,7 +55,7 @@ export class MessageRepository {
     }
   }
 
-  async findUnreadByChatId(chatId: number): Promise<Message[]> {
+  async findUnreadByChatId(chatId: string): Promise<Message[]> {
     try {
       const result = await db.query<Message>(`
         SELECT * FROM messages 
@@ -99,7 +99,7 @@ export class MessageRepository {
   }
 
   // Создание сообщения от бота
-  async createBotMessage(chatId: number, text: string, metadata?: any): Promise<Message> {
+  async createBotMessage(chatId: string, text: string, metadata?: any): Promise<Message> {
     try {
       const result = await db.query<Message>(`
         INSERT INTO messages (conversation_id, sender, content, media_urls, media_types, transcript, vision_summary)
@@ -126,7 +126,7 @@ export class MessageRepository {
   }
 
   // Создание сообщения от оператора
-  async createOperatorMessage(chatId: number, operatorId: number, text: string, metadata?: any): Promise<Message> {
+  async createOperatorMessage(chatId: string, operatorId: number, text: string, metadata?: any): Promise<Message> {
     try {
       const result = await db.query<Message>(`
         INSERT INTO messages (conversation_id, sender, content, media_urls, media_types, transcript, vision_summary)
@@ -153,7 +153,7 @@ export class MessageRepository {
   }
 
   // Создание сообщения от пользователя
-  async createUserMessage(chatId: number, userId: number, text: string, metadata?: any): Promise<Message> {
+  async createUserMessage(chatId: string, userId: number, text: string, metadata?: any): Promise<Message> {
     try {
       const result = await db.query<Message>(`
         INSERT INTO messages (conversation_id, sender, content, media_urls, media_types, transcript, vision_summary)
@@ -191,7 +191,7 @@ export class MessageRepository {
   }
 
   // Получение количества непрочитанных сообщений для чата
-  async getUnreadCount(chatId: number): Promise<number> {
+  async getUnreadCount(chatId: string): Promise<number> {
     try {
       const result = await db.query(`
         SELECT COUNT(*) as count 
@@ -207,7 +207,7 @@ export class MessageRepository {
   }
 
   // Поиск сообщений по тексту
-  async searchByText(chatId: number, query: string, limit: number = 20): Promise<Message[]> {
+  async searchByText(chatId: string, query: string, limit: number = 20): Promise<Message[]> {
     try {
       const result = await db.query<Message>(`
         SELECT * FROM messages 
@@ -224,7 +224,7 @@ export class MessageRepository {
   }
 
   // Получение последнего сообщения чата
-  async getLastMessage(chatId: number): Promise<Message | null> {
+  async getLastMessage(chatId: string): Promise<Message | null> {
     try {
       const result = await db.query<Message>(`
         SELECT * FROM messages 
@@ -241,7 +241,7 @@ export class MessageRepository {
   }
 
   // Получение сообщений по типу автора
-  async findByAuthorType(chatId: number, authorType: string, limit: number = 20): Promise<Message[]> {
+  async findByAuthorType(chatId: string, authorType: string, limit: number = 20): Promise<Message[]> {
     try {
       const result = await db.query<Message>(`
         SELECT * FROM messages 
@@ -258,7 +258,7 @@ export class MessageRepository {
   }
 
   // Получение сообщений за период
-  async findByDateRange(chatId: number, startDate: Date, endDate: Date): Promise<Message[]> {
+  async findByDateRange(chatId: string, startDate: Date, endDate: Date): Promise<Message[]> {
     try {
       const result = await db.query<Message>(`
         SELECT * FROM messages 
@@ -328,7 +328,7 @@ export class MessageRepository {
   }
 
   // Получение статистики сообщений
-  async getStats(chatId: number): Promise<{
+  async getStats(chatId: string): Promise<{
     total: number;
     user: number;
     bot: number;

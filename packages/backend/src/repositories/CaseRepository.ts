@@ -18,7 +18,7 @@ export class CaseRepository {
   }
 
   // Получение кейсов чата
-  async findByChatId(chatId: number): Promise<Case[]> {
+  async findByChatId(chatId: string): Promise<Case[]> {
     try {
       const result = await db.query<Case>(`
         SELECT c.*, o.name as operator_name

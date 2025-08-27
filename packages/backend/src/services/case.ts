@@ -33,7 +33,7 @@ export class CaseService {
     }
   }
 
-  async getByChatId(chatId: number): Promise<Case[]> {
+  async getByChatId(chatId: string): Promise<Case[]> {
     try {
       return await this.caseRepository.findByChatId(chatId);
     } catch (error) {
@@ -43,7 +43,7 @@ export class CaseService {
   }
 
   // Alias для совместимости с routes
-  async getCasesByChatId(chatId: number): Promise<Case[]> {
+  async getCasesByChatId(chatId: string): Promise<Case[]> {
     return this.getByChatId(chatId);
   }
 
@@ -114,7 +114,7 @@ export class CaseService {
     }
   }
 
-  async search(query: string, chatId?: number, operatorId?: number): Promise<Case[]> {
+  async search(query: string, chatId?: string, operatorId?: number): Promise<Case[]> {
     try {
       // Простой поиск по названию и описанию
       const allCases = await this.caseRepository.findAll();
@@ -138,7 +138,7 @@ export class CaseService {
     }
   }
 
-  async getByDateRange(startDate: Date, endDate: Date, chatId?: number): Promise<Case[]> {
+  async getByDateRange(startDate: Date, endDate: Date, chatId?: string): Promise<Case[]> {
     try {
       // Простой поиск по дате создания
       const allCases = await this.caseRepository.findAll();
@@ -191,7 +191,7 @@ export class CaseService {
     }
   }
 
-  async getStats(_chatId?: number): Promise<{
+  async getStats(_chatId?: string): Promise<{
     total: number;
     byStatus: { [key: string]: number };
     byPriority: { [key: string]: number };

@@ -17,7 +17,7 @@ export class MessageService {
   }
 
   // Получение сообщений чата
-  async getMessages(chatId: number, limit: number = 50, offset: number = 0): Promise<Message[]> {
+  async getMessages(chatId: string, limit: number = 50, offset: number = 0): Promise<Message[]> {
     try {
       // Проверяем существование чата
       const chat = await this.chatRepository.findById(chatId);
@@ -33,7 +33,7 @@ export class MessageService {
   }
 
   // Создание сообщения от пользователя
-  async createUserMessage(chatId: number, _userId: number, text: string, metadata?: any): Promise<Message> {
+  async createUserMessage(chatId: string, _userId: number, text: string, metadata?: any): Promise<Message> {
     try {
       // Проверяем существование чата и пользователя
       const [chat, user] = await Promise.all([
@@ -66,7 +66,7 @@ export class MessageService {
   }
 
   // Создание сообщения от оператора
-  async createOperatorMessage(chatId: number, operatorId: number, text: string, metadata?: any): Promise<Message> {
+  async createOperatorMessage(chatId: string, operatorId: number, text: string, metadata?: any): Promise<Message> {
     try {
       // Проверяем существование чата и оператора
       const [chat, operator] = await Promise.all([
@@ -100,7 +100,7 @@ export class MessageService {
   }
 
   // Создание сообщения от бота
-  async createBotMessage(chatId: number, text: string, metadata?: any): Promise<Message> {
+  async createBotMessage(chatId: string, text: string, metadata?: any): Promise<Message> {
     try {
       // Проверяем существование чата
       const chat = await this.chatRepository.findById(chatId);
@@ -345,13 +345,13 @@ export class MessageService {
   }
 
   // Alias для совместимости с routes
-  async getMessagesByChatId(chatId: number, limit: number = 50, offset: number = 0): Promise<Message[]> {
+  async getMessagesByChatId(chatId: string, limit: number = 50, offset: number = 0): Promise<Message[]> {
     return this.getMessages(chatId, limit, offset);
   }
 
   // Создание сообщения (общий метод)
   async createMessage(messageData: {
-    chatId: number;
+    chatId: string;
     authorType: 'user' | 'operator' | 'bot';
     authorId?: number;
     text: string;
@@ -394,7 +394,7 @@ export class MessageService {
   }
 
   // Поиск сообщений
-  async searchMessages(query: string, chatId?: number): Promise<Message[]> {
+  async searchMessages(query: string, chatId?: string): Promise<Message[]> {
     try {
       if (chatId) {
         return await this.messageRepository.searchByText(chatId, query);

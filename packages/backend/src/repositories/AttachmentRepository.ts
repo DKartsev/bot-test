@@ -29,7 +29,7 @@ export class AttachmentRepository {
     }
   }
 
-  async findByChatId(chatId: number, limit: number = 100): Promise<Attachment[]> {
+  async findByChatId(chatId: string, limit: number = 100): Promise<Attachment[]> {
     try {
       const result = await db.query<Attachment>(
         'SELECT * FROM attachments WHERE chat_id = $1 ORDER BY created_at DESC LIMIT $2',
@@ -159,7 +159,7 @@ export class AttachmentRepository {
     }
   }
 
-  async deleteByChatId(chatId: number): Promise<boolean> {
+  async deleteByChatId(chatId: string): Promise<boolean> {
     try {
       const result = await db.query(
         'DELETE FROM attachments WHERE chat_id = $1',

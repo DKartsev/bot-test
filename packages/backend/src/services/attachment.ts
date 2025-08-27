@@ -45,7 +45,7 @@ export class AttachmentService {
     }
   }
 
-  async getAttachmentsByChatId(chatId: number, limit: number = 100): Promise<Attachment[]> {
+  async getAttachmentsByChatId(chatId: string, limit: number = 100): Promise<Attachment[]> {
     try {
       return await this.attachmentRepository.findByChatId(chatId, limit);
     } catch (error) {
@@ -94,7 +94,7 @@ export class AttachmentService {
     }
   }
 
-  async deleteAttachmentsByChatId(chatId: number): Promise<boolean> {
+  async deleteAttachmentsByChatId(chatId: string): Promise<boolean> {
     try {
       const attachments = await this.getAttachmentsByChatId(chatId, 1000);
 
@@ -144,7 +144,7 @@ export class AttachmentService {
     }
   }
 
-  async searchAttachments(query: string, chatId?: number, limit: number = 100): Promise<Attachment[]> {
+  async searchAttachments(query: string, chatId?: string, limit: number = 100): Promise<Attachment[]> {
     try {
       // Простой поиск по имени файла
       const allAttachments = chatId
@@ -213,7 +213,7 @@ export class AttachmentService {
     };
   }
 
-  async saveFile(file: Express.Multer.File, chatId: number, messageId?: number): Promise<Attachment> {
+  async saveFile(file: Express.Multer.File, chatId: string, messageId?: number): Promise<Attachment> {
     try {
       // Файл уже прошел валидацию в middleware, поэтому просто сохраняем
 
