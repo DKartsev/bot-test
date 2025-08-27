@@ -15,14 +15,14 @@ export interface User {
 }
 
 export interface Message {
-  id: number;
-  chat_id: number;
-  conversation_id: number;
+  id: string; // Изменено с number на string для UUID
+  chat_id: string; // Изменено с number на string для UUID
+  conversation_id: string; // Изменено с number на string для UUID
   sender: string;
   content: string;
   text: string;
   author_type: 'user' | 'bot' | 'operator';
-  author_id: number;
+  author_id: string; // Изменено с number на string
   timestamp: string;
   is_read: boolean;
   media_urls?: any[];
@@ -44,7 +44,7 @@ export interface Message {
 }
 
 export interface Chat {
-  id: number;
+  id: string; // Изменено с number на string для UUID
   user_id: number;
   user: User;
   last_message: Message | null;
@@ -90,9 +90,9 @@ export interface CannedResponse {
 }
 
 export interface Note {
-  id: number;
-  chat_id: number;
-  conversation_id: number;
+  id: string; // Изменено с number на string для UUID
+  chat_id: string; // Изменено с number на string для UUID
+  conversation_id: string; // Изменено с number на string для UUID
   content: string;
   author_id: number;
   author_name: string;
