@@ -55,11 +55,15 @@ class ApiClient {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
+    console.log('🔐 Отправка запроса на:', url);
+    console.log('📤 Данные:', { email, password: '***' });
     if (!response.ok) {
-      const message = `${response.status} ${response.statusText}`;
-      throw new Error(`API Error: ${message}`);
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ Ошибка аутентификации:', response.status, errorData);
+      throw new Error(`API Error: ${response.status} ${response.statusText} - ${(errorData as any).error || ''}`);
     }
     const result = await response.json() as any;
+    console.log('✅ Успешная аутентификация:', result);
     
     // Handle both old and new response formats
     let tokens;
