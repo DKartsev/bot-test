@@ -155,7 +155,6 @@ app.get('/health', async (req, res) => {
 app.use('/api/auth', authRoutes); // Маршруты аутентификации (без middleware)
 app.use('/api/metrics', metricsRoutes);
 app.use('/api/rag', ragRoutes);
-app.use('/api', authenticateToken, operatorRoutes); // Защищенные маршруты
 
 // Удалены dev-эндпоинты генерации токенов и создания тестового оператора
 app.use('/telegram', telegramRoutes);
@@ -166,6 +165,9 @@ app.use('/error-handler', errorHandlerRoutes);
 
 // Swagger документация
 app.use('/docs', swaggerRoutes);
+
+// Общий роут /api должен быть ПОСЛЕДНИМ, чтобы не перехватывать специфичные роуты
+app.use('/api', authenticateToken, operatorRoutes); // Защищенные маршруты
 
 // Инициализация сервисов
 async function initializeServices(): Promise<void> {
