@@ -38,7 +38,7 @@ export class OperatorRepository {
   async findAll(): Promise<Operator[]> {
     try {
       const result = await db.query<Operator>(`
-        SELECT * FROM operators ORDER BY name
+        SELECT * FROM operators ORDER BY first_name, last_name
       `);
 
       return result.rows;
@@ -52,7 +52,7 @@ export class OperatorRepository {
   async findActive(): Promise<Operator[]> {
     try {
       const result = await db.query<Operator>(`
-        SELECT * FROM operators WHERE is_active = true ORDER BY name
+        SELECT * FROM operators WHERE is_active = true ORDER BY first_name, last_name
       `);
 
       return result.rows;
@@ -178,7 +178,7 @@ export class OperatorRepository {
         FROM operators o
         LEFT JOIN chats c ON o.id = c.operator_id AND c.status = 'in_progress'
         GROUP BY o.id
-        ORDER BY active_chat_count DESC, o.name
+        ORDER BY active_chat_count DESC, o.first_name, o.last_name
       `);
 
       return result.rows;
@@ -198,7 +198,7 @@ export class OperatorRepository {
         WHERE o.is_active = true
         GROUP BY o.id
         HAVING COUNT(c.id) < o.max_chats
-        ORDER BY current_chat_count ASC, o.name
+        ORDER BY current_chat_count ASC, o.first_name, o.last_name
       `);
 
       return result.rows;
@@ -259,7 +259,7 @@ export class OperatorRepository {
       const result = await db.query<Operator>(`
         SELECT * FROM operators 
         WHERE name ILIKE $1 OR email ILIKE $1
-        ORDER BY name
+        ORDER BY first_name, last_name
       `, [`%${query}%`]);
 
       return result.rows;

@@ -66,17 +66,13 @@ router.post('/login', rateLimitMiddleware.auth(), asyncHandler(async (req, res) 
       });
     }
 
-    // Проверка пароля (временно упрощено для тестирования)
+    // Проверка пароля строго через bcrypt и хеш из БД
     let isValidPassword = false;
-    if (operator.password_hash === 'dummy_hash' && validatedData.password === 'password123') {
-      isValidPassword = true;
-    } else {
-      try {
-        isValidPassword = await bcrypt.compare(validatedData.password, operator.password_hash);
-      } catch (error) {
-        console.warn('Ошибка bcrypt, используем простое сравнение:', error);
-        isValidPassword = false;
-      }
+    try {
+      isValidPassword = await bcrypt.compare(validatedData.password, operator.password_hash);
+    } catch (error) {
+      console.error('Ошибка сравнения пароля через bcrypt:', error);
+      isValidPassword = false;
     }
     
     if (!isValidPassword) {
@@ -135,17 +131,9 @@ router.post('/login', rateLimitMiddleware.auth(), asyncHandler(async (req, res) 
     }
 }));
 
-// Регистрация нового оператора (только для разработки)
+// Регистрация нового оператора
 router.post('/register', rateLimitMiddleware.auth(), asyncHandler(async (req, res) => {
   try {
-    // В продакшене регистрация запрещена
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Регистрация запрещена в продакшене' 
-      });
-    }
-
     // Валидация входных данных
     const validatedData = registerSchema.parse(req.body);
     
@@ -338,61 +326,6 @@ router.get('/profile', asyncHandler(async (req, res) => {
   }
 }));
 
-// Тестовый endpoint для создания оператора (только для разработки)
-router.post('/create-test-operator', asyncHandler(async (req, res) => {
-  try {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Создание тестовых операторов запрещено в продакшене' 
-      });
-    }
-
-    // Создаем тестового оператора
-    const passwordHash = await bcrypt.hash('test123', 12);
-    const username = 'test_operator';
-    const testOperator = await operatorService.createOperator({
-      username,
-      first_name: 'Test',
-      last_name: 'Operator',
-      email: 'test@operator.com',
-      password_hash: passwordHash,
-      role: 'admin',
-      is_active: true,
-      max_chats: 10
-    });
-
-    // Генерируем токены
-    const { accessToken, refreshToken } = generateTokens(testOperator);
-
-    res.json({
-      success: true,
-      data: {
-        operator: {
-          id: testOperator.id,
-          name: `${testOperator.first_name} ${testOperator.last_name}`,
-          email: testOperator.email,
-          role: testOperator.role
-        },
-        tokens: {
-          access: accessToken,
-          refresh: refreshToken
-        },
-        credentials: {
-          email: 'test@operator.com',
-          password: 'test123'
-        }
-      },
-      message: 'Тестовый оператор создан успешно'
-    });
-
-  } catch (error) {
-    console.error('Ошибка создания тестового оператора:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Не удалось создать тестового оператора' 
-    });
-  }
-}));
+// Удалено: тестовые/временные эндпоинты
 
 export default router;
