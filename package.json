@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "npm run build:backend && npm run build:admin",
-    "build:backend": "rm -rf dist && mkdir -p dist && cp -r packages/backend/src/* dist/ && mkdir -p dist/shared && cp -r packages/shared/src/* dist/shared/",
+    "build:backend": "cd packages/backend && npm run build",
     "build:admin": "cd packages/operator-admin && npm run build",
     "start": "pm2 start ecosystem.config.js",
     "start:dev": "concurrently \"npm run dev:backend\" \"npm run dev:admin\"",
