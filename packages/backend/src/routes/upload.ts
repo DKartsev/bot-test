@@ -28,8 +28,8 @@ router.post('/image', requireOperator, rateLimitMiddleware.fileUpload(), fileUpl
       return;
     }
 
-    const chatId = parseInt(req.body.chat_id || '0');
-    if (isNaN(chatId) || chatId <= 0) {
+    const chatId = req.body.chat_id as string;
+    if (!chatId) {
       res.status(400).json({ error: 'Недействительный ID чата' });
       return;
     }
@@ -58,7 +58,7 @@ router.post('/image', requireOperator, rateLimitMiddleware.fileUpload(), fileUpl
       logError('Ошибка загрузки изображения', {
         fileName: req.file ? (req.file as Express.Multer.File).originalname : undefined,
         error: error instanceof Error ? error.message : 'Unknown error',
-        chatId: parseInt(req.params.chatId),
+        chatId: req.body?.chat_id,
       });
       res.status(500).json({ error: 'Не удалось загрузить изображение' });
     }
@@ -81,8 +81,8 @@ router.post('/images', requireOperator, rateLimitMiddleware.fileUpload(), upload
       return;
     }
 
-    const chatId = parseInt(req.body.chat_id || '0');
-    if (isNaN(chatId) || chatId <= 0) {
+    const chatId = req.body.chat_id as string;
+    if (!chatId) {
       res.status(400).json({ error: 'Недействительный ID чата' });
       return;
     }
@@ -136,8 +136,8 @@ router.post('/document', requireOperator, rateLimitMiddleware.fileUpload(), file
       return;
     }
 
-    const chatId = parseInt(req.body.chat_id || '0');
-    if (isNaN(chatId) || chatId <= 0) {
+    const chatId = req.body.chat_id as string;
+    if (!chatId) {
       res.status(400).json({ error: 'Недействительный ID чата' });
       return;
     }
@@ -166,7 +166,7 @@ router.post('/document', requireOperator, rateLimitMiddleware.fileUpload(), file
       logError('Ошибка загрузки документа', {
         fileName: req.file ? (req.file as Express.Multer.File).originalname : undefined,
         error: error instanceof Error ? error.message : 'Unknown error',
-        chatId: parseInt(req.params.chatId),
+        chatId: req.body?.chat_id,
       });
       res.status(500).json({ error: 'Не удалось загрузить документ' });
     }
@@ -182,8 +182,8 @@ router.post('/archive', requireOperator, fileUploadConfigs.archives('archive'), 
       return;
     }
 
-    const chatId = parseInt(req.body.chat_id || '0');
-    if (isNaN(chatId) || chatId <= 0) {
+    const chatId = req.body.chat_id as string;
+    if (!chatId) {
       res.status(400).json({ error: 'Недействительный ID чата' });
       return;
     }
@@ -212,7 +212,7 @@ router.post('/archive', requireOperator, fileUploadConfigs.archives('archive'), 
       logError('Ошибка загрузки архива', {
         fileName: req.file ? (req.file as Express.Multer.File).originalname : undefined,
         error: error instanceof Error ? error.message : 'Unknown error',
-        chatId: parseInt(req.params.chatId),
+        chatId: req.body?.chat_id,
       });
       res.status(500).json({ error: 'Не удалось загрузить архив' });
     }
@@ -228,8 +228,8 @@ router.post('/media', requireOperator, fileUploadConfigs.media('media'), asyncHa
       return;
     }
 
-    const chatId = parseInt(req.body.chat_id || '0');
-    if (isNaN(chatId) || chatId <= 0) {
+    const chatId = req.body.chat_id as string;
+    if (!chatId) {
       res.status(400).json({ error: 'Недействительный ID чата' });
       return;
     }
@@ -258,7 +258,7 @@ router.post('/media', requireOperator, fileUploadConfigs.media('media'), asyncHa
       logError('Ошибка загрузки медиа файла', {
         fileName: req.file ? (req.file as Express.Multer.File).originalname : undefined,
         error: error instanceof Error ? error.message : 'Unknown error',
-        chatId: parseInt(req.params.chatId),
+        chatId: req.body?.chat_id,
       });
       res.status(500).json({ error: 'Не удалось загрузить медиа файл' });
     }
@@ -284,8 +284,8 @@ router.post('/mixed', requireOperator, uploadFields([
   blockExecutableFiles: true,
 }), asyncHandler(async (req, res) => {
   try {
-    const chatId = parseInt(req.body.chat_id || '0');
-    if (isNaN(chatId) || chatId <= 0) {
+    const chatId = req.body.chat_id as string;
+    if (!chatId) {
       res.status(400).json({ error: 'Недействительный ID чата' });
       return;
     }

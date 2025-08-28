@@ -26,6 +26,7 @@
     "migrate-from-supabase:build": "npm run build && node dist/scripts/migrate-from-supabase.js"
   },
   "dependencies": {
+    "uuid": "^9.0.1",
     "@types/bcrypt": "^6.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/swagger-jsdoc": "^6.0.4",
@@ -55,6 +56,7 @@
     "zod": "^4.0.17"
   },
   "devDependencies": {
+    "@types/uuid": "^9.0.6",
     "@jest/globals": "^30.0.5",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
