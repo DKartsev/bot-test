@@ -134,7 +134,7 @@ export class MessageService {
   // Получение количества непрочитанных сообщений
   async getUnreadCount(chatId: number): Promise<number> {
     try {
-      return await this.messageRepository.getUnreadCount(chatId);
+      return await this.messageRepository.getUnreadCount(chatId.toString());
     } catch (error) {
       console.error('Ошибка получения количества непрочитанных сообщений:', error);
       return 0;
@@ -145,7 +145,7 @@ export class MessageService {
   // Получение последнего сообщения чата
   async getLastMessage(chatId: number): Promise<Message | null> {
     try {
-      return await this.messageRepository.getLastMessage(chatId);
+      return await this.messageRepository.getLastMessage(chatId.toString());
     } catch (error) {
       console.error('Ошибка получения последнего сообщения:', error);
       return null;
@@ -155,7 +155,7 @@ export class MessageService {
   // Получение сообщений по типу автора
   async getMessagesByAuthorType(chatId: number, authorType: string, limit: number = 20): Promise<Message[]> {
     try {
-      return await this.messageRepository.findByAuthorType(chatId, authorType, limit);
+      return await this.messageRepository.findByAuthorType(chatId.toString(), authorType, limit);
     } catch (error) {
       console.error('Ошибка получения сообщений по типу автора:', error);
       throw new Error('Не удалось получить сообщения по типу автора');
@@ -192,7 +192,7 @@ export class MessageService {
   // Получение статистики сообщений
   async getMessageStats(chatId: number) {
     try {
-      return await this.messageRepository.getStats(chatId);
+      return await this.messageRepository.getStats(chatId.toString());
     } catch (error) {
       console.error('Ошибка получения статистики сообщений:', error);
       throw new Error('Не удалось получить статистику сообщений');
@@ -281,7 +281,7 @@ export class MessageService {
   // Получение сообщений бота
   async getBotMessages(chatId: number, limit: number = 20): Promise<Message[]> {
     try {
-      return await this.messageRepository.findByAuthorType(chatId, 'bot', limit);
+      return await this.messageRepository.findByAuthorType(chatId.toString(), 'bot', limit);
     } catch (error) {
       console.error('Ошибка получения сообщений бота:', error);
       throw new Error('Не удалось получить сообщения бота');
@@ -292,10 +292,10 @@ export class MessageService {
   async getMessagesForAnalysis(chatId: number, limit: number = 10): Promise<Message[]> {
     try {
       // Получаем последние сообщения пользователя для анализа
-      const userMessages = await this.messageRepository.findByAuthorType(chatId, 'user', limit);
+      const userMessages = await this.messageRepository.findByAuthorType(chatId.toString(), 'user', limit);
 
       // Получаем последние сообщения бота для контекста
-      const botMessages = await this.messageRepository.findByAuthorType(chatId, 'bot', 5);
+      const botMessages = await this.messageRepository.findByAuthorType(chatId.toString(), 'bot', 5);
 
       // Объединяем и сортируем по времени
       const allMessages = [...userMessages, ...botMessages];
@@ -318,7 +318,7 @@ export class MessageService {
 
   async markMessagesAsRead(chatId: number, _operatorId: number): Promise<number> {
     try {
-      const messages = await this.messageRepository.findByChatId(chatId, 1000, 0);
+      const messages = await this.messageRepository.findByChatId(chatId.toString(), 1000, 0);
       let updatedCount = 0;
 
       for (const message of messages) {
@@ -337,7 +337,7 @@ export class MessageService {
 
   async getUnreadMessages(chatId: number): Promise<Message[]> {
     try {
-      return await this.messageRepository.findByChatId(chatId, 1000, 0);
+      return await this.messageRepository.findByChatId(chatId.toString(), 1000, 0);
     } catch (error) {
       console.error('Ошибка получения непрочитанных сообщений:', error);
       throw new Error('Не удалось получить непрочитанные сообщения');

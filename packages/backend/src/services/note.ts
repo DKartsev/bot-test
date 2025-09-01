@@ -27,7 +27,7 @@ export class NoteService {
 
   async getById(id: number): Promise<Note | null> {
     try {
-      return await this.noteRepository.findById(id);
+      return await this.noteRepository.findById(id.toString());
     } catch (error) {
       console.error('Ошибка получения заметки по ID:', error);
       throw new Error('Не удалось получить заметку');
@@ -64,7 +64,7 @@ export class NoteService {
 
   async update(id: number, updates: Partial<Note>): Promise<Note | null> {
     try {
-      return await this.noteRepository.update(id, updates);
+      return await this.noteRepository.update(id.toString(), updates);
     } catch (error) {
       console.error('Ошибка обновления заметки:', error);
       throw new Error('Не удалось обновить заметку');
@@ -73,7 +73,7 @@ export class NoteService {
 
   async delete(id: number): Promise<boolean> {
     try {
-      return await this.noteRepository.delete(id);
+      return await this.noteRepository.delete(id.toString());
     } catch (error) {
       console.error('Ошибка удаления заметки:', error);
       throw new Error('Не удалось удалить заметку');
@@ -105,7 +105,7 @@ export class NoteService {
       let filteredNotes = allNotes;
 
       if (chatId) {
-        filteredNotes = filteredNotes.filter((n: Note) => n.chat_id === chatId);
+        filteredNotes = filteredNotes.filter((n: Note) => n.chat_id === chatId.toString());
       }
       if (operatorId) {
         filteredNotes = filteredNotes.filter((n: Note) => n.author_id === operatorId);
@@ -139,7 +139,7 @@ export class NoteService {
       let filteredNotes = allNotes;
 
       if (chatId) {
-        filteredNotes = filteredNotes.filter((n: Note) => n.chat_id === chatId);
+        filteredNotes = filteredNotes.filter((n: Note) => n.chat_id === chatId.toString());
       }
 
       return filteredNotes.filter((n: Note) => {
@@ -159,7 +159,7 @@ export class NoteService {
     avgLength: number;
   }> {
     try {
-      const stats = await this.noteRepository.getStats(_chatId || 0);
+      const stats = await this.noteRepository.getStats((_chatId || 0).toString());
       return {
         total: stats.total,
         byType: {

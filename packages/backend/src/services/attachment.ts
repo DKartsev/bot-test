@@ -238,7 +238,7 @@ export class AttachmentService {
         message_id: messageId,
         file_name: fileName,
         file_path: filePath,
-        file_size: file.size,
+        file_size: file.size.toString(),
         mime_type: file.mimetype,
         original_name: file.originalname,
         metadata: {

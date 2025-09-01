@@ -121,7 +121,7 @@ export class CaseService {
       let filteredCases = allCases;
 
       if (chatId) {
-        filteredCases = filteredCases.filter(c => c.chat_id === chatId);
+        filteredCases = filteredCases.filter(c => c.chat_id === chatId.toString());
       }
       if (operatorId) {
         filteredCases = filteredCases.filter(c => c.assigned_to === operatorId);
@@ -145,7 +145,7 @@ export class CaseService {
       let filteredCases = allCases;
 
       if (chatId) {
-        filteredCases = filteredCases.filter(c => c.chat_id === chatId);
+        filteredCases = filteredCases.filter(c => c.chat_id === chatId.toString());
       }
 
       return filteredCases.filter(c => {

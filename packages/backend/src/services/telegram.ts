@@ -98,7 +98,7 @@ export class TelegramService {
       });
 
       // Отправляем приветственное сообщение
-      await this.messageService.createBotMessage(chatId,
+      await this.messageService.createBotMessage(chatId.toString(),
         'Добро пожаловать! Чем могу помочь?',
       );
 
@@ -208,13 +208,13 @@ export class TelegramService {
       });
 
       // Создаем сообщение пользователя
-      await this.messageService.createBotMessage(chatId, `Callback: ${data}`);
+      await this.messageService.createBotMessage(chatId.toString(), `Callback: ${data}`);
 
       // Обновляем активность пользователя
       await this.userService.updateActivity(userId);
 
       // Обрабатываем callback (логика бота)
-      await this.processCallbackQuery(chat.id, data, userId);
+      await this.processCallbackQuery(chat.id.toString(), data, userId);
     } catch (error) {
       logger.error('Ошибка обработки callback query:', error);
       throw error;
@@ -268,7 +268,7 @@ export class TelegramService {
 
       // Сохраняем медиа сообщение
       await this.messageService.createMessage({
-        chatId: chatId,
+        chatId: chatId.toString(),
         authorType: 'user',
         authorId: userId,
         text: message.caption || `[${mediaType.toUpperCase()}]`,
@@ -303,7 +303,7 @@ export class TelegramService {
 
       if (needsEscalation && chat.status === 'waiting') {
         const chatId = Number(chat.id);
-        await this.chatService.escalateChat(chatId, 'Автоматическая эскалация по ключевому слову');
+        await this.chatService.escalateChat(chatId.toString(), 'Автоматическая эскалация по ключевому слову');
         logger.info('Чат эскалирован автоматически', {
           chatId,
           reason: 'Автоматическая эскалация по ключевому слову',
@@ -567,7 +567,7 @@ export class TelegramService {
       await this.sendMessage(chatId, response);
 
       // Сохраняем ответ бота
-      await this.messageService.createBotMessage(chatId, response);
+      await this.messageService.createBotMessage(chatId.toString(), response);
 
     } catch (error) {
       logger.error('Ошибка обработки сообщения пользователя', {
