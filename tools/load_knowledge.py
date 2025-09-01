@@ -11,13 +11,13 @@ from datetime import datetime
 from pathlib import Path
 import re
 
-# Конфигурация базы данных
+# Конфигурация базы данных Supabase
 DB_CONFIG = {
-    'host': 'localhost',
+    'host': 'aws-0-eu-north-1.pooler.supabase.com',
     'port': 5432,
-    'database': 'support_db',
-    'user': 'postgres',
-    'password': 'postgres'
+    'database': 'postgres',
+    'user': 'postgres.ymfduihrjjuzwuckbjjh',
+    'password': 'mn4c0Je402fgh3mc5'
 }
 
 def parse_markdown_file(file_path: Path) -> dict:
@@ -89,7 +89,7 @@ def create_kb_article(cursor, article_data: dict) -> str:
 def main():
     """Основная функция"""
     # Путь к папке с файлами знаний
-    kb_path = Path('../apps/support-gateway/kb_articles')
+    kb_path = Path('apps/support-gateway/kb_articles')
     
     if not kb_path.exists():
         print(f"❌ Папка {kb_path} не найдена")
