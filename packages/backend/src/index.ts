@@ -57,16 +57,22 @@ process.env.LC_ALL = 'en_US.UTF-8';
 
 // Явная обработка OPTIONS запросов для всех маршрутов (ПЕРЕД CORS middleware)
 app.options('*', (req, res) => {
-  console.log('OPTIONS request received for:', req.path);
+  console.log('=== OPTIONS REQUEST RECEIVED ===');
+  console.log('Path:', req.path);
+  console.log('Method:', req.method);
   console.log('Origin header:', req.headers.origin);
+  console.log('All headers:', JSON.stringify(req.headers, null, 2));
   
   const origin = req.headers.origin;
   const allowedOrigins = env.api.cors.origin.split(',').map(o => o.trim());
+  console.log('Allowed origins:', allowedOrigins);
   
   if (origin && allowedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
+    console.log('Set Access-Control-Allow-Origin to:', origin);
   } else {
     res.header('Access-Control-Allow-Origin', '*');
+    console.log('Set Access-Control-Allow-Origin to: *');
   }
   
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
@@ -74,19 +80,18 @@ app.options('*', (req, res) => {
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Max-Age', '86400'); // 24 часа
   
-  console.log('CORS headers set:', {
+  console.log('All CORS headers set:', {
     'Access-Control-Allow-Origin': res.getHeader('Access-Control-Allow-Origin'),
     'Access-Control-Allow-Methods': res.getHeader('Access-Control-Allow-Methods'),
-    'Access-Control-Allow-Headers': res.getHeader('Access-Control-Allow-Headers')
+    'Access-Control-Allow-Headers': res.getHeader('Access-Control-Allow-Headers'),
+    'Access-Control-Allow-Credentials': res.getHeader('Access-Control-Allow-Credentials')
   });
   
+  console.log('=== SENDING 204 RESPONSE ===');
   res.sendStatus(204);
 });
 
-// CORS middleware отключен - используем только наш OPTIONS обработчик
-console.log('CORS middleware отключен - используется кастомный OPTIONS обработчик');
-
-// Добавляем CORS заголовки для всех ответов
+// Простой CORS middleware
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   const allowedOrigins = env.api.cors.origin.split(',').map(o => o.trim());
@@ -101,11 +106,18 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Request-ID');
   
+  if (req.method === 'OPTIONS') {
+    console.log('OPTIONS request handled by CORS middleware');
+    return res.sendStatus(204);
+  }
+  
   next();
 });
 
+// CORS заголовки уже установлены выше
+
 // Базовые middleware
-app.use(helmet());
+// app.use(helmet()); // Временно отключен для отладки CORS
 
 // Система обработки ошибок
 app.use(requestIdMiddleware);
@@ -139,6 +151,24 @@ app.use(express.urlencoded({
   limit: '10mb',
   type: 'application/x-www-form-urlencoded'
 }));
+
+// Обработка ошибок JSON парсинга
+app.use((error: any, req: any, res: any, next: any) => {
+  if (error instanceof SyntaxError && (error as any).status === 400 && 'body' in error) {
+    console.error('JSON parsing error:', error.message);
+    console.error('Request body:', req.body);
+    return res.status(400).json({
+      error: {
+        type: 'VALIDATION',
+        code: 'INVALID_JSON',
+        message: 'Invalid JSON format',
+        timestamp: new Date().toISOString(),
+        requestId: req.requestId
+      }
+    });
+  }
+  next(error);
+});
 
 // Статические файлы
 app.use('/uploads', express.static('uploads'));

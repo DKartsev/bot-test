@@ -33,6 +33,15 @@ const envSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   PUBLIC_URL: z.string().url().optional(),
 
+  // Supabase
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_KEY: z.string().optional(),
+
+  // OpenAI
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  OPENAI_EMBED_MODEL: z.string().default('text-embedding-3-small'),
+
   // Redis (для кэширования)
   REDIS_URL: z.string().optional(),
   REDIS_HOST: z.string().default('localhost'),

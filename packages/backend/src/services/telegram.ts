@@ -2,6 +2,7 @@ import TelegramBot = require('node-telegram-bot-api');
 import { ChatService } from './chat';
 import { MessageService } from './message';
 import { UserService } from './user';
+import { SupabaseRAGService } from './supabaseRAGService';
 import logger from '../utils/logger';
 
 // Типы для Telegram
@@ -63,6 +64,7 @@ export class TelegramService {
   private userService: UserService;
   private chatService: ChatService;
   private messageService: MessageService;
+  private ragService: SupabaseRAGService;
 
   constructor(token: string) {
     if (!token) {
@@ -74,6 +76,7 @@ export class TelegramService {
     this.userService = new UserService();
     this.chatService = new ChatService();
     this.messageService = new MessageService();
+    this.ragService = new SupabaseRAGService();
 
     logger.info('Telegram сервис инициализирован', { token: `${token.substring(0, 10)}...` });
   }
@@ -547,20 +550,40 @@ export class TelegramService {
     }
   }
 
-  // Обработка сообщения пользователя
+  // Обработка сообщения пользователя с использованием RAG
   async processUserMessage(chatId: number, text: string, userId: number): Promise<void> {
     try {
-      // Простая логика обработки сообщений пользователя
-      let response = 'Спасибо за ваше сообщение! Оператор ответит в ближайшее время.';
+      logger.info('🤖 Обработка сообщения пользователя через RAG', {
+        chatId,
+        userId,
+        text: text.substring(0, 100),
+      });
 
-      // Автоответы на часто задаваемые вопросы
-      const lowerText = text.toLowerCase();
-      if (lowerText.includes('баланс') || lowerText.includes('счет')) {
-        response = 'Для проверки баланса войдите в личный кабинет на сайте.';
-      } else if (lowerText.includes('верификация') || lowerText.includes('подтвержден')) {
-        response = 'Для прохождения верификации перейдите в раздел "Безопасность" в личном кабинете.';
-      } else if (lowerText.includes('сделка') || lowerText.includes('обмен')) {
-        response = 'По вопросам сделок обратитесь к нашим операторам. Они помогут разрешить любые вопросы.';
+      // Обрабатываем запрос через RAG пайплайн
+      const ragResponse = await this.ragService.processQuery({
+        question: text,
+        userId: userId.toString(),
+        chatId: chatId.toString(),
+        language: 'ru',
+        options: {
+          temperature: 0.3,
+          maxTokens: 1000,
+          topK: 5,
+          minSimilarity: 0.5,
+        },
+      });
+
+      // Формируем ответ с учетом уверенности
+      let response = ragResponse.answer;
+      
+      // Если уверенность низкая, добавляем предложение обратиться к оператору
+      if (ragResponse.confidence < 0.6) {
+        response += '\n\nЕсли нужна дополнительная помощь, я передам ваш вопрос оператору поддержки.';
+      }
+
+      // Добавляем информацию об источниках (опционально, для отладки)
+      if (ragResponse.sources.length > 0 && ragResponse.confidence > 0.7) {
+        response += `\n\n📚 Найдено ${ragResponse.sources.length} релевантных источников.`;
       }
 
       // Отправляем ответ
@@ -569,13 +592,32 @@ export class TelegramService {
       // Сохраняем ответ бота
       await this.messageService.createBotMessage(chatId.toString(), response);
 
+      logger.info('✅ Ответ отправлен пользователю', {
+        chatId,
+        userId,
+        confidence: ragResponse.confidence,
+        sourcesCount: ragResponse.sources.length,
+        totalTime: ragResponse.totalTime,
+        fallbackUsed: ragResponse.metadata.fallbackUsed,
+      });
+
     } catch (error) {
-      logger.error('Ошибка обработки сообщения пользователя', {
+      logger.error('❌ Ошибка обработки сообщения пользователя', {
         error: error instanceof Error ? error.message : 'Unknown error',
         chatId,
         userId,
         text: text.substring(0, 100),
       });
+
+      // Fallback ответ при ошибке
+      const fallbackResponse = 'Извините, произошла ошибка при обработке вашего запроса. Попробуйте переформулировать вопрос или обратитесь к оператору поддержки.';
+      
+      try {
+        await this.sendMessage(chatId, fallbackResponse);
+        await this.messageService.createBotMessage(chatId.toString(), fallbackResponse);
+      } catch (sendError) {
+        logger.error('❌ Ошибка отправки fallback ответа', { sendError });
+      }
     }
   }
 
