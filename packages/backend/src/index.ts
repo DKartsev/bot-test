@@ -89,13 +89,31 @@ try {
   console.log('Используется fallback CORS настройка');
 }
 
-// Явная обработка OPTIONS запросов для всех маршрутов
+// Явная обработка OPTIONS запросов для всех маршрутов (после CORS middleware)
 app.options('*', (req, res) => {
   console.log('OPTIONS request received for:', req.path);
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  console.log('Origin header:', req.headers.origin);
+  
+  const origin = req.headers.origin;
+  const allowedOrigins = env.api.cors.origin.split(',').map(o => o.trim());
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    res.header('Access-Control-Allow-Origin', '*');
+  }
+  
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Request-ID');
   res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400'); // 24 часа
+  
+  console.log('CORS headers set:', {
+    'Access-Control-Allow-Origin': res.getHeader('Access-Control-Allow-Origin'),
+    'Access-Control-Allow-Methods': res.getHeader('Access-Control-Allow-Methods'),
+    'Access-Control-Allow-Headers': res.getHeader('Access-Control-Allow-Headers')
+  });
+  
   res.sendStatus(204);
 });
 
@@ -123,20 +141,11 @@ app.use(morgan('combined'));
 import { rateLimitMiddleware } from './services/rateLimiter';
 app.use(rateLimitMiddleware.global());
 
-// Парсинг JSON с улучшенными настройками и обработкой ошибок
+// Парсинг JSON с улучшенными настройками
 app.use(express.json({ 
   limit: '10mb',
   strict: false,
-  type: 'application/json',
-  verify: (req, res, buf, encoding) => {
-    try {
-      JSON.parse(buf.toString('utf8'));
-    } catch (e) {
-      console.error('JSON parsing error:', e.message);
-      console.error('Buffer content:', buf.toString());
-      throw new Error('Invalid JSON format');
-    }
-  }
+  type: 'application/json'
 }));
 app.use(express.urlencoded({ 
   extended: true, 
