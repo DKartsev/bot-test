@@ -95,17 +95,21 @@ def analyze_kb_data(cursor) -> dict:
         'max_length': chunk_stats[4] or 0
     }
     
-    # Топ тегов
-    cursor.execute("""
-        SELECT tags, COUNT(*) as count
-        FROM kb_articles 
-        WHERE tags IS NOT NULL AND tags != '[]'
-        GROUP BY tags 
-        ORDER BY count DESC 
-        LIMIT 10
-    """)
-    top_tags = cursor.fetchall()
-    analysis['top_tags'] = top_tags
+    # Топ тегов (исправленная версия)
+    try:
+        cursor.execute("""
+            SELECT tags, COUNT(*) as count
+            FROM kb_articles 
+            WHERE tags IS NOT NULL AND tags != '[]' AND tags != 'null'
+            GROUP BY tags 
+            ORDER BY count DESC 
+            LIMIT 10
+        """)
+        top_tags = cursor.fetchall()
+        analysis['top_tags'] = top_tags
+    except Exception as e:
+        print(f"    ⚠️  Ошибка анализа тегов: {e}")
+        analysis['top_tags'] = []
     
     return analysis
 
