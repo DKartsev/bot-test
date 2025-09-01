@@ -104,16 +104,20 @@ def fix_article_tags():
         print(f"  - Обработано статей: {fixed_count}")
         print(f"  - Обновлено статей: {updated_count}")
         
-        # Показываем статистику тегов
-        cursor.execute("""
-            SELECT tags, COUNT(*) as count
-            FROM kb_articles 
-            WHERE tags IS NOT NULL AND tags != '[]' AND tags != 'null'
-            GROUP BY tags 
-            ORDER BY count DESC 
-            LIMIT 10
-        """)
-        tag_stats = cursor.fetchall()
+        # Показываем статистику тегов (исправленная версия)
+        try:
+            cursor.execute("""
+                SELECT tags, COUNT(*) as count
+                FROM kb_articles 
+                WHERE tags IS NOT NULL AND tags != '[]' AND tags != 'null' AND tags != '""'
+                GROUP BY tags 
+                ORDER BY count DESC 
+                LIMIT 10
+            """)
+            tag_stats = cursor.fetchall()
+        except Exception as e:
+            print(f"    ⚠️  Ошибка получения статистики тегов: {e}")
+            tag_stats = []
         
         print(f"\n📊 Топ тегов:")
         for tags, count in tag_stats:
