@@ -104,8 +104,8 @@ router.get('/chats', cacheMiddleware.medium, asyncHandler(async (req, res) => {
 // Получение сообщений чата
 router.get('/chats/:id/messages', cacheMiddleware.short, asyncHandler(async (req, res) => {
   try {
-    const chatId = parseInt(req.params['id'] || '0');
-    if (isNaN(chatId) || chatId <= 0) {
+    const chatId = req.params['id'];
+    if (!chatId) {
       res.status(400).json({ error: 'Недействительный ID чата' });
       return;
     }

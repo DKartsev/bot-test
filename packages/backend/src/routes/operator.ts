@@ -395,11 +395,12 @@ router.get('/search/chats', requireOperator, rateLimitMiddleware.search(), query
 // Поиск сообщений
 router.get('/search/messages', requireOperator, cacheMiddleware.medium, asyncHandler(async (req, res) => {
   try {
-    const chatId = parseInt(req.query['chat_id'] as string);
+    const chatId = req.query['chat_id'] as string;
     const query = req.query['q'] as string;
 
     if (!query || query.trim().length === 0) {
       res.status(400).json({ error: 'Поисковый запрос обязателен' });
+      return;
     }
 
     const messages = await messageService.searchMessages(query, chatId);
