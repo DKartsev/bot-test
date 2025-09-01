@@ -109,9 +109,17 @@ app.use(morgan('combined'));
 import { rateLimitMiddleware } from './services/rateLimiter';
 app.use(rateLimitMiddleware.global());
 
-// Парсинг JSON
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Парсинг JSON с улучшенными настройками
+app.use(express.json({ 
+  limit: '10mb',
+  strict: false,
+  type: 'application/json'
+}));
+app.use(express.urlencoded({ 
+  extended: true, 
+  limit: '10mb',
+  type: 'application/x-www-form-urlencoded'
+}));
 
 // Статические файлы
 app.use('/uploads', express.static('uploads'));
