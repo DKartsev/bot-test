@@ -165,7 +165,7 @@ export class MessageService {
   // Получение сообщений за период
   async getMessagesByDateRange(chatId: number, startDate: Date, endDate: Date): Promise<Message[]> {
     try {
-      return await this.messageRepository.findByDateRange(chatId, startDate, endDate);
+      return await this.messageRepository.findByDateRange(chatId.toString(), startDate, endDate);
     } catch (error) {
       console.error('Ошибка получения сообщений за период:', error);
       throw new Error('Не удалось получить сообщения за период');
@@ -202,12 +202,12 @@ export class MessageService {
   // Получение сообщений с вложениями
   async getMessagesWithAttachments(chatId: number, limit: number = 50, offset: number = 0): Promise<(Message & { attachments: any[] })[]> {
     try {
-      const messages = await this.messageRepository.findByChatId(chatId, limit, offset);
+      const messages = await this.messageRepository.findByChatId(chatId.toString(), limit, offset);
 
       // Получаем вложения для каждого сообщения
       const messagesWithAttachments = await Promise.all(
         messages.map(async (message) => {
-                     const attachments = await this.attachmentRepository.findByMessageId(message.id);
+                     const attachments = await this.attachmentRepository.findByMessageId(message.id.toString());
            return {
              ...message,
              attachments: attachments as any[],
@@ -323,7 +323,7 @@ export class MessageService {
 
       for (const message of messages) {
         if (!message.is_read && message.author_type === 'user') {
-          await this.messageRepository.update(message.id, { is_read: true });
+          await this.messageRepository.update(message.id.toString(), { is_read: true });
           updatedCount++;
         }
       }
@@ -434,7 +434,7 @@ export class MessageService {
       if (!message) {
         return null;
       }
-      return await this.updateMessage(message.id, _updates);
+      return await this.updateMessage(message.id.toString(), _updates);
     } catch (error) {
       console.error('Ошибка обновления сообщения по Telegram ID:', error);
       throw new Error('Не удалось обновить сообщение');

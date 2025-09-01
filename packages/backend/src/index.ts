@@ -130,7 +130,7 @@ app.use(express.json({
   type: 'application/json',
   verify: (req, res, buf, encoding) => {
     try {
-      JSON.parse(buf);
+      JSON.parse(buf.toString('utf8'));
     } catch (e) {
       console.error('JSON parsing error:', e.message);
       console.error('Buffer content:', buf.toString());

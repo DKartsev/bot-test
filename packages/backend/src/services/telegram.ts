@@ -135,7 +135,7 @@ export class TelegramService {
       });
 
       // Создаем сообщение пользователя
-      await this.messageService.createBotMessage(Number(chatId), String(text));
+      await this.messageService.createBotMessage(Number(chatId).toString(), String(text));
 
       // Обновляем активность пользователя
       await this.userService.updateActivity(Number(userId));
