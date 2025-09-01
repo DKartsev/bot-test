@@ -55,41 +55,7 @@ const PORT = env.PORT || 3000;
 process.env.LANG = 'en_US.UTF-8';
 process.env.LC_ALL = 'en_US.UTF-8';
 
-// CORS настройка из переменных окружения (должна быть первой!)
-try {
-  console.log('CORS Origin:', env.api.cors.origin);
-  console.log('CORS Credentials:', env.api.cors.credentials);
-  
-  const corsOrigins = env.api.cors.origin.split(',').map(origin => origin.trim());
-  console.log('CORS Origins:', corsOrigins);
-
-  app.use(cors({
-    origin: corsOrigins,
-    credentials: env.api.cors.credentials,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID'],
-    exposedHeaders: ['Content-Length', 'X-Request-Id'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204
-  }));
-  
-  console.log('CORS middleware настроен успешно');
-} catch (error) {
-  console.error('Ошибка настройки CORS:', error);
-  // Fallback CORS настройка
-  app.use(cors({
-    origin: ['http://localhost:3001', 'http://158.160.169.147:3001'],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID'],
-    exposedHeaders: ['Content-Length', 'X-Request-Id'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204
-  }));
-  console.log('Используется fallback CORS настройка');
-}
-
-// Явная обработка OPTIONS запросов для всех маршрутов (после CORS middleware)
+// Явная обработка OPTIONS запросов для всех маршрутов (ПЕРЕД CORS middleware)
 app.options('*', (req, res) => {
   console.log('OPTIONS request received for:', req.path);
   console.log('Origin header:', req.headers.origin);
@@ -116,6 +82,40 @@ app.options('*', (req, res) => {
   
   res.sendStatus(204);
 });
+
+// CORS настройка из переменных окружения
+try {
+  console.log('CORS Origin:', env.api.cors.origin);
+  console.log('CORS Credentials:', env.api.cors.credentials);
+  
+  const corsOrigins = env.api.cors.origin.split(',').map(origin => origin.trim());
+  console.log('CORS Origins:', corsOrigins);
+
+  app.use(cors({
+    origin: corsOrigins,
+    credentials: env.api.cors.credentials,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID'],
+    exposedHeaders: ['Content-Length', 'X-Request-Id'],
+    preflightContinue: true, // Позволяем продолжить обработку после CORS
+    optionsSuccessStatus: 204
+  }));
+  
+  console.log('CORS middleware настроен успешно');
+} catch (error) {
+  console.error('Ошибка настройки CORS:', error);
+  // Fallback CORS настройка
+  app.use(cors({
+    origin: ['http://localhost:3001', 'http://158.160.169.147:3001'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID'],
+    exposedHeaders: ['Content-Length', 'X-Request-Id'],
+    preflightContinue: true, // Позволяем продолжить обработку после CORS
+    optionsSuccessStatus: 204
+  }));
+  console.log('Используется fallback CORS настройка');
+}
 
 // Базовые middleware
 app.use(helmet());
