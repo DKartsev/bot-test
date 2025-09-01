@@ -234,11 +234,11 @@ export class AttachmentService {
 
       // Создаем запись в базе данных
       const attachment = await this.createAttachment({
-        chat_id: chatId,
-        message_id: messageId.toString(),
+        chat_id: Number(chatId),
+        message_id: Number(messageId),
         file_name: fileName,
         file_path: filePath,
-        file_size: file.size.toString(),
+        file_size: Number(file.size),
         mime_type: file.mimetype,
         original_name: file.originalname,
         metadata: {

@@ -207,7 +207,7 @@ export class MessageService {
       // Получаем вложения для каждого сообщения
       const messagesWithAttachments = await Promise.all(
         messages.map(async (message) => {
-                     const attachments = await this.attachmentRepository.findByMessageId(message.id.toString());
+                     const attachments = await this.attachmentRepository.findByMessageId(message.id);
            return {
              ...message,
              attachments: attachments as any[],
@@ -323,7 +323,7 @@ export class MessageService {
 
       for (const message of messages) {
         if (!message.is_read && message.author_type === 'user') {
-          await this.messageRepository.update(message.id.toString(), { is_read: true });
+          await this.messageRepository.update(message.id, { is_read: true });
           updatedCount++;
         }
       }
@@ -434,7 +434,7 @@ export class MessageService {
       if (!message) {
         return null;
       }
-      return await this.updateMessage(message.id.toString(), _updates);
+      return await this.updateMessage(message.id, _updates);
     } catch (error) {
       console.error('Ошибка обновления сообщения по Telegram ID:', error);
       throw new Error('Не удалось обновить сообщение');

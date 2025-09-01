@@ -214,7 +214,7 @@ export class TelegramService {
       await this.userService.updateActivity(userId);
 
       // Обрабатываем callback (логика бота)
-      await this.processCallbackQuery(chat.id.toString(), data, userId);
+      await this.processCallbackQuery(Number(chat.id), data, userId);
     } catch (error) {
       logger.error('Ошибка обработки callback query:', error);
       throw error;
