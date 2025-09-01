@@ -67,8 +67,10 @@ try {
     origin: corsOrigins,
     credentials: env.api.cors.credentials,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID'],
     exposedHeaders: ['Content-Length', 'X-Request-Id'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   }));
   
   console.log('CORS middleware настроен успешно');
@@ -79,11 +81,23 @@ try {
     origin: ['http://localhost:3001', 'http://158.160.169.147:3001'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID'],
     exposedHeaders: ['Content-Length', 'X-Request-Id'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   }));
   console.log('Используется fallback CORS настройка');
 }
+
+// Явная обработка OPTIONS запросов для всех маршрутов
+app.options('*', (req, res) => {
+  console.log('OPTIONS request received for:', req.path);
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Request-ID');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(204);
+});
 
 // Базовые middleware
 app.use(helmet());
@@ -109,11 +123,20 @@ app.use(morgan('combined'));
 import { rateLimitMiddleware } from './services/rateLimiter';
 app.use(rateLimitMiddleware.global());
 
-// Парсинг JSON с улучшенными настройками
+// Парсинг JSON с улучшенными настройками и обработкой ошибок
 app.use(express.json({ 
   limit: '10mb',
   strict: false,
-  type: 'application/json'
+  type: 'application/json',
+  verify: (req, res, buf, encoding) => {
+    try {
+      JSON.parse(buf);
+    } catch (e) {
+      console.error('JSON parsing error:', e.message);
+      console.error('Buffer content:', buf.toString());
+      throw new Error('Invalid JSON format');
+    }
+  }
 }));
 app.use(express.urlencoded({ 
   extended: true, 
