@@ -91,9 +91,7 @@ const envSchema = z.object({
   // Тестирование
   TEST_DATABASE_URL: z.string().optional(),
 
-  // OpenAI
-  OPENAI_API_KEY: z.string().optional(),
-  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  // OpenAI (дополнительные настройки)
   OPENAI_BASE_URL: z.string().optional(),
   OPENAI_MAX_TOKENS: z.string().default('4000'),
   OPENAI_TEMPERATURE: z.string().default('0.3'),

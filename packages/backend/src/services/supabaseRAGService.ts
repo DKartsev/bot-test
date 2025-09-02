@@ -344,7 +344,7 @@ export class SupabaseRAGService {
         throw new Error(`OpenAI API ошибка: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       const answer = data.choices[0]?.message?.content;
 
       if (!answer) {
