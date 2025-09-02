@@ -42,6 +42,7 @@ import errorHandlerRoutes from './routes/errorHandler';
 import swaggerRoutes from './routes/swagger';
 import metricsRoutes from './routes/metrics';
 import ragRoutes from './routes/rag';
+import supabaseRAGRoutes from './routes/supabaseRAG';
 
 
 
@@ -213,6 +214,7 @@ app.get('/health', async (req, res) => {
 app.use('/api/auth', authRoutes); // Маршруты аутентификации (без middleware)
 app.use('/api/metrics', metricsRoutes);
 app.use('/api/rag', ragRoutes);
+app.use('/api/supabase-rag', supabaseRAGRoutes);
 
 // Удалены dev-эндпоинты генерации токенов и создания тестового оператора
 app.use('/telegram', telegramRoutes);
