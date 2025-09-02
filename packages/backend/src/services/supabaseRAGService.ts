@@ -206,7 +206,7 @@ export class SupabaseRAGService {
         throw new Error(`OpenAI API ошибка: ${response.status} ${response.statusText}`);
       }
 
-      const data: OpenAIEmbeddingResponse = await response.json();
+      const data = await response.json() as OpenAIEmbeddingResponse;
       const embedding = data.data[0]?.embedding;
 
       if (!embedding || embedding.length === 0) {
