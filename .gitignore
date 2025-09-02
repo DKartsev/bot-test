@@ -18,6 +18,7 @@ admin-out/
 .env.test.local
 .env.production.local
 docker.env
+VM_ENV_VALUES.txt
 
 # Logs
 logs/
