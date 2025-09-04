@@ -56,7 +56,7 @@ export class MessageService {
       await this.userRepository.update(_userId, {});
 
       // Обновляем время последнего сообщения в чате
-      await this.chatRepository.updateStatus(chatId, 'updated');
+      await this.chatRepository.updateStatus(chatId, 'in_progress');
 
       return message;
     } catch (error) {
@@ -90,7 +90,7 @@ export class MessageService {
       const message = await this.messageRepository.createOperatorMessage(chatId, operatorId, text, metadata);
 
       // Обновляем время последнего сообщения в чате
-      await this.chatRepository.updateStatus(chatId, 'updated');
+      await this.chatRepository.updateStatus(chatId, 'in_progress');
 
       return message;
     } catch (error) {
@@ -112,7 +112,7 @@ export class MessageService {
       const message = await this.messageRepository.createBotMessage(chatId, text, metadata);
 
       // Обновляем время последнего сообщения в чате
-      await this.chatRepository.updateStatus(chatId, 'updated');
+      await this.chatRepository.updateStatus(chatId, 'in_progress');
 
       return message;
     } catch (error) {
