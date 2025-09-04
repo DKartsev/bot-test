@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "uuid": "^9.0.1",
+    "@supabase/supabase-js": "^2.39.0",
     "@types/bcrypt": "^6.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/swagger-jsdoc": "^6.0.4",
