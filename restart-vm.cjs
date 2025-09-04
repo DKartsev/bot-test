@@ -45,7 +45,7 @@ async function testAfterRestart() {
     const health = await makeRequest(`${SERVER_URL}/health`);
     console.log('✅ Health:', health.status);
     
-    // Тестируем /start
+    // Тестируем /start (только webhook обработку, без отправки в Telegram)
     console.log('\n2. Тестирование /start...');
     const startMessage = {
       message: {
