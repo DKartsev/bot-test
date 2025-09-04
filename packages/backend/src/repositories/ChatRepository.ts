@@ -126,7 +126,7 @@ export class ChatRepository {
     try {
       const result = await db.query(`
         INSERT INTO conversations (id, user_telegram_id, status, handoff)
-        VALUES (gen_random_uuid(), $1, 'waiting', 'bot')
+        VALUES (gen_random_uuid(), $1, 'open', 'bot')
         RETURNING *
       `, [userTelegramId.toString()]);
 
