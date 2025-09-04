@@ -15,6 +15,7 @@ import { UserService } from '../services/user';
 const router = express.Router();
 
 // Инициализируем Telegram сервис
+console.log('🔧 Инициализация TelegramService с токеном:', env.TG_BOT_TOKEN ? 'есть' : 'отсутствует');
 const telegramService = new TelegramService(env.TG_BOT_TOKEN || '');
 
 // Создаем instances сервисов

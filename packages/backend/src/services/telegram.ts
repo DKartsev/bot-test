@@ -67,10 +67,12 @@ export class TelegramService {
   private ragService: SupabaseRAGService;
 
   constructor(token: string) {
+    console.log('🤖 TelegramService конструктор вызван с токеном:', token ? 'есть' : 'отсутствует');
     if (!token) {
       console.warn('Telegram Bot Token не установлен. Telegram функциональность будет недоступна.');
       this.bot = null as any; // Создаем заглушку для разработки
     } else {
+      console.log('✅ Создаем TelegramBot с токеном');
       this.bot = new TelegramBot(token, { polling: false });
     }
     this.userService = new UserService();
