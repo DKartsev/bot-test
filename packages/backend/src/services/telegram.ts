@@ -173,7 +173,7 @@ export class TelegramService {
 
       // Создаем сообщение пользователя
       console.log('📝 Создание сообщения пользователя...');
-      await this.messageService.createUserMessage(Number(chatId).toString(), user.id, String(text));
+      await this.messageService.createUserMessage(chat.id, user.id, String(text));
       console.log('✅ Сообщение пользователя создано');
 
       // Обновляем активность пользователя
@@ -183,7 +183,7 @@ export class TelegramService {
 
       // Обрабатываем сообщение (логика бота)
       console.log('🤖 Обработка сообщения ботом...');
-      await this.processUserMessage(Number(chat.id), String(text), Number(userId));
+      await this.processUserMessage(chat.id, String(text), Number(userId));
       console.log('✅ Сообщение обработано ботом');
     } catch (error) {
       logger.error('Ошибка обработки сообщения:', error);
@@ -591,13 +591,19 @@ export class TelegramService {
   }
 
   // Обработка сообщения пользователя с использованием RAG
-  async processUserMessage(chatId: number, text: string, userId: number): Promise<void> {
+  async processUserMessage(chatId: string, text: string, userId: number): Promise<void> {
     try {
       logger.info('🤖 Обработка сообщения пользователя через RAG', {
         chatId,
         userId,
         text: text.substring(0, 100),
       });
+
+      // Получаем Telegram chat ID из базы данных
+      const chat = await this.chatService.getChatById(chatId);
+      if (!chat) {
+        throw new Error('Чат не найден');
+      }
 
       let response: string;
 
@@ -650,10 +656,10 @@ export class TelegramService {
       }
 
       // Отправляем ответ
-      await this.sendMessage(chatId, response);
+      await this.sendMessage(chat.user_id, response);
 
       // Сохраняем ответ бота
-      await this.messageService.createBotMessage(chatId.toString(), response);
+      await this.messageService.createBotMessage(chatId, response);
 
       logger.info('✅ Ответ отправлен пользователю', {
         chatId,
@@ -673,8 +679,8 @@ export class TelegramService {
       const fallbackResponse = 'Извините, произошла ошибка при обработке вашего запроса. Попробуйте переформулировать вопрос или обратитесь к оператору поддержки.';
       
       try {
-        await this.sendMessage(chatId, fallbackResponse);
-        await this.messageService.createBotMessage(chatId.toString(), fallbackResponse);
+        await this.sendMessage(chat.user_id, fallbackResponse);
+        await this.messageService.createBotMessage(chatId, fallbackResponse);
       } catch (sendError) {
         logger.error('❌ Ошибка отправки fallback ответа', { sendError });
       }
