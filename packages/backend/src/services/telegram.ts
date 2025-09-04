@@ -118,7 +118,7 @@ export class TelegramService {
       }
 
       // Сохраняем ответ бота в базе данных
-      await this.messageService.createBotMessage(chatId.toString(),
+      await this.messageService.createBotMessage(chat.id,
         'Добро пожаловать! Чем могу помочь?',
       );
 
