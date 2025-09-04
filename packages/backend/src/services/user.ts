@@ -16,10 +16,14 @@ export class UserService {
     avatar_url?: string;
   }): Promise<User> {
     try {
+      console.log('👤 UserService.getOrCreate вызван с данными:', userData);
+      
       // Попробуем найти пользователя по telegram_id
       let user = await this.userRepository.findByTelegramId(userData.telegram_id);
+      console.log('🔍 Поиск пользователя по telegram_id:', userData.telegram_id, 'результат:', user ? 'найден' : 'не найден');
 
       if (!user) {
+        console.log('➕ Создаем нового пользователя...');
         // Создаем нового пользователя
         const createData: CreateUserData = {
           telegram_id: userData.telegram_id,
@@ -35,12 +39,16 @@ export class UserService {
           created_at: new Date().toISOString(),
           last_activity: new Date().toISOString(),
         };
+        console.log('📝 Данные для создания пользователя:', createData);
         user = await this.userRepository.create(createData);
+        console.log('✅ Пользователь создан:', { id: user.id, telegram_id: user.telegram_id });
+      } else {
+        console.log('👤 Пользователь найден:', { id: user.id, telegram_id: user.telegram_id });
       }
 
       return user;
     } catch (error) {
-      console.error('Ошибка получения/создания пользователя:', error);
+      console.error('❌ Ошибка получения/создания пользователя:', error);
       throw new Error('Не удалось получить или создать пользователя');
     }
   }
