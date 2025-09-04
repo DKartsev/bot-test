@@ -1,6 +1,11 @@
 import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { Pool } from 'pg';
 import { logError, logInfo } from '../utils/logger';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Загружаем переменные окружения
+dotenv.config({ path: path.join(process.cwd(), '.env') });
 
 // Интерфейс для подключения к базе данных
 export interface DatabaseConnection {
