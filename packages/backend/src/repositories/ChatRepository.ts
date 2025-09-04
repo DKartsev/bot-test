@@ -141,6 +141,7 @@ export class ChatRepository {
   // Обновление статуса чата
   async updateStatus(id: string, status: string, operatorId?: number): Promise<Chat | null> {
     try {
+      console.log('🔄 ChatRepository.updateStatus вызван с:', { id, status, operatorId });
       const result = await db.query(`
         UPDATE conversations 
         SET status = $1, assignee_id = $2
