@@ -52,7 +52,14 @@ export class ChatService {
 
       const userId = chatData.user_id || 0; // Используем ID пользователя из chatData
       const source = chatData.source || 'telegram';
-      return await this.chatRepository.create(Number(userId), source);
+      
+      // Получаем telegram_id пользователя
+      const user = await this.userRepository.findById(userId);
+      if (!user) {
+        throw new Error('Пользователь не найден');
+      }
+      
+      return await this.chatRepository.create(Number(user.telegram_id), source);
     } catch (error) {
       console.error('Ошибка создания чата:', error);
       throw new Error('Не удалось создать чат');
