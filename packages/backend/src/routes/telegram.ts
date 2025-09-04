@@ -13,7 +13,7 @@ import { UserService } from '../services/user';
 const router = express.Router();
 
 // Инициализируем Telegram сервис
-const telegramService = new TelegramService(env.TELEGRAM_BOT_TOKEN || '');
+const telegramService = new TelegramService(env.TG_BOT_TOKEN || '');
 
 // Создаем instances сервисов
 const chatService = new ChatService();

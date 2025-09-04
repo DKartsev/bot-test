@@ -30,7 +30,7 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:3001'),
 
   // Telegram
-  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TG_BOT_TOKEN: z.string().optional(),
   PUBLIC_URL: z.string().url().optional(),
 
   // Supabase
