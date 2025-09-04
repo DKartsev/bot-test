@@ -50,6 +50,12 @@ import supabaseRAGRoutes from './routes/supabaseRAG';
 import { WebSocketService } from './services/websocket';
 
 const app = express();
+
+// Логирование всех запросов для отладки
+app.use((req, res, next) => {
+  console.log(`🌐 ${req.method} ${req.path}`, req.body ? JSON.stringify(req.body) : '');
+  next();
+});
 const PORT = env.PORT || 3000;
 
 // Настройки для Windows
