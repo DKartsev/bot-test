@@ -123,7 +123,7 @@ app.use((req, res, next) => {
 // Система обработки ошибок
 app.use(requestIdMiddleware);
 app.use(performanceMonitor);
-app.use(validationErrorHandler);
+// app.use(validationErrorHandler); // Временно отключен для отладки webhook
 app.use(authErrorHandler);
 
 // Система метрик (должна быть рано в цепочке middleware)
