@@ -83,6 +83,8 @@ export class TelegramService {
 
   async handleStartCommand(chatId: number, userId: number, username?: string): Promise<void> {
     try {
+      console.log('🚀 Обработка команды /start', { chatId, userId, username });
+      
       // Создаем или получаем пользователя
       const user = await this.userService.getOrCreate({
         telegram_id: userId,
@@ -92,6 +94,8 @@ export class TelegramService {
         avatar_url: undefined,
       });
 
+      console.log('👤 Пользователь создан/найден:', { id: user.id, telegram_id: user.telegram_id });
+
       // Создаем или получаем чат
       const chat = await this.chatService.create({
         user_id: user.id,
@@ -99,6 +103,8 @@ export class TelegramService {
         priority: 'medium',
         source: 'telegram',
       });
+
+      console.log('💬 Чат создан/найден:', { id: chat.id, user_id: chat.user_id });
 
       // Отправляем приветственное сообщение через Telegram API
       await this.sendMessage(chatId, 'Добро пожаловать! Чем могу помочь?');
