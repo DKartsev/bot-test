@@ -93,14 +93,17 @@ export class TelegramService {
       });
 
       // Создаем или получаем чат
-      await this.chatService.create({
+      const chat = await this.chatService.create({
         user_id: user.id,
         status: 'waiting',
         priority: 'medium',
         source: 'telegram',
       });
 
-      // Отправляем приветственное сообщение
+      // Отправляем приветственное сообщение через Telegram API
+      await this.sendMessage(chatId, 'Добро пожаловать! Чем могу помочь?');
+
+      // Сохраняем ответ бота в базе данных
       await this.messageService.createBotMessage(chatId.toString(),
         'Добро пожаловать! Чем могу помочь?',
       );
@@ -120,6 +123,12 @@ export class TelegramService {
       const text = (message as any).text || '';
       // const _messageId = message.message_id; // Не используется
 
+      // Проверяем команду /start
+      if (text === '/start') {
+        await this.handleStartCommand(Number(chatId), Number(userId), (message as any).from.username);
+        return;
+      }
+
       // Получаем или создаем пользователя
       const user = await this.userService.getOrCreate({
         telegram_id: userId,
@@ -138,7 +147,7 @@ export class TelegramService {
       });
 
       // Создаем сообщение пользователя
-      await this.messageService.createBotMessage(Number(chatId).toString(), String(text));
+      await this.messageService.createUserMessage(Number(chatId).toString(), user.id, String(text));
 
       // Обновляем активность пользователя
       await this.userService.updateActivity(Number(userId));
@@ -559,31 +568,54 @@ export class TelegramService {
         text: text.substring(0, 100),
       });
 
-      // Обрабатываем запрос через RAG пайплайн
-      const ragResponse = await this.ragService.processQuery({
-        question: text,
-        userId: userId.toString(),
-        chatId: chatId.toString(),
-        language: 'ru',
-        options: {
-          temperature: 0.3,
-          maxTokens: 1000,
-          topK: 5,
-          minSimilarity: 0.5,
-        },
-      });
+      let response: string;
 
-      // Формируем ответ с учетом уверенности
-      let response = ragResponse.answer;
-      
-      // Если уверенность низкая, добавляем предложение обратиться к оператору
-      if (ragResponse.confidence < 0.6) {
-        response += '\n\nЕсли нужна дополнительная помощь, я передам ваш вопрос оператору поддержки.';
-      }
+      try {
+        // Обрабатываем запрос через RAG пайплайн
+        const ragResponse = await this.ragService.processQuery({
+          question: text,
+          userId: userId.toString(),
+          chatId: chatId.toString(),
+          language: 'ru',
+          options: {
+            temperature: 0.3,
+            maxTokens: 1000,
+            topK: 5,
+            minSimilarity: 0.5,
+          },
+        });
 
-      // Добавляем информацию об источниках (опционально, для отладки)
-      if (ragResponse.sources.length > 0 && ragResponse.confidence > 0.7) {
-        response += `\n\n📚 Найдено ${ragResponse.sources.length} релевантных источников.`;
+        // Формируем ответ с учетом уверенности
+        response = ragResponse.answer;
+        
+        // Если уверенность низкая, добавляем предложение обратиться к оператору
+        if (ragResponse.confidence < 0.6) {
+          response += '\n\nЕсли нужна дополнительная помощь, я передам ваш вопрос оператору поддержки.';
+        }
+
+        // Добавляем информацию об источниках (опционально, для отладки)
+        if (ragResponse.sources.length > 0 && ragResponse.confidence > 0.7) {
+          response += `\n\n📚 Найдено ${ragResponse.sources.length} релевантных источников.`;
+        }
+
+        logger.info('✅ RAG ответ сгенерирован', {
+          chatId,
+          userId,
+          confidence: ragResponse.confidence,
+          sourcesCount: ragResponse.sources.length,
+          totalTime: ragResponse.totalTime,
+          fallbackUsed: ragResponse.metadata.fallbackUsed,
+        });
+
+      } catch (ragError) {
+        logger.warn('⚠️ RAG сервис недоступен, используем простой ответ', {
+          error: ragError instanceof Error ? ragError.message : 'Unknown error',
+          chatId,
+          userId,
+        });
+
+        // Простой ответ без RAG
+        response = 'Спасибо за ваше сообщение! Я получил его и передам оператору поддержки.';
       }
 
       // Отправляем ответ
@@ -595,10 +627,7 @@ export class TelegramService {
       logger.info('✅ Ответ отправлен пользователю', {
         chatId,
         userId,
-        confidence: ragResponse.confidence,
-        sourcesCount: ragResponse.sources.length,
-        totalTime: ragResponse.totalTime,
-        fallbackUsed: ragResponse.metadata.fallbackUsed,
+        response: response.substring(0, 100),
       });
 
     } catch (error) {
