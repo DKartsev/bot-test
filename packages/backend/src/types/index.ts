@@ -48,7 +48,7 @@ export interface Chat {
   user_id: number;
   user: User;
   last_message: Message | null;
-  status: 'waiting' | 'in_progress' | 'closed';
+  status: 'open' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   source: 'telegram' | 'website' | 'p2p';
   operator_id?: number;

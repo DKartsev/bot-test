@@ -61,7 +61,7 @@ export const loginOperatorSchema = z.object({
 // Схемы для чатов
 export const createChatSchema = z.object({
   user_id: z.number().int().positive(),
-  status: z.enum(['waiting', 'in_progress', 'closed']).default('waiting'),
+  status: z.enum(['open', 'closed']).default('open'),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   source: z.enum(['telegram', 'website', 'p2p']).default('telegram'),
   operator_id: z.number().int().positive().optional(),
@@ -72,7 +72,7 @@ export const createChatSchema = z.object({
 });
 
 export const updateChatSchema = z.object({
-  status: z.enum(['waiting', 'in_progress', 'closed']).optional(),
+  status: z.enum(['open', 'closed']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   operator_id: z.number().int().positive().optional(),
   is_pinned: z.boolean().optional(),
@@ -82,7 +82,7 @@ export const updateChatSchema = z.object({
 });
 
 export const chatFiltersSchema = z.object({
-  status: z.array(z.enum(['waiting', 'in_progress', 'closed'])).optional(),
+  status: z.array(z.enum(['open', 'closed'])).optional(),
   priority: z.array(z.enum(['low', 'medium', 'high', 'urgent'])).optional(),
   source: z.array(z.enum(['telegram', 'website', 'p2p'])).optional(),
   operator_id: z.number().int().positive().optional(),

@@ -265,7 +265,7 @@ export class ChatService {
       }
 
       // Обновляем статус чата
-      const updatedChat = await this.chatRepository.updateStatus(chatId, 'waiting');
+      const updatedChat = await this.chatRepository.updateStatus(chatId, 'open');
 
       // Добавляем тег с причиной эскалации
       if (updatedChat) {
@@ -283,7 +283,7 @@ export class ChatService {
   async getAttentionRequiredChats(): Promise<Chat[]> {
     try {
       return await this.chatRepository.findWithFilters({
-        status: ['waiting'],
+        status: ['open'],
         priority: ['high'],
       });
     } catch (error) {

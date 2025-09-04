@@ -306,7 +306,7 @@ export class ChatRepository {
           media_types: row['message_media_types'] as string[] || [],
         },
       } : null,
-      status: String(row['status']) as 'waiting' | 'in_progress' | 'closed',
+      status: String(row['status']) as 'open' | 'closed',
       priority: 'medium', // В новой схеме priority не существует
       source: 'telegram', // В новой схеме source не существует
       operator_id: row['assignee_id'] ? Number(row['assignee_id']) : null,
