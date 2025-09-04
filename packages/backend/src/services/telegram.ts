@@ -132,18 +132,24 @@ export class TelegramService {
 
   async handleMessage(message: Record<string, unknown>): Promise<void> {
     try {
+      console.log('🎯 handleMessage вызван с сообщением:', JSON.stringify(message, null, 2));
+      
       const chatId = (message as any).chat.id;
       const userId = (message as any).from.id;
       const text = (message as any).text || '';
       // const _messageId = message.message_id; // Не используется
 
+      console.log('🔍 Обработка сообщения:', { chatId, userId, text });
+
       // Проверяем команду /start
       if (text === '/start') {
+        console.log('⭐ Обработка команды /start');
         await this.handleStartCommand(Number(chatId), Number(userId), (message as any).from.username);
         return;
       }
 
       // Получаем или создаем пользователя
+      console.log('👤 Получение/создание пользователя...');
       const user = await this.userService.getOrCreate({
         telegram_id: userId,
         username: (message as any).from.username,
@@ -151,23 +157,32 @@ export class TelegramService {
         last_name: (message as any).from.last_name,
         avatar_url: undefined,
       });
+      console.log('✅ Пользователь создан/найден:', user.id);
 
       // Получаем или создаем чат
+      console.log('💬 Создание чата...');
       const chat = await this.chatService.create({
         user_id: user.id,
         status: 'waiting',
         priority: 'medium',
         source: 'telegram',
       });
+      console.log('✅ Чат создан:', chat.id);
 
       // Создаем сообщение пользователя
+      console.log('📝 Создание сообщения пользователя...');
       await this.messageService.createUserMessage(Number(chatId).toString(), user.id, String(text));
+      console.log('✅ Сообщение пользователя создано');
 
       // Обновляем активность пользователя
+      console.log('⏰ Обновление активности пользователя...');
       await this.userService.updateActivity(Number(userId));
+      console.log('✅ Активность пользователя обновлена');
 
       // Обрабатываем сообщение (логика бота)
+      console.log('🤖 Обработка сообщения ботом...');
       await this.processUserMessage(Number(chat.id), String(text), Number(userId));
+      console.log('✅ Сообщение обработано ботом');
     } catch (error) {
       logger.error('Ошибка обработки сообщения:', error);
       throw error;

@@ -3,8 +3,10 @@ import { env } from '../config/env';
 import { cacheMiddleware } from '../middleware/cache';
 
 // Helper функция для обертывания async handlers
-const asyncHandler = (fn: (req: express.Request, res: express.Response) => Promise<void>) => 
-  (req: express.Request, res: express.Response) => { void fn(req, res); };
+const asyncHandler = (fn: (req: express.Request, res: express.Response, next: express.NextFunction) => Promise<void>) => 
+  (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
 import { TelegramService } from '../services/telegram';
 import { ChatService } from '../services/chat';
 import { MessageService } from '../services/message';
@@ -21,7 +23,7 @@ const messageService = new MessageService();
 const userService = new UserService();
 
 // Webhook для получения обновлений от Telegram
-router.post('/webhook', asyncHandler(async (req, res) => {
+router.post('/webhook', asyncHandler(async (req, res, next) => {
   try {
     console.log('📨 Webhook получен:', JSON.stringify(req.body, null, 2));
     
@@ -49,7 +51,7 @@ router.post('/webhook', asyncHandler(async (req, res) => {
 }));
 
 // Установка webhook
-router.post('/set-webhook', asyncHandler(async (req, res) => {
+router.post('/set-webhook', asyncHandler(async (req, res, next) => {
   try {
     const { url } = req.body;
 
@@ -67,7 +69,7 @@ router.post('/set-webhook', asyncHandler(async (req, res) => {
 }));
 
 // Получение информации о боте
-router.get('/bot-info', cacheMiddleware.long, asyncHandler(async (req, res) => {
+router.get('/bot-info', cacheMiddleware.long, asyncHandler(async (req, res, next) => {
   try {
     const botInfo = await telegramService.getBotInfo();
     res.json(botInfo);
@@ -78,7 +80,7 @@ router.get('/bot-info', cacheMiddleware.long, asyncHandler(async (req, res) => {
 }));
 
 // Отправка сообщения
-router.post('/send-message', asyncHandler(async (req, res) => {
+router.post('/send-message', asyncHandler(async (req, res, next) => {
   try {
     const { chat_id, text, parse_mode = 'HTML', reply_markup } = req.body;
 
@@ -99,7 +101,7 @@ router.post('/send-message', asyncHandler(async (req, res) => {
 }));
 
 // Получение чатов бота
-router.get('/chats', cacheMiddleware.medium, asyncHandler(async (req, res) => {
+router.get('/chats', cacheMiddleware.medium, asyncHandler(async (req, res, next) => {
   try {
     const chats = await chatService.getChats({ limit: 100 });
     res.json(chats);
@@ -110,7 +112,7 @@ router.get('/chats', cacheMiddleware.medium, asyncHandler(async (req, res) => {
 }));
 
 // Получение сообщений чата
-router.get('/chats/:id/messages', cacheMiddleware.short, asyncHandler(async (req, res) => {
+router.get('/chats/:id/messages', cacheMiddleware.short, asyncHandler(async (req, res, next) => {
   try {
     const chatId = req.params['id'];
     if (!chatId) {
@@ -127,7 +129,7 @@ router.get('/chats/:id/messages', cacheMiddleware.short, asyncHandler(async (req
 }));
 
 // Получение пользователей
-router.get('/users', cacheMiddleware.medium, asyncHandler(async (req, res) => {
+router.get('/users', cacheMiddleware.medium, asyncHandler(async (req, res, next) => {
   try {
     const users = await userService.getUsers(100, 0);
     res.json(users);
@@ -138,7 +140,7 @@ router.get('/users', cacheMiddleware.medium, asyncHandler(async (req, res) => {
 }));
 
 // Получение статистики
-router.get('/stats', cacheMiddleware.medium, asyncHandler(async (req, res) => {
+router.get('/stats', cacheMiddleware.medium, asyncHandler(async (req, res, next) => {
   try {
     const chatStats = await chatService.getChatStats();
     const userStats = await userService.getUserStats();
