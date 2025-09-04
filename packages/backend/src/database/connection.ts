@@ -25,7 +25,7 @@ export class PostgreSQLConnection implements DatabaseConnection {
       max: 20, // максимальное количество соединений в пуле
       idleTimeoutMillis: 30000, // время простоя соединения
       connectionTimeoutMillis: 2000, // время ожидания соединения
-      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+      ssl: process.env.DATABASE_URL?.includes('supabase.com') ? { rejectUnauthorized: false } : (process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false),
     });
 
     // Обработчики событий пула
