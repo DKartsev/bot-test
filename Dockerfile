@@ -86,8 +86,7 @@ CMD ["node","packages/backend/dist/index.js"]
 FROM backend_deps AS development
 WORKDIR /app
 
-# Устанавливаем ts-node-dev для hot reload
-RUN npm install -g ts-node-dev
+# ts-node-dev уже установлен в node_modules через devDependencies
 
 # Копируем исходники (volume mapping будет перезаписывать)
 COPY packages/shared ./packages/shared
@@ -108,4 +107,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
   CMD node -e "const http=require('http');const p=process.env.PORT||3000;http.get(`http://127.0.0.1:${p}/health`,res=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
 # Запуск в development режиме с hot reload
-CMD ["npm", "--prefix", "packages/backend", "run", "dev"]
+CMD ["npx", "ts-node-dev", "--respawn", "--transpile-only", "packages/backend/src/index.ts", "--port", "3000"]
