@@ -23,19 +23,27 @@ const userService = new UserService();
 // Webhook для получения обновлений от Telegram
 router.post('/webhook', asyncHandler(async (req, res) => {
   try {
+    console.log('📨 Webhook получен:', JSON.stringify(req.body, null, 2));
+    
     const { message, callback_query, edited_message } = req.body;
 
     if (message) {
+      console.log('📝 Обработка сообщения:', message.text);
       await telegramService.handleMessage(message as any);
     } else if (callback_query) {
+      console.log('🔘 Обработка callback query');
       await telegramService.handleCallbackQuery(callback_query as any);
     } else if (edited_message) {
+      console.log('✏️ Обработка отредактированного сообщения');
       await telegramService.handleEditedMessage(edited_message as any);
+    } else {
+      console.log('❓ Неизвестный тип обновления');
     }
 
+    console.log('✅ Webhook обработан успешно');
     res.status(200).json({ ok: true });
   } catch (error) {
-    console.error('Ошибка обработки webhook:', error);
+    console.error('❌ Ошибка обработки webhook:', error);
     res.status(500).json({ error: 'Ошибка обработки webhook' });
   }
 }));
