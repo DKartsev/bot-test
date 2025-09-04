@@ -1,0 +1,20 @@
+# Команды для перезапуска сервисов на VM
+# Выполнить по порядку:
+
+# 1. Перейти в директорию проекта
+cd /home/dankartsev/bot-test
+
+# 2. Получить последние изменения
+git pull origin main
+
+# 3. Остановить контейнеры
+docker-compose down
+
+# 4. Пересобрать и запустить контейнеры
+docker-compose up -d --build
+
+# 5. Проверить статус контейнеров
+docker ps
+
+# 6. Проверить логи backend
+docker-compose logs -f backend
