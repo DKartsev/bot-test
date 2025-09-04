@@ -128,7 +128,7 @@ export class ChatRepository {
         INSERT INTO conversations (id, user_telegram_id, status, handoff)
         VALUES (gen_random_uuid(), $1, 'open', 'bot')
         RETURNING *
-      `, [userTelegramId]);
+      `, [userTelegramId.toString()]);
 
       // Получаем полную информацию о чате
       return await this.findById(String(result.rows[0]['id']));
