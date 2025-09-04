@@ -42,23 +42,33 @@ export class ChatService {
   // Создание нового чата
   async createChat(chatData: Partial<Chat>): Promise<Chat> {
     try {
+      console.log('💬 ChatService.createChat вызван с:', JSON.stringify(chatData, null, 2));
+      
       // Проверяем существование пользователя
       if (chatData.user_id) {
+        console.log('🔍 Проверяем пользователя с ID:', chatData.user_id);
         const user = await this.userRepository.findById(chatData.user_id);
         if (!user) {
+          console.log('❌ Пользователь не найден в первой проверке');
           throw new Error('Пользователь не найден');
         }
+        console.log('✅ Пользователь найден в первой проверке:', user.id);
       }
 
       const userId = chatData.user_id || 0; // Используем ID пользователя из chatData
       const source = chatData.source || 'telegram';
+      console.log('📝 Параметры для создания чата:', { userId, source });
       
       // Получаем telegram_id пользователя
+      console.log('🔍 Получаем telegram_id для userId:', userId);
       const user = await this.userRepository.findById(userId);
       if (!user) {
+        console.log('❌ Пользователь не найден во второй проверке');
         throw new Error('Пользователь не найден');
       }
+      console.log('✅ Пользователь найден:', { id: user.id, telegram_id: user.telegram_id });
       
+      console.log('🏗️ Создаем чат для telegram_id:', user.telegram_id);
       return await this.chatRepository.create(Number(user.telegram_id), source);
     } catch (error) {
       console.error('Ошибка создания чата:', error);
