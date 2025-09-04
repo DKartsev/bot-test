@@ -94,7 +94,7 @@ export class TelegramService {
 
       // Создаем или получаем чат
       const chat = await this.chatService.create({
-        user_id: user.id,
+        user_id: user.telegram_id,
         status: 'waiting',
         priority: 'medium',
         source: 'telegram',
@@ -140,7 +140,7 @@ export class TelegramService {
 
       // Получаем или создаем чат
       const chat = await this.chatService.create({
-        user_id: user.id,
+        user_id: user.telegram_id,
         status: 'waiting',
         priority: 'medium',
         source: 'telegram',
@@ -213,7 +213,7 @@ export class TelegramService {
 
       // Получаем или создаем чат
       const chat = await this.chatService.create({
-        user_id: user.id,
+        user_id: user.telegram_id,
         status: 'waiting',
         priority: 'medium',
         source: 'telegram',
