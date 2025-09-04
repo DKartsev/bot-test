@@ -33,8 +33,8 @@ export class ChatRepository {
           m.sender as message_sender,
           m.content as message_content,
           m.created_at as message_created_at,
-          m.metadata->>'media_urls' as message_media_urls,
-          m.metadata->>'media_types' as message_media_types
+          m.media_urls as message_media_urls,
+          m.media_types as message_media_types
         FROM conversations c
         LEFT JOIN LATERAL (
           SELECT * FROM messages 
@@ -100,8 +100,8 @@ export class ChatRepository {
           m.sender as message_sender,
           m.content as message_content,
           m.created_at as message_created_at,
-          m.metadata->>'media_urls' as message_media_urls,
-          m.metadata->>'media_types' as message_media_types
+          m.media_urls as message_media_urls,
+          m.media_types as message_media_types
         FROM conversations c
         LEFT JOIN LATERAL (
           SELECT * FROM messages 
