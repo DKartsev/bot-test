@@ -81,3 +81,31 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
   CMD node -e "const http=require('http');const p=process.env.PORT||3000;http.get(`http://127.0.0.1:${p}/health`,res=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
 CMD ["node","packages/backend/dist/index.js"]
+
+# ---------- development ----------
+FROM backend_deps AS development
+WORKDIR /app
+
+# Устанавливаем ts-node-dev для hot reload
+RUN npm install -g ts-node-dev
+
+# Копируем исходники (volume mapping будет перезаписывать)
+COPY packages/shared ./packages/shared
+COPY packages/backend ./packages/backend
+COPY tsconfig.base.json ./tsconfig.base.json
+COPY tsconfig.json ./tsconfig.json
+
+# Устанавливаем права
+RUN chown -R node:node /app
+USER node
+
+# Порт
+ENV PORT=3000
+EXPOSE $PORT
+
+# Healthcheck для development
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
+  CMD node -e "const http=require('http');const p=process.env.PORT||3000;http.get(`http://127.0.0.1:${p}/health`,res=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+
+# Запуск в development режиме с hot reload
+CMD ["npm", "--prefix", "packages/backend", "run", "dev"]

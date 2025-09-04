@@ -48,7 +48,6 @@ async function testAfterRestart() {
     // Тестируем /start
     console.log('\n2. Тестирование /start...');
     const startMessage = {
-      update_id: 999999,
       message: {
         message_id: 1,
         from: { id: 123456789, is_bot: false, first_name: 'Test' },

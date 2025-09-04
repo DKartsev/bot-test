@@ -1,103 +1,40 @@
-﻿# Dependencies
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Build outputs
-dist/
-build/
-.next/
-out/
-admin-out/
-
-# Environment files
-.env*
-!.env.example
-!docker.env
-
-# Logs
-logs/
-*.log
-
-# Test files
-coverage/
-test-results/
-*.test.ts
-*.spec.ts
-vitest.config.ts
-
-# Development files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Git
-.git/
+﻿# Игнорируем файлы для Docker build
+node_modules
+npm-debug.log
+.git
 .gitignore
-
-# Documentation
 README.md
-*.md
-docs/
-GIT_SYNC_README.md
-
-# Scripts
-scripts/
-.github/
-.husky/
-.bolt/
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-*.backup
-
-# OS files
+.env
+.nyc_output
+coverage
+.nyc_output
+.coverage
+.coverage/
+.cache
+.parcel-cache
 .DS_Store
-Thumbs.db
-
-# Python files
-*.py
-__pycache__/
-
-# Backup directories
-backup-*/
-
-# Docker files (не нужны в контейнере)
-Dockerfile*
-docker-compose*
-.dockerignore
-
-# Infrastructure
-infrastructure/
-
-# Reports
-reports/
-feedback/
-
-# Data files
-data/
-*.tar.gz
-*.zip
-
-# Package manager
-# package-lock.json  # Нужен для Docker build
-yarn.lock
-pnpm-lock.yaml
-
-# Editor config
-.editorconfig
-.nvmrc
-.npmrc*
-
-# Commit lint
-commitlint.config.cjs
-
-# Changeset
-.changeset/
-
-# Supabase
-supabase/
+.vscode
+.idea
+*.log
+logs
+*.pid
+*.seed
+*.pid.lock
+lib-cov
+coverage
+.nyc_output
+.grunt
+bower_components
+.lock-wscript
+build/Release
+node_modules/
+jspm_packages/
+.npm
+.eslintcache
+.node_repl_history
+*.tgz
+.yarn-integrity
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
