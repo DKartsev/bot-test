@@ -57,12 +57,15 @@ export class UserRepository {
 
   async findByTelegramId(telegramId: number): Promise<User | null> {
     try {
+      console.log('🔍 UserRepository.findByTelegramId вызван с telegramId:', telegramId);
       const result = await db.query<User>(
         'SELECT * FROM users WHERE telegram_id = $1',
         [telegramId],
       );
+      console.log('🔍 Результат поиска пользователя:', { found: result.rows.length > 0, user: result.rows[0] || null });
       return result.rows[0] || null;
     } catch (error) {
+      console.error('❌ Ошибка при получении пользователя по Telegram ID:', error);
       logError('Ошибка при получении пользователя по Telegram ID:', error);
       throw new Error('Не удалось получить пользователя');
     }
@@ -70,6 +73,7 @@ export class UserRepository {
 
   async create(userData: CreateUserData): Promise<User> {
     try {
+      console.log('➕ UserRepository.create вызван с данными:', userData);
       const result = await db.query<User>(
         `INSERT INTO users (
           telegram_id, username, first_name, last_name, avatar_url, 
@@ -95,6 +99,7 @@ export class UserRepository {
         throw new Error('Пользователь не был создан');
       }
 
+      console.log('✅ Пользователь успешно создан:', { id: user.id, telegram_id: user.telegram_id });
       return user;
     } catch (error) {
       console.error('Ошибка при создании пользователя:', error);
