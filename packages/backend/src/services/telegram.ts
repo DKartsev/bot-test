@@ -131,6 +131,22 @@ export class TelegramService {
     // Обработчик ошибок polling
     this.bot.on('polling_error', (error) => {
       console.error('❌ Ошибка polling:', error);
+      
+      // Если ошибка 409 - конфликт с другим экземпляром бота
+      if (error.code === 409) {
+        console.log('🔄 Обнаружен конфликт с другим экземпляром бота. Перезапускаем polling...');
+        setTimeout(() => {
+          try {
+            this.bot.stopPolling();
+            setTimeout(() => {
+              this.bot.startPolling();
+              console.log('✅ Polling перезапущен');
+            }, 2000);
+          } catch (restartError) {
+            console.error('❌ Ошибка перезапуска polling:', restartError);
+          }
+        }, 5000);
+      }
     });
 
     console.log('✅ Polling обработчики настроены');
@@ -751,6 +767,20 @@ export class TelegramService {
         userId,
         data,
       });
+    }
+  }
+
+  // Принудительный перезапуск polling
+  async restartPolling(): Promise<void> {
+    try {
+      console.log('🔄 Принудительный перезапуск polling...');
+      this.bot.stopPolling();
+      setTimeout(() => {
+        this.bot.startPolling();
+        console.log('✅ Polling перезапущен принудительно');
+      }, 2000);
+    } catch (error) {
+      console.error('❌ Ошибка принудительного перезапуска polling:', error);
     }
   }
 }
