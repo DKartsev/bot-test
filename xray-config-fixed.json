@@ -1,17 +1,24 @@
 {
   "log": {
-    "loglevel": "info",
     "access": "/var/log/xray/access.log",
-    "error": "/var/log/xray/error.log"
+    "error": "/var/log/xray/error.log",
+    "loglevel": "info"
   },
   "inbounds": [
     {
       "port": 1080,
+      "listen": "127.0.0.1",
       "protocol": "socks",
       "settings": {
         "udp": true,
         "auth": "noauth"
       }
+    },
+    {
+      "port": 1081,
+      "listen": "127.0.0.1",
+      "protocol": "http",
+      "settings": {}
     }
   ],
   "outbounds": [
@@ -25,7 +32,8 @@
             "users": [
               {
                 "id": "bd6ecf06-98c3-48a9-bf33-1d5ab7d11350",
-                "encryption": "none"
+                "encryption": "none",
+                "flow": ""
               }
             ]
           }
@@ -35,18 +43,38 @@
         "network": "tcp",
         "security": "reality",
         "realitySettings": {
-          "show": false,
-          "dest": "cloudflare.com:443",
-          "xver": 0,
-          "serverNames": [
-            "cloudflare.com"
-          ],
+          "fingerprint": "chrome",
+          "serverName": "cloudflare.com",
           "publicKey": "zWHSCJWjkL8by5_taIR0yeyDUltNyy8s4IsjPd9qOy0",
-          "shortIds": [
-            "367dc90a93c9"
-          ]
+          "shortId": "367dc90a93c9",
+          "spiderX": "/"
         }
-      }
+      },
+      "tag": "proxy"
+    },
+    {
+      "protocol": "freedom",
+      "tag": "direct",
+      "settings": {}
     }
-  ]
+  ],
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      {
+        "type": "field",
+        "outboundTag": "proxy",
+        "domain": [
+          "api.openai.com"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "domain": [
+          "geosite:cn"
+        ]
+      }
+    ]
+  }
 }

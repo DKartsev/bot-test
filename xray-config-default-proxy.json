@@ -63,18 +63,15 @@
     "rules": [
       {
         "type": "field",
-        "outboundTag": "proxy",
-        "domain": [
-          "api.openai.com",
-          "openai.com"
-        ]
-      },
-      {
-        "type": "field",
         "outboundTag": "direct",
         "domain": [
           "geosite:cn"
         ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "proxy",
+        "network": "tcp,udp"
       }
     ]
   }

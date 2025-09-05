@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { env } from '../config/env';
 import { logError, logInfo, logWarning } from '../utils/logger';
+import { SocksProxyAgent } from 'socks-proxy-agent';
 
 // Типы для RAG пайплайна
 interface RAGQuery {
@@ -190,7 +191,7 @@ export class SupabaseRAGService {
     try {
       logInfo('🔮 Создание embeddings для вопроса', { question: question.substring(0, 100) });
 
-      const response = await fetch('https://api.openai.com/v1/embeddings', {
+      const fetchOptions: any = {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.openaiApiKey}`,
@@ -200,7 +201,15 @@ export class SupabaseRAGService {
           model: this.embeddingModel,
           input: question,
         }),
-      });
+      };
+
+      // Добавляем SOCKS5 прокси если настроен
+      const proxyUrl = process.env.OPENAI_PROXY_URL;
+      if (proxyUrl) {
+        fetchOptions.agent = new SocksProxyAgent(proxyUrl);
+      }
+
+      const response = await fetch('https://api.openai.com/v1/embeddings', fetchOptions);
 
       if (!response.ok) {
         if (response.status === 403) {
@@ -320,7 +329,7 @@ export class SupabaseRAGService {
       // Создаем промпт для GPT
       const prompt = this.buildRAGPrompt(question, context);
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const fetchOptions: any = {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.openaiApiKey}`,
@@ -341,7 +350,15 @@ export class SupabaseRAGService {
           max_tokens: options?.maxTokens || 1000,
           temperature: options?.temperature || 0.3,
         }),
-      });
+      };
+
+      // Добавляем SOCKS5 прокси если настроен
+      const proxyUrl = process.env.OPENAI_PROXY_URL;
+      if (proxyUrl) {
+        fetchOptions.agent = new SocksProxyAgent(proxyUrl);
+      }
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', fetchOptions);
 
       if (!response.ok) {
         if (response.status === 403) {
