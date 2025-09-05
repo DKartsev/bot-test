@@ -101,7 +101,7 @@ export class TelegramService {
       // Создаем или получаем чат
       const chat = await this.chatService.create({
         user_id: user.id,
-        status: 'waiting',
+        status: 'open',
         priority: 'medium',
         source: 'telegram',
       });
@@ -165,7 +165,7 @@ export class TelegramService {
       console.log('💬 Создание чата...');
       const chat = await this.chatService.create({
         user_id: user.id,
-        status: 'waiting',
+        status: 'open',
         priority: 'medium',
         source: 'telegram',
       });
@@ -245,7 +245,7 @@ export class TelegramService {
       // Получаем или создаем чат
       const chat = await this.chatService.create({
         user_id: user.id,
-        status: 'waiting',
+        status: 'open',
         priority: 'medium',
         source: 'telegram',
       });
@@ -592,18 +592,18 @@ export class TelegramService {
 
   // Обработка сообщения пользователя с использованием RAG
   async processUserMessage(chatId: string, text: string, userId: number): Promise<void> {
+    // Получаем Telegram chat ID из базы данных
+    const chat = await this.chatService.getChatById(chatId);
+    if (!chat) {
+      throw new Error('Чат не найден');
+    }
+
     try {
       logger.info('🤖 Обработка сообщения пользователя через RAG', {
         chatId,
         userId,
         text: text.substring(0, 100),
       });
-
-      // Получаем Telegram chat ID из базы данных
-      const chat = await this.chatService.getChatById(chatId);
-      if (!chat) {
-        throw new Error('Чат не найден');
-      }
 
       let response: string;
 
