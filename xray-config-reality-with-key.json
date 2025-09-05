@@ -14,6 +14,15 @@
         "udp": true,
         "auth": "noauth"
       }
+    },
+    {
+      "tag": "api",
+      "listen": "127.0.0.1",
+      "port": 62789,
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1"
+      }
     }
   ],
   "outbounds": [
@@ -44,7 +53,7 @@
           "serverNames": [
             "cloudflare.com"
           ],
-          "privateKey": "",
+          "privateKey": "WKu-Nsbva14r1yxo2Mv9Mx1GC9cjXgA_F6hC9JZG4Dg",
           "minClientVer": "",
           "maxClientVer": "",
           "maxTimeDiff": 0,
@@ -57,12 +66,42 @@
     {
       "tag": "direct",
       "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "AsIs",
+        "redirect": "",
+        "noises": []
+      }
+    },
+    {
+      "tag": "blocked",
+      "protocol": "blackhole",
       "settings": {}
     }
   ],
   "routing": {
     "domainStrategy": "AsIs",
     "rules": [
+      {
+        "type": "field",
+        "inboundTag": [
+          "api"
+        ],
+        "outboundTag": "api"
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "ip": [
+          "geoip:private"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "protocol": [
+          "bittorrent"
+        ]
+      },
       {
         "type": "field",
         "outboundTag": "vless-reality",

@@ -1,8 +1,18 @@
 {
   "log": {
     "access": "/var/log/xray/access.log",
+    "dnsLog": false,
     "error": "/var/log/xray/error.log",
-    "loglevel": "info"
+    "loglevel": "info",
+    "maskAddress": ""
+  },
+  "api": {
+    "tag": "api",
+    "services": [
+      "HandlerService",
+      "LoggerService",
+      "StatsService"
+    ]
   },
   "inbounds": [
     {
@@ -13,6 +23,15 @@
       "settings": {
         "udp": true,
         "auth": "noauth"
+      }
+    },
+    {
+      "tag": "api",
+      "listen": "127.0.0.1",
+      "port": 62789,
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1"
       }
     }
   ],
@@ -57,28 +76,78 @@
     {
       "tag": "direct",
       "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "AsIs",
+        "redirect": "",
+        "noises": []
+      }
+    },
+    {
+      "tag": "blocked",
+      "protocol": "blackhole",
       "settings": {}
     }
   ],
+  "policy": {
+    "levels": {
+      "0": {
+        "statsUserDownlink": true,
+        "statsUserUplink": true
+      }
+    },
+    "system": {
+      "statsInboundDownlink": true,
+      "statsInboundUplink": true,
+      "statsOutboundDownlink": false,
+      "statsOutboundUplink": false
+    }
+  },
   "routing": {
     "domainStrategy": "AsIs",
     "rules": [
       {
         "type": "field",
-        "outboundTag": "vless-reality",
-        "domain": [
-          "api.openai.com",
-          "openai.com"
+        "inboundTag": [
+          "api"
+        ],
+        "outboundTag": "api"
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "ip": [
+          "geoip:private"
         ]
       },
       {
         "type": "field",
-        "outboundTag": "direct",
+        "outboundTag": "blocked",
+        "protocol": [
+          "bittorrent"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "vless-reality",
         "domain": [
-          "api.telegram.org",
-          "telegram.org"
+          "geosite:openai"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "vless-reality",
+        "domain": [
+          "geosite:google"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "vless-reality",
+        "domain": [
+          "geosite:github"
         ]
       }
     ]
-  }
+  },
+  "stats": {}
 }

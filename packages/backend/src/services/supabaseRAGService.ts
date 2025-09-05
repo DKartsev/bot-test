@@ -203,6 +203,9 @@ export class SupabaseRAGService {
       });
 
       if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error(`OpenAI API заблокирован: ${response.status} ${response.statusText}`);
+        }
         throw new Error(`OpenAI API ошибка: ${response.status} ${response.statusText}`);
       }
 
@@ -341,6 +344,9 @@ export class SupabaseRAGService {
       });
 
       if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error(`OpenAI API заблокирован: ${response.status} ${response.statusText}`);
+        }
         throw new Error(`OpenAI API ошибка: ${response.status} ${response.statusText}`);
       }
 

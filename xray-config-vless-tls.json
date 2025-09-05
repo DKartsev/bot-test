@@ -18,7 +18,7 @@
   ],
   "outbounds": [
     {
-      "tag": "vless-reality",
+      "tag": "vless-tls",
       "protocol": "vless",
       "settings": {
         "vnext": [
@@ -36,21 +36,10 @@
       },
       "streamSettings": {
         "network": "tcp",
-        "security": "reality",
-        "realitySettings": {
-          "show": false,
-          "dest": "cloudflare.com:443",
-          "xver": 0,
-          "serverNames": [
-            "cloudflare.com"
-          ],
-          "privateKey": "",
-          "minClientVer": "",
-          "maxClientVer": "",
-          "maxTimeDiff": 0,
-          "shortIds": [
-            "367dc90a93c9"
-          ]
+        "security": "tls",
+        "tlsSettings": {
+          "serverName": "cloudflare.com",
+          "allowInsecure": false
         }
       }
     },
@@ -65,7 +54,7 @@
     "rules": [
       {
         "type": "field",
-        "outboundTag": "vless-reality",
+        "outboundTag": "vless-tls",
         "domain": [
           "api.openai.com",
           "openai.com"
