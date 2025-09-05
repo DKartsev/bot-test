@@ -36,6 +36,7 @@ const envSchema = z.object({
   // Supabase
   SUPABASE_URL: z.string().url().optional(),
   SUPABASE_KEY: z.string().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
 
   // OpenAI
   OPENAI_API_KEY: z.string().optional(),
