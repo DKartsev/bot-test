@@ -36,8 +36,8 @@ services:
       - CORS_ORIGIN=${CORS_ORIGIN}
       - DB_SSL=false
       - OPENAI_PROXY_URL=${OPENAI_PROXY_URL}
-      - HTTPS_PROXY=http://127.0.0.1:8080
-      - HTTP_PROXY=http://127.0.0.1:8080
+      - HTTPS_PROXY=http://aUGIll6zoH:KFu2uvbHBx@193.233.115.178:11403
+      - HTTP_PROXY=http://aUGIll6zoH:KFu2uvbHBx@193.233.115.178:11403
     env_file:
       - .env
     depends_on:
