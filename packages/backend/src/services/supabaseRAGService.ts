@@ -269,22 +269,71 @@ export class SupabaseRAGService {
         embeddingDimension: queryEmbedding.length,
       });
 
-      // Выполняем векторный поиск через pgvector
+      // Выполняем векторный поиск через прямой SQL запрос
       // Используем оператор <-> для cosine distance (чем меньше, тем больше similarity)
-      const { data, error } = await this.supabase.rpc('match_kb_chunks', {
-        query_embedding: queryEmbedding,
-        match_count: topK,
-        match_threshold: minSimilarity,
-      });
+      const { data, error } = await this.supabase
+        .from('kb_chunks')
+        .select(`
+          id,
+          article_id,
+          chunk_index,
+          chunk_text,
+          embedding
+        `)
+        .not('embedding', 'is', null)
+        .limit(topK * 2); // Получаем больше записей для фильтрации
 
       if (error) {
         throw new Error(`Supabase ошибка: ${error.message}`);
       }
 
       if (!data || data.length === 0) {
+        logWarning('⚠️ Не найдено чанков с embeddings в базе знаний');
+        return [];
+      }
+
+      // Вычисляем similarity для каждого чанка
+      const resultsWithSimilarity = data.map(chunk => {
+        let similarity = 0;
+        
+        try {
+          // Парсим embedding из JSON строки
+          const chunkEmbedding = typeof chunk.embedding === 'string' 
+            ? JSON.parse(chunk.embedding) 
+            : chunk.embedding;
+          
+          if (Array.isArray(chunkEmbedding) && chunkEmbedding.length === queryEmbedding.length) {
+            // Вычисляем cosine similarity
+            const dotProduct = queryEmbedding.reduce((sum, val, i) => sum + val * chunkEmbedding[i], 0);
+            const queryNorm = Math.sqrt(queryEmbedding.reduce((sum, val) => sum + val * val, 0));
+            const chunkNorm = Math.sqrt(chunkEmbedding.reduce((sum, val) => sum + val * val, 0));
+            
+            if (queryNorm > 0 && chunkNorm > 0) {
+              similarity = dotProduct / (queryNorm * chunkNorm);
+            }
+          }
+        } catch (e) {
+          logWarning('⚠️ Ошибка парсинга embedding', { chunkId: chunk.id, error: e.message });
+        }
+        
+        return {
+          ...chunk,
+          similarity
+        };
+      });
+
+      // Фильтруем по минимальному similarity и сортируем
+      const filteredResults = resultsWithSimilarity
+        .filter(result => result.similarity >= minSimilarity)
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, topK);
+
+      if (filteredResults.length === 0) {
         logWarning('⚠️ Не найдено похожих чанков в базе знаний');
         return [];
       }
+
+      const data = filteredResults;
 
       // Преобразуем результаты в формат SearchResult
       const results: SearchResult[] = data.map((chunk: any) => ({
@@ -305,6 +354,7 @@ export class SupabaseRAGService {
         avgSimilarity: results.length > 0 
           ? (results.reduce((sum, r) => sum + r.score, 0) / results.length).toFixed(3)
           : 0,
+        topSimilarity: results.length > 0 ? results[0].score : 0,
       });
 
       return results;
