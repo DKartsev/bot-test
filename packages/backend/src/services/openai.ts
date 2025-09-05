@@ -1,7 +1,7 @@
 import { env } from '../config/env';
 import { logError, logInfo } from '../utils/logger';
 import type { OpenAIConfig, QueryRephraseResult, RefinementResult } from '../types/rag';
-import { SocksProxyAgent } from 'socks-proxy-agent';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 export class OpenAIService {
   private config: OpenAIConfig;
@@ -19,11 +19,11 @@ export class OpenAIService {
     };
     this.baseURL = this.config.baseURL || 'https://api.openai.com/v1';
     
-    // Настройка прокси для OpenAI API
+    // Настройка HTTP прокси для OpenAI API
     const proxyUrl = process.env.OPENAI_PROXY_URL;
     if (proxyUrl) {
-      this.proxyAgent = new SocksProxyAgent(proxyUrl);
-      logInfo('OpenAI SOCKS5 прокси настроен', { proxyUrl });
+      this.proxyAgent = new HttpsProxyAgent(proxyUrl);
+      logInfo('OpenAI HTTP прокси настроен', { proxyUrl });
     }
   }
 

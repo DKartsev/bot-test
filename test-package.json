@@ -1,0 +1,17 @@
+{
+  "name": "openai-proxy-test",
+  "version": "1.0.0",
+  "description": "Тест OpenAI API через HTTP-прокси",
+  "main": "test-openai-proxy.js",
+  "scripts": {
+    "test": "node test-openai-proxy.js",
+    "test-with-env": "HTTPS_PROXY=http://aUGIll6zoH:KFu2uvbHBx@193.233.115.178:11403 node test-openai-proxy.js"
+  },
+  "dependencies": {
+    "openai": "^4.0.0",
+    "https-proxy-agent": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

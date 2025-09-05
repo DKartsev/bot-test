@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { env } from '../config/env';
 import { logError, logInfo, logWarning } from '../utils/logger';
-import { SocksProxyAgent } from 'socks-proxy-agent';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 // Типы для RAG пайплайна
 interface RAGQuery {
@@ -203,11 +203,11 @@ export class SupabaseRAGService {
         }),
       };
 
-      // Добавляем SOCKS5 прокси если настроен
-      const proxyUrl = process.env.OPENAI_PROXY_URL;
-      if (proxyUrl) {
-        fetchOptions.agent = new SocksProxyAgent(proxyUrl);
-      }
+          // Добавляем HTTP прокси если настроен
+    const proxyUrl = process.env.OPENAI_PROXY_URL;
+    if (proxyUrl) {
+      fetchOptions.agent = new HttpsProxyAgent(proxyUrl);
+    }
 
       const response = await fetch('https://api.openai.com/v1/embeddings', fetchOptions);
 
@@ -352,11 +352,11 @@ export class SupabaseRAGService {
         }),
       };
 
-      // Добавляем SOCKS5 прокси если настроен
-      const proxyUrl = process.env.OPENAI_PROXY_URL;
-      if (proxyUrl) {
-        fetchOptions.agent = new SocksProxyAgent(proxyUrl);
-      }
+          // Добавляем HTTP прокси если настроен
+    const proxyUrl = process.env.OPENAI_PROXY_URL;
+    if (proxyUrl) {
+      fetchOptions.agent = new HttpsProxyAgent(proxyUrl);
+    }
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', fetchOptions);
 
