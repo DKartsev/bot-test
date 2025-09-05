@@ -324,7 +324,7 @@ export class SupabaseRAGService {
 
       // Фильтруем по минимальному similarity и сортируем
       // Временно снижаем порог для тестирования
-      const testThreshold = Math.min(minSimilarity, -0.1); // Снижаем порог до -0.1
+      const testThreshold = Math.min(minSimilarity, -0.5); // Снижаем порог до -0.5
       const filteredResults = resultsWithSimilarity
         .filter(result => result.similarity >= testThreshold)
         .sort((a, b) => b.similarity - a.similarity)
