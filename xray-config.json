@@ -1,0 +1,52 @@
+{
+  "log": {
+    "loglevel": "info",
+    "access": "/var/log/xray/access.log",
+    "error": "/var/log/xray/error.log"
+  },
+  "inbounds": [
+    {
+      "port": 1080,
+      "protocol": "socks",
+      "settings": {
+        "udp": true,
+        "auth": "noauth"
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "193.233.115.178",
+            "port": 443,
+            "users": [
+              {
+                "id": "bd6ecf06-98c3-48a9-bf33-1d5ab7d11350",
+                "encryption": "none"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "cloudflare.com:443",
+          "xver": 0,
+          "serverNames": [
+            "cloudflare.com"
+          ],
+          "privateKey": "zWHSCJWjkL8by5_taIR0yeyDUltNyy8s4IsjPd9qOy0",
+          "shortIds": [
+            "367dc90a93c9"
+          ]
+        }
+      }
+    }
+  ]
+}

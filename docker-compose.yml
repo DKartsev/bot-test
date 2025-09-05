@@ -35,9 +35,7 @@ services:
       - ADMIN_API_TOKENS=${ADMIN_API_TOKENS}
       - CORS_ORIGIN=${CORS_ORIGIN}
       - DB_SSL=false
-      - ALL_PROXY=socks5://host.docker.internal:1080
-      - HTTP_PROXY=socks5://host.docker.internal:1080
-      - HTTPS_PROXY=socks5://host.docker.internal:1080
+      - OPENAI_PROXY_URL=${OPENAI_PROXY_URL}
     env_file:
       - .env
     depends_on:

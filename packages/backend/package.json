@@ -26,7 +26,6 @@
     "migrate-from-supabase:build": "npm run build && node dist/scripts/migrate-from-supabase.js"
   },
   "dependencies": {
-    "uuid": "^9.0.1",
     "@supabase/supabase-js": "^2.39.0",
     "@types/bcrypt": "^6.0.0",
     "@types/js-yaml": "^4.0.9",
@@ -40,6 +39,7 @@
     "express-rate-limit": "^7.1.5",
     "express-validator": "^7.0.1",
     "helmet": "^7.1.0",
+    "https-proxy-agent": "^7.0.6",
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
     "knex": "^3.0.1",
@@ -52,12 +52,12 @@
     "redis": "^4.6.8",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
+    "uuid": "^9.0.1",
     "winston": "^3.11.0",
     "ws": "^8.14.2",
     "zod": "^4.0.17"
   },
   "devDependencies": {
-    "@types/uuid": "^9.0.6",
     "@jest/globals": "^30.0.5",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
@@ -69,6 +69,7 @@
     "@types/node": "^20.10.0",
     "@types/node-telegram-bot-api": "^0.64.10",
     "@types/pg": "^8.10.9",
+    "@types/uuid": "^9.0.6",
     "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^6.13.1",
     "@typescript-eslint/parser": "^6.13.1",

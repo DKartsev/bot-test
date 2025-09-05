@@ -41,6 +41,7 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
   OPENAI_EMBED_MODEL: z.string().default('text-embedding-3-small'),
+  OPENAI_PROXY_URL: z.string().optional(),
 
   // Redis (для кэширования)
   REDIS_URL: z.string().optional(),

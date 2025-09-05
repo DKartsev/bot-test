@@ -1,10 +1,12 @@
 import { env } from '../config/env';
 import { logError, logInfo } from '../utils/logger';
 import type { OpenAIConfig, QueryRephraseResult, RefinementResult } from '../types/rag';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 export class OpenAIService {
   private config: OpenAIConfig;
   private baseURL: string;
+  private proxyAgent: any;
 
   constructor() {
     this.config = {
@@ -16,6 +18,13 @@ export class OpenAIService {
       timeout: env.openai?.timeout || 30000,
     };
     this.baseURL = this.config.baseURL || 'https://api.openai.com/v1';
+    
+    // Настройка прокси для OpenAI API
+    const proxyUrl = process.env.OPENAI_PROXY_URL;
+    if (proxyUrl) {
+      this.proxyAgent = new HttpsProxyAgent(proxyUrl);
+      logInfo('OpenAI прокси настроен', { proxyUrl });
+    }
   }
 
   /**
@@ -100,7 +109,7 @@ export class OpenAIService {
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
 
     try {
-      const response = await fetch(`${this.baseURL}/chat/completions`, {
+      const fetchOptions: any = {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.config.apiKey}`,
@@ -123,7 +132,14 @@ export class OpenAIService {
           response_format: { type: 'json_object' },
         }),
         signal: controller.signal,
-      });
+      };
+
+      // Добавляем прокси если настроен
+      if (this.proxyAgent) {
+        fetchOptions.agent = this.proxyAgent;
+      }
+
+      const response = await fetch(`${this.baseURL}/chat/completions`, fetchOptions);
 
       clearTimeout(timeoutId);
 
