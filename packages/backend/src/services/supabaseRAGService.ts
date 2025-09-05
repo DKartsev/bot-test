@@ -67,7 +67,7 @@ export class SupabaseRAGService {
     // Инициализация Supabase клиента
     this.supabase = createClient(
       env.SUPABASE_URL || process.env.SUPABASE_URL!,
-      env.SUPABASE_KEY || process.env.SUPABASE_KEY!
+      env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
     // Конфигурация OpenAI
