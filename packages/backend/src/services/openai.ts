@@ -20,10 +20,14 @@ export class OpenAIService {
     this.baseURL = this.config.baseURL || 'https://api.openai.com/v1';
     
     // Настройка HTTP прокси для OpenAI API
-    const proxyUrl = process.env.OPENAI_PROXY_URL;
+    const proxyUrl = process.env.OPENAI_PROXY_URL || process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
     if (proxyUrl) {
       this.proxyAgent = new HttpsProxyAgent(proxyUrl);
-      logInfo('OpenAI HTTP прокси настроен', { proxyUrl });
+      logInfo('OpenAI HTTP прокси настроен', { 
+        proxyUrl,
+        source: process.env.OPENAI_PROXY_URL ? 'OPENAI_PROXY_URL' : 
+                process.env.HTTPS_PROXY ? 'HTTPS_PROXY' : 'HTTP_PROXY'
+      });
     }
   }
 

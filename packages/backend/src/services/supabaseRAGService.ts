@@ -75,10 +75,14 @@ export class SupabaseRAGService {
     this.embeddingModel = env.OPENAI_EMBED_MODEL || process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-small';
 
     // Настройка HTTP прокси для OpenAI API
-    const proxyUrl = process.env.OPENAI_PROXY_URL;
+    const proxyUrl = process.env.OPENAI_PROXY_URL || process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
     if (proxyUrl) {
       this.proxyAgent = new HttpsProxyAgent(proxyUrl);
-      logInfo('OpenAI HTTP прокси настроен в RAG сервисе', { proxyUrl });
+      logInfo('OpenAI HTTP прокси настроен в RAG сервисе', { 
+        proxyUrl,
+        source: process.env.OPENAI_PROXY_URL ? 'OPENAI_PROXY_URL' : 
+                process.env.HTTPS_PROXY ? 'HTTPS_PROXY' : 'HTTP_PROXY'
+      });
     }
 
     logInfo('SupabaseRAGService инициализирован', {
