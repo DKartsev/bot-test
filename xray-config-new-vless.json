@@ -14,22 +14,6 @@
         "udp": true,
         "auth": "noauth"
       }
-    },
-    {
-      "tag": "socks-auth",
-      "listen": "127.0.0.1",
-      "port": 10287,
-      "protocol": "socks",
-      "settings": {
-        "udp": true,
-        "auth": "password",
-        "accounts": [
-          {
-            "user": "ImZPICRQgu",
-            "pass": "LoI8WyQAdc"
-          }
-        ]
-      }
     }
   ],
   "outbounds": [
@@ -43,7 +27,7 @@
             "port": 443,
             "users": [
               {
-                "id": "bd6ecf06-98c3-48a9-bf33-1d5ab7d11350",
+                "id": "42df6e64-3f63-43d5-979c-b908b359eda6",
                 "encryption": "none",
                 "flow": ""
               }

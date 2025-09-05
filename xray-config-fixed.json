@@ -6,8 +6,9 @@
   },
   "inbounds": [
     {
-      "port": 1080,
+      "tag": "socks",
       "listen": "127.0.0.1",
+      "port": 1080,
       "protocol": "socks",
       "settings": {
         "udp": true,
@@ -15,14 +16,25 @@
       }
     },
     {
-      "port": 1081,
+      "tag": "socks-auth",
       "listen": "127.0.0.1",
-      "protocol": "http",
-      "settings": {}
+      "port": 10287,
+      "protocol": "socks",
+      "settings": {
+        "udp": true,
+        "auth": "password",
+        "accounts": [
+          {
+            "user": "ImZPICRQgu",
+            "pass": "LoI8WyQAdc"
+          }
+        ]
+      }
     }
   ],
   "outbounds": [
     {
+      "tag": "proxy",
       "protocol": "vless",
       "settings": {
         "vnext": [
@@ -49,12 +61,11 @@
           "shortId": "367dc90a93c9",
           "spiderX": "/"
         }
-      },
-      "tag": "proxy"
+      }
     },
     {
-      "protocol": "freedom",
       "tag": "direct",
+      "protocol": "freedom",
       "settings": {}
     }
   ],
@@ -65,14 +76,15 @@
         "type": "field",
         "outboundTag": "proxy",
         "domain": [
-          "api.openai.com"
+          "api.openai.com",
+          "openai.com"
         ]
       },
       {
         "type": "field",
         "outboundTag": "direct",
-        "domain": [
-          "geosite:cn"
+        "ip": [
+          "geoip:private"
         ]
       }
     ]

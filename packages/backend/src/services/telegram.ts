@@ -73,7 +73,14 @@ export class TelegramService {
       this.bot = null as any; // Создаем заглушку для разработки
     } else {
       console.log('✅ Создаем TelegramBot с токеном');
-      this.bot = new TelegramBot(token, { polling: false });
+      const usePolling = process.env.TELEGRAM_USE_POLLING === '1';
+      console.log('📡 Режим работы:', usePolling ? 'polling' : 'webhook');
+      this.bot = new TelegramBot(token, { polling: usePolling });
+      
+      // Если используем polling, настраиваем обработчики
+      if (usePolling) {
+        this.setupPollingHandlers();
+      }
     }
     this.userService = new UserService();
     this.chatService = new ChatService();
@@ -81,6 +88,52 @@ export class TelegramService {
     this.ragService = new SupabaseRAGService();
 
     logger.info('Telegram сервис инициализирован', { token: `${token.substring(0, 10)}...` });
+  }
+
+  /**
+   * Настройка обработчиков для polling режима
+   */
+  private setupPollingHandlers(): void {
+    if (!this.bot) return;
+
+    console.log('🔧 Настройка polling обработчиков...');
+
+    // Обработчик текстовых сообщений
+    this.bot.on('message', async (msg) => {
+      try {
+        console.log('📨 Получено сообщение через polling:', {
+          chatId: msg.chat.id,
+          userId: msg.from?.id,
+          text: msg.text?.substring(0, 50)
+        });
+        
+        await this.handleMessage(msg as any);
+      } catch (error) {
+        console.error('❌ Ошибка обработки сообщения в polling:', error);
+      }
+    });
+
+    // Обработчик callback query
+    this.bot.on('callback_query', async (query) => {
+      try {
+        console.log('🔘 Получен callback query через polling:', {
+          chatId: query.message?.chat.id,
+          userId: query.from.id,
+          data: query.data
+        });
+        
+        await this.handleCallbackQuery(query as any);
+      } catch (error) {
+        console.error('❌ Ошибка обработки callback query в polling:', error);
+      }
+    });
+
+    // Обработчик ошибок polling
+    this.bot.on('polling_error', (error) => {
+      console.error('❌ Ошибка polling:', error);
+    });
+
+    console.log('✅ Polling обработчики настроены');
   }
 
   async handleStartCommand(chatId: number, userId: number, username?: string): Promise<void> {

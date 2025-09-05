@@ -32,6 +32,8 @@ const envSchema = z.object({
   // Telegram
   TG_BOT_TOKEN: z.string().optional(),
   PUBLIC_URL: z.string().url().optional(),
+  TELEGRAM_ENABLED: z.string().default('0'),
+  TELEGRAM_USE_POLLING: z.string().default('0'),
 
   // Supabase
   SUPABASE_URL: z.string().url().optional(),

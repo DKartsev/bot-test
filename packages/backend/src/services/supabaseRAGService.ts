@@ -3,6 +3,7 @@ import { env } from '../config/env';
 import { logError, logInfo, logWarning } from '../utils/logger';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import fetch from 'node-fetch';
+import { createHash } from 'crypto';
 
 // Типы для RAG пайплайна
 interface RAGQuery {
@@ -62,6 +63,8 @@ export class SupabaseRAGService {
   private openaiModel: string;
   private embeddingModel: string;
   private proxyAgent: any;
+  private searchCache: Map<string, { results: SearchResult[], timestamp: number }>;
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 минут
 
   constructor() {
     // Инициализация Supabase клиента
@@ -74,6 +77,9 @@ export class SupabaseRAGService {
     this.openaiApiKey = env.OPENAI_API_KEY || process.env.OPENAI_API_KEY!;
     this.openaiModel = env.OPENAI_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini';
     this.embeddingModel = env.OPENAI_EMBED_MODEL || process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-small';
+
+    // Инициализация кэша
+    this.searchCache = new Map();
 
     // Настройка HTTP прокси для OpenAI API
     const proxyUrl = process.env.OPENAI_PROXY_URL || process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
@@ -123,10 +129,28 @@ export class SupabaseRAGService {
 
       // Шаг 2: Поиск похожих чанков в Supabase через pgvector
       logInfo('🔍 Шаг 2: Поиск в базе знаний через pgvector');
-      const searchResults = await this.searchSimilarChunks(
+      const topK = query.options?.topK || 5;
+      const minSimilarity = query.options?.minSimilarity || 0.5;
+      
+      // Создаем ключ кэша
+      const cacheKey = this.createCacheKey(query.question, topK * 3, minSimilarity);
+      
+      // Кэшированный поиск
+      const initialResults = await this.cachedSearch(cacheKey, () =>
+        this.searchSimilarChunks(
+          queryEmbedding,
+          topK * 3, // Получаем больше кандидатов для MMR
+          minSimilarity,
+          query.question
+        )
+      );
+
+      // Применяем MMR для разнообразия результатов
+      const searchResults = this.applyMMR(
+        initialResults,
         queryEmbedding,
-        query.options?.topK || 5,
-        query.options?.minSimilarity || 0.5
+        topK,
+        0.75 // lambda = 0.75 (баланс релевантности и разнообразия)
       );
       
       const searchTime = Date.now() - searchStartTime;
@@ -166,6 +190,18 @@ export class SupabaseRAGService {
         fallbackUsed,
       });
 
+      // Логируем запрос в базу данных
+      await this.logRAGRequest(
+        query.question,
+        topK,
+        minSimilarity,
+        searchResults.length,
+        searchTime,
+        processingTime,
+        totalTime,
+        confidence
+      );
+
       // Формируем финальный ответ
       const response: RAGResponse = {
         answer,
@@ -176,7 +212,7 @@ export class SupabaseRAGService {
         totalTime,
         metadata: {
           queryProcessed: query.question,
-          searchStrategy: 'vector_similarity',
+          searchStrategy: 'hybrid_vector_text',
           modelUsed: this.openaiModel,
           fallbackUsed,
         },
@@ -254,114 +290,211 @@ export class SupabaseRAGService {
   }
 
   /**
-   * Поиск похожих чанков в Supabase через pgvector
-   * Использует оператор <-> для cosine similarity
+   * Нормализация вектора до единичной нормы (важно для cosine similarity)
+   */
+  private l2Normalize(vec: number[]): number[] {
+    const norm = Math.sqrt(vec.reduce((sum, val) => sum + val * val, 0)) || 1;
+    return vec.map(val => val / norm);
+  }
+
+  /**
+   * Создание хеша для кэширования
+   */
+  private createCacheKey(question: string, topK: number, minSimilarity: number): string {
+    const hash = createHash('md5').update(question.toLowerCase().trim()).digest('hex');
+    return `rag:${hash}:k${topK}:s${minSimilarity}`;
+  }
+
+  /**
+   * Кэшированный поиск
+   */
+  private async cachedSearch(
+    cacheKey: string,
+    searchFn: () => Promise<SearchResult[]>
+  ): Promise<SearchResult[]> {
+    const cached = this.searchCache.get(cacheKey);
+    const now = Date.now();
+
+    if (cached && (now - cached.timestamp) < this.CACHE_TTL) {
+      logInfo('🎯 Кэш попадание', { cacheKey: cacheKey.substring(0, 20) + '...' });
+      return cached.results;
+    }
+
+    const results = await searchFn();
+    this.searchCache.set(cacheKey, { results, timestamp: now });
+    
+    // Очищаем старые записи из кэша
+    if (this.searchCache.size > 100) {
+      const oldestKey = this.searchCache.keys().next().value;
+      this.searchCache.delete(oldestKey);
+    }
+
+    return results;
+  }
+
+  /**
+   * Логирование RAG запроса
+   */
+  private async logRAGRequest(
+    question: string,
+    topK: number,
+    minSimilarity: number,
+    resultsCount: number,
+    searchTime: number,
+    llmTime: number,
+    totalTime: number,
+    confidence: number
+  ): Promise<void> {
+    try {
+      const questionHash = createHash('md5').update(question.toLowerCase().trim()).digest('hex');
+      
+      await this.supabase.from('rag_logs').insert({
+        question_hash: questionHash,
+        question_text: question.substring(0, 500), // Ограничиваем длину
+        top_k: topK,
+        min_similarity: minSimilarity,
+        results_count: resultsCount,
+        search_time_ms: searchTime,
+        llm_time_ms: llmTime,
+        total_time_ms: totalTime,
+        model_used: this.openaiModel,
+        confidence: confidence
+      });
+    } catch (error) {
+      logWarning('⚠️ Ошибка логирования RAG запроса', { error: error.message });
+    }
+  }
+
+  /**
+   * MMR (Maximal Marginal Relevance) для разнообразия результатов
+   * Уменьшает дубликаты смыслов в топ-K результатах
+   */
+  private applyMMR(
+    candidates: SearchResult[],
+    queryEmbedding: number[],
+    k: number,
+    lambda: number = 0.7
+  ): SearchResult[] {
+    if (candidates.length <= k) {
+      return candidates;
+    }
+
+    const selected: SearchResult[] = [];
+    const remaining = [...candidates];
+
+    // Простая функция для вычисления текстового сходства
+    const textSimilarity = (a: string, b: string): number => {
+      const wordsA = new Set(a.toLowerCase().split(/\W+/).filter(Boolean));
+      const wordsB = new Set(b.toLowerCase().split(/\W+/).filter(Boolean));
+      const intersection = [...wordsA].filter(word => wordsB.has(word)).length;
+      return intersection / Math.max(1, Math.min(wordsA.size, wordsB.size));
+    };
+
+    while (selected.length < k && remaining.length > 0) {
+      let bestIdx = 0;
+      let bestScore = -Infinity;
+
+      for (let i = 0; i < remaining.length; i++) {
+        const relevance = remaining[i].score; // Релевантность (similarity)
+        
+        // Вычисляем максимальное сходство с уже выбранными
+        const maxSimilarity = selected.length === 0 
+          ? 0 
+          : Math.max(...selected.map(s => textSimilarity(s.content, remaining[i].content)));
+
+        // MMR формула: lambda * relevance - (1 - lambda) * max_similarity
+        const mmrScore = lambda * relevance - (1 - lambda) * maxSimilarity;
+
+        if (mmrScore > bestScore) {
+          bestScore = mmrScore;
+          bestIdx = i;
+        }
+      }
+
+      selected.push(remaining[bestIdx]);
+      remaining.splice(bestIdx, 1);
+    }
+
+    logInfo('🎯 MMR переранжирование применено', {
+      originalCount: candidates.length,
+      selectedCount: selected.length,
+      lambda,
+      avgRelevance: selected.reduce((sum, s) => sum + s.score, 0) / selected.length
+    });
+
+    return selected;
+  }
+
+  /**
+   * Поиск похожих чанков через pgvector RPC функцию
+   * Использует гибридный поиск: векторный + текстовый
    */
   private async searchSimilarChunks(
     queryEmbedding: number[],
     topK: number = 5,
-    minSimilarity: number = 0.5
+    minSimilarity: number = 0.5,
+    questionText?: string
   ): Promise<SearchResult[]> {
     try {
-      logInfo('🔍 Поиск похожих чанков в Supabase', {
+      logInfo('🔍 Гибридный поиск через pgvector RPC', {
         topK,
         minSimilarity,
         embeddingDimension: queryEmbedding.length,
+        hasQuestionText: !!questionText,
       });
 
-      // Выполняем векторный поиск через прямой SQL запрос
-      // Используем оператор <-> для cosine distance (чем меньше, тем больше similarity)
-      const { data, error } = await this.supabase
-        .from('kb_chunks')
-        .select(`
-          id,
-          article_id,
-          chunk_index,
-          chunk_text,
-          embedding
-        `)
-        .not('embedding', 'is', null)
-        .limit(topK * 2); // Получаем больше записей для фильтрации
+      // Нормализуем вектор запроса
+      const normalizedQuery = this.l2Normalize(queryEmbedding);
+
+      // Вызываем RPC функцию для гибридного поиска
+      const { data, error } = await this.supabase.rpc('rag_hybrid_search', {
+        q_vec: normalizedQuery,
+        q_text: questionText || '',
+        k: topK,
+        min_sim: minSimilarity
+      });
 
       if (error) {
-        throw new Error(`Supabase ошибка: ${error.message}`);
+        logError('❌ Ошибка RPC поиска', { error: error.message });
+        throw new Error(`Supabase RPC ошибка: ${error.message}`);
       }
 
       if (!data || data.length === 0) {
-        logWarning('⚠️ Не найдено чанков с embeddings в базе знаний');
-        return [];
-      }
-
-      // Вычисляем similarity для каждого чанка
-      const resultsWithSimilarity = data.map(chunk => {
-        let similarity = 0;
-        
-        try {
-          // Парсим embedding из JSON строки
-          const chunkEmbedding = typeof chunk.embedding === 'string' 
-            ? JSON.parse(chunk.embedding) 
-            : chunk.embedding;
-          
-          if (Array.isArray(chunkEmbedding) && chunkEmbedding.length === queryEmbedding.length) {
-            // Вычисляем cosine similarity
-            const dotProduct = queryEmbedding.reduce((sum, val, i) => sum + val * chunkEmbedding[i], 0);
-            const queryNorm = Math.sqrt(queryEmbedding.reduce((sum, val) => sum + val * val, 0));
-            const chunkNorm = Math.sqrt(chunkEmbedding.reduce((sum, val) => sum + val * val, 0));
-            
-            if (queryNorm > 0 && chunkNorm > 0) {
-              similarity = dotProduct / (queryNorm * chunkNorm);
-            }
-          }
-        } catch (e) {
-          logWarning('⚠️ Ошибка парсинга embedding', { chunkId: chunk.id, error: e.message });
-        }
-        
-        return {
-          ...chunk,
-          similarity
-        };
-      });
-
-      // Фильтруем по минимальному similarity и сортируем
-      // Временно снижаем порог для тестирования
-      const testThreshold = Math.min(minSimilarity, -0.5); // Снижаем порог до -0.5
-      const filteredResults = resultsWithSimilarity
-        .filter(result => result.similarity >= testThreshold)
-        .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, topK);
-
-      if (filteredResults.length === 0) {
         logWarning('⚠️ Не найдено похожих чанков в базе знаний');
         return [];
       }
 
-      const searchResults = filteredResults;
-
       // Преобразуем результаты в формат SearchResult
-      const results: SearchResult[] = searchResults.map((chunk: any) => ({
-        id: chunk.id,
-        title: `Чанк ${chunk.chunk_index + 1}`,
-        content: chunk.chunk_text,
-        score: chunk.similarity,
-        source: 'supabase_vector',
+      const results: SearchResult[] = data.map((row: any, index: number) => ({
+        id: row.id,
+        title: `Чанк ${row.chunk_index + 1}`,
+        content: row.chunk_text,
+        score: row.cos_sim, // Используем cosine similarity для прозрачности
+        source: 'supabase_hybrid',
         metadata: {
-          articleId: chunk.article_id,
-          chunkIndex: chunk.chunk_index,
-          similarity: chunk.similarity,
+          articleId: row.article_id,
+          chunkIndex: row.chunk_index,
+          similarity: row.cos_sim,
+          tsRank: row.ts_rank_score,
+          hybrid: row.hybrid_score,
+          rank: index + 1
         },
       }));
 
-      logInfo('✅ Поиск в Supabase завершен', {
+      logInfo('✅ Гибридный поиск завершен', {
         resultsCount: results.length,
         avgSimilarity: results.length > 0 
           ? (results.reduce((sum, r) => sum + r.score, 0) / results.length).toFixed(3)
           : 0,
         topSimilarity: results.length > 0 ? results[0].score : 0,
+        avgHybridScore: results.length > 0 
+          ? (results.reduce((sum, r) => sum + (r.metadata as any).hybrid, 0) / results.length).toFixed(3)
+          : 0,
       });
 
       return results;
     } catch (error) {
-      logError('❌ Ошибка поиска в Supabase', {
+      logError('❌ Ошибка гибридного поиска', {
         error: error instanceof Error ? error.message : 'Unknown error',
         topK,
         minSimilarity,
@@ -386,13 +519,8 @@ export class SupabaseRAGService {
         model: this.openaiModel,
       });
 
-      // Формируем контекст из найденных чанков
-      const context = sources.map((source, index) => 
-        `Источник ${index + 1}:\n${source.content}\n`
-      ).join('\n');
-
-      // Создаем промпт для GPT
-      const prompt = this.buildRAGPrompt(question, context);
+      // Создаем промпт для GPT с источниками
+      const prompt = this.buildRAGPrompt(question, sources);
 
       const fetchOptions: any = {
         method: 'POST',
@@ -405,15 +533,15 @@ export class SupabaseRAGService {
           messages: [
             {
               role: 'system',
-              content: 'Ты - помощник службы поддержки. Отвечай ТОЛЬКО на основе предоставленных источников. Если информации недостаточно, скажи об этом.',
+              content: 'Отвечай в строгом соответствии с инструкциями. Возвращай только валидный JSON.',
             },
             {
               role: 'user',
               content: prompt,
             },
           ],
-          max_tokens: options?.maxTokens || 1000,
-          temperature: options?.temperature || 0.3,
+          max_tokens: options?.maxTokens || 700,
+          temperature: options?.temperature || 0.2,
         }),
       };
 
@@ -432,15 +560,40 @@ export class SupabaseRAGService {
       }
 
       const data: any = await response.json();
-      const answer = data.choices[0]?.message?.content;
+      const rawAnswer = data.choices[0]?.message?.content;
 
-      if (!answer) {
+      if (!rawAnswer) {
         throw new Error('Пустой ответ от OpenAI API');
+      }
+
+      // Пытаемся распарсить JSON ответ
+      let answer: string;
+      try {
+        const parsed = JSON.parse(rawAnswer);
+        if (parsed.answer) {
+          answer = parsed.answer;
+          // Добавляем цитаты если есть
+          if (parsed.citations && parsed.citations.length > 0) {
+            const citations = parsed.citations.map((c: any) => 
+              `[Источник ${c.source}] ${c.quote}`
+            ).join('\n');
+            answer += `\n\nЦитаты:\n${citations}`;
+          }
+          if (parsed.notes) {
+            answer += `\n\nПримечание: ${parsed.notes}`;
+          }
+        } else {
+          answer = rawAnswer;
+        }
+      } catch (e) {
+        // Если не JSON, возвращаем как есть
+        answer = rawAnswer;
       }
 
       logInfo('✅ Ответ сгенерирован через GPT', {
         answerLength: answer.length,
         model: this.openaiModel,
+        isJson: rawAnswer.startsWith('{'),
       });
 
       return answer;
@@ -454,22 +607,30 @@ export class SupabaseRAGService {
   }
 
   /**
-   * Построение промпта для RAG генерации
+   * Построение улучшенного промпта для RAG генерации с цитатами
    */
-  private buildRAGPrompt(question: string, context: string): string {
-    return `Вопрос пользователя: "${question}"
+  private buildRAGPrompt(question: string, sources: SearchResult[]): string {
+    const context = sources.map((source, index) => 
+      `Источник ${index + 1} (similarity=${source.score.toFixed(3)}):\n${source.content}`
+    ).join('\n\n');
 
-Контекст из базы знаний:
+    return `Ты — ассистент службы поддержки. Отвечай строго по источникам ниже. Если данных недостаточно — скажи об этом и предложи эскалацию.
+
+=== ИСТОЧНИКИ ===
 ${context}
 
-Инструкции:
-1. Ответь на вопрос пользователя, используя ТОЛЬКО информацию из предоставленного контекста
-2. Если в контексте нет достаточной информации для полного ответа, честно скажи об этом
-3. Не добавляй информацию, которой нет в контексте
-4. Будь кратким и понятным
-5. Если нужно, предложи обратиться к оператору поддержки
+=== ЗАДАНИЕ ===
+1) Дай точный, краткий ответ пользователю.
+2) Приведи нумерованные цитаты с указанием "Источник N".
+3) Ничего не выдумывай вне источников.
+4) Верни JSON с полями:
+{
+  "answer": "краткий ответ",
+  "citations": [{"source": N, "quote": "короткая цитата"}],
+  "notes": "при необходимости"
+}
 
-Ответ:`;
+Вопрос пользователя: "${question}"`;
   }
 
   /**

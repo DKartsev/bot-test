@@ -245,6 +245,17 @@ async function initializeServices(): Promise<void> {
     logError('❌ Ошибка подключения к Redis:', error);
     logInfo('⚠️ Сервер продолжит работу без Redis кэширования');
   }
+
+  // Инициализируем Telegram сервис если включен polling
+  if (env.TELEGRAM_ENABLED === '1' && env.TELEGRAM_USE_POLLING === '1') {
+    try {
+      const { TelegramService } = await import('./services/telegram');
+      const telegramService = new TelegramService(env.TG_BOT_TOKEN);
+      logInfo('✅ Telegram сервис инициализирован в polling режиме');
+    } catch (error) {
+      logError('❌ Ошибка инициализации Telegram сервиса:', error);
+    }
+  }
 }
 
 // WebSocket endpoint
