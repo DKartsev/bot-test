@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { env } from '../config/env';
 import { logError, logInfo, logWarning } from '../utils/logger';
-import { SocksProxyAgent } from 'socks-proxy-agent';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 // Типы для RAG пайплайна
 interface RAGQuery {
@@ -74,11 +74,11 @@ export class SupabaseRAGService {
     this.openaiModel = env.OPENAI_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini';
     this.embeddingModel = env.OPENAI_EMBED_MODEL || process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-small';
 
-    // Настройка SOCKS5 прокси для OpenAI API
+    // Настройка HTTP прокси для OpenAI API
     const proxyUrl = process.env.OPENAI_PROXY_URL;
     if (proxyUrl) {
-      this.proxyAgent = new SocksProxyAgent(proxyUrl);
-      logInfo('OpenAI SOCKS5 прокси настроен в RAG сервисе', { proxyUrl });
+      this.proxyAgent = new HttpsProxyAgent(proxyUrl);
+      logInfo('OpenAI HTTP прокси настроен в RAG сервисе', { proxyUrl });
     }
 
     logInfo('SupabaseRAGService инициализирован', {
