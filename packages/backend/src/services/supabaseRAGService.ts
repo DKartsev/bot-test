@@ -60,6 +60,7 @@ export class SupabaseRAGService {
   private openaiApiKey: string;
   private openaiModel: string;
   private embeddingModel: string;
+  private proxyAgent: any;
 
   constructor() {
     // Инициализация Supabase клиента
@@ -73,11 +74,19 @@ export class SupabaseRAGService {
     this.openaiModel = env.OPENAI_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini';
     this.embeddingModel = env.OPENAI_EMBED_MODEL || process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-small';
 
+    // Настройка HTTP прокси для OpenAI API
+    const proxyUrl = process.env.OPENAI_PROXY_URL;
+    if (proxyUrl) {
+      this.proxyAgent = new HttpsProxyAgent(proxyUrl);
+      logInfo('OpenAI HTTP прокси настроен в RAG сервисе', { proxyUrl });
+    }
+
     logInfo('SupabaseRAGService инициализирован', {
       supabaseUrl: env.SUPABASE_URL ? 'настроен' : 'не настроен',
       openaiKey: this.openaiApiKey ? 'настроен' : 'не настроен',
       openaiModel: this.openaiModel,
       embeddingModel: this.embeddingModel,
+      proxyConfigured: !!this.proxyAgent,
     });
   }
 
@@ -204,9 +213,8 @@ export class SupabaseRAGService {
       };
 
           // Добавляем HTTP прокси если настроен
-    const proxyUrl = process.env.OPENAI_PROXY_URL;
-    if (proxyUrl) {
-      fetchOptions.agent = new HttpsProxyAgent(proxyUrl);
+    if (this.proxyAgent) {
+      fetchOptions.agent = this.proxyAgent;
     }
 
       const response = await fetch('https://api.openai.com/v1/embeddings', fetchOptions);
@@ -353,9 +361,8 @@ export class SupabaseRAGService {
       };
 
           // Добавляем HTTP прокси если настроен
-    const proxyUrl = process.env.OPENAI_PROXY_URL;
-    if (proxyUrl) {
-      fetchOptions.agent = new HttpsProxyAgent(proxyUrl);
+    if (this.proxyAgent) {
+      fetchOptions.agent = this.proxyAgent;
     }
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', fetchOptions);
