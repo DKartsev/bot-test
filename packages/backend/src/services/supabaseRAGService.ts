@@ -333,10 +333,10 @@ export class SupabaseRAGService {
         return [];
       }
 
-      const data = filteredResults;
+      const searchResults = filteredResults;
 
       // Преобразуем результаты в формат SearchResult
-      const results: SearchResult[] = data.map((chunk: any) => ({
+      const results: SearchResult[] = searchResults.map((chunk: any) => ({
         id: chunk.id,
         title: `Чанк ${chunk.chunk_index + 1}`,
         content: chunk.chunk_text,
