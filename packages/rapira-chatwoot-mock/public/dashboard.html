@@ -5,29 +5,208 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Rapira Support Context</title>
     <style>
-      :root { color-scheme: light; --bg: #f7f8fa; --panel: #ffffff; --line: #dde3ea; --text: #15202b; --muted: #617083; --brand: #155eef; --ok: #14804a; --warn: #b45309; --bad: #b42318; }
-      * { box-sizing: border-box; }
-      body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; }
-      main { display: grid; gap: 12px; padding: 12px; }
-      header, section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
-      header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-      h1, h2 { margin: 0; font-size: 14px; line-height: 1.25; }
-      h2 { margin-bottom: 10px; }
-      .muted { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
-      .pill { border-radius: 999px; padding: 3px 8px; background: #edf3ff; color: var(--brand); font-size: 12px; white-space: nowrap; }
-      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-      .item { min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
-      .label { color: var(--muted); font-size: 11px; margin-bottom: 4px; }
-      .value { overflow-wrap: anywhere; font-weight: 650; }
-      .status-ok { color: var(--ok); }
-      .status-warn { color: var(--warn); }
-      .status-bad { color: var(--bad); }
-      table { width: 100%; border-collapse: collapse; }
-      td, th { border-bottom: 1px solid var(--line); padding: 7px 0; text-align: left; font-size: 12px; }
-      th { color: var(--muted); font-weight: 600; }
-      .ops { display: grid; gap: 8px; }
-      .operation { border: 1px solid var(--line); border-radius: 6px; padding: 9px; }
-      .operation strong { display: block; margin-bottom: 4px; }
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fa;
+        --panel: #ffffff;
+        --line: #dde3ea;
+        --text: #15202b;
+        --muted: #617083;
+        --brand: #155eef;
+        --ok: #14804a;
+        --warn: #b45309;
+        --bad: #b42318;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 14px;
+      }
+
+      main {
+        display: grid;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      header,
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.25;
+      }
+
+      h2 {
+        margin-bottom: 10px;
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .pill {
+        border-radius: 999px;
+        padding: 3px 8px;
+        background: #edf3ff;
+        color: var(--brand);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .item {
+        min-width: 0;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 8px;
+      }
+
+      .label {
+        color: var(--muted);
+        font-size: 11px;
+        margin-bottom: 4px;
+      }
+
+      .value {
+        overflow-wrap: anywhere;
+        font-weight: 650;
+      }
+
+      .status-ok {
+        color: var(--ok);
+      }
+
+      .status-warn {
+        color: var(--warn);
+      }
+
+      .status-bad {
+        color: var(--bad);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      td,
+      th {
+        border-bottom: 1px solid var(--line);
+        padding: 7px 0;
+        text-align: left;
+        font-size: 12px;
+      }
+
+      th {
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .note {
+        border-left: 3px solid var(--brand);
+        padding-left: 10px;
+        color: #24364b;
+        line-height: 1.45;
+      }
+
+      .ops {
+        display: grid;
+        gap: 8px;
+      }
+
+      .operation {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 9px;
+      }
+
+      .operation strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .tester {
+        display: grid;
+        gap: 10px;
+      }
+
+      .tester-controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      label {
+        display: grid;
+        gap: 4px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      input,
+      select,
+      button,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 8px;
+        background: #fff;
+        color: var(--text);
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+        background: var(--brand);
+        color: #fff;
+        border-color: var(--brand);
+        font-weight: 650;
+      }
+
+      pre,
+      textarea {
+        min-height: 180px;
+        margin: 0;
+        overflow: auto;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 12px;
+      }
+
+      .tester-output {
+        display: grid;
+        gap: 8px;
+      }
     </style>
   </head>
   <body>
@@ -39,15 +218,76 @@
         </div>
         <span class="pill">demo</span>
       </header>
-      <section><h2>Клиент</h2><div class="grid" id="user"></div></section>
-      <section><h2>Аккаунт</h2><div class="grid" id="account"></div></section>
+
+      <section>
+        <h2>Клиент</h2>
+        <div class="grid" id="user"></div>
+      </section>
+
+      <section>
+        <h2>Аккаунт</h2>
+        <div class="grid" id="account"></div>
+      </section>
+
       <section>
         <h2>Балансы</h2>
-        <table><thead><tr><th>Актив</th><th>Доступно</th><th>В холде</th></tr></thead><tbody id="balances"></tbody></table>
+        <table>
+          <thead>
+            <tr>
+              <th>Актив</th>
+              <th>Доступно</th>
+              <th>В холде</th>
+            </tr>
+          </thead>
+          <tbody id="balances"></tbody>
+        </table>
       </section>
-      <section><h2>Активные пополнения</h2><div class="ops" id="deposits"></div></section>
-      <section><h2>Активные выводы</h2><div class="ops" id="withdrawals"></div></section>
+
+      <section>
+        <h2>Активные пополнения</h2>
+        <div class="ops" id="deposits"></div>
+      </section>
+
+      <section>
+        <h2>Активные выводы</h2>
+        <div class="ops" id="withdrawals"></div>
+      </section>
+
+      <section>
+        <h2>Тест Captain endpoint</h2>
+        <div class="tester">
+          <div class="tester-controls">
+            <label>ID аккаунта Rapira<input id="testAccountId" value="341158" /></label>
+            <label>Telegram ID<input id="testTelegramId" value="" /></label>
+            <label>Тип операции
+              <select id="testOperationType">
+                <option value="">Все данные</option>
+                <option value="balance">balance</option>
+                <option value="deposit">deposit</option>
+                <option value="withdrawal">withdrawal</option>
+                <option value="kyc">kyc</option>
+                <option value="p2p">p2p</option>
+                <option value="sbp">sbp</option>
+                <option value="crypto">crypto</option>
+                <option value="cash">cash</option>
+                <option value="operation_status">operation_status</option>
+              </select>
+            </label>
+            <label>ID операции<input id="testOperationId" placeholder="dep_..." /></label>
+            <label>TXID/hash<input id="testTxid" placeholder="tx_..." /></label>
+            <label>Email<input id="testEmail" value="demo@rapira.local" /></label>
+          </div>
+          <button id="runCaptainTest" type="button">Проверить endpoint</button>
+          <div class="tester-output">
+            <label>Данные, которые отправляет инструмент<textarea id="testRequest" readonly></textarea></label>
+            <label>Возвращаемые данные API<textarea id="testRawResponse" readonly></textarea></label>
+            <label>Данные после прохождения через шаблон ответа<textarea id="testToolResponse" readonly></textarea></label>
+          </div>
+        </div>
+      </section>
+
     </main>
+
     <script>
       const userNode = document.querySelector('#user');
       const accountNode = document.querySelector('#account');
@@ -55,15 +295,27 @@
       const depositsNode = document.querySelector('#deposits');
       const withdrawalsNode = document.querySelector('#withdrawals');
       const sourceNode = document.querySelector('#source');
+      const testNodes = {
+        accountId: document.querySelector('#testAccountId'),
+        telegramId: document.querySelector('#testTelegramId'),
+        operationType: document.querySelector('#testOperationType'),
+        operationId: document.querySelector('#testOperationId'),
+        txid: document.querySelector('#testTxid'),
+        email: document.querySelector('#testEmail'),
+        request: document.querySelector('#testRequest'),
+        rawResponse: document.querySelector('#testRawResponse'),
+        toolResponse: document.querySelector('#testToolResponse'),
+        run: document.querySelector('#runCaptainTest')
+      };
 
       function item(label, value, className = '') {
-        return `<div class="item"><div class="label">${label}</div><div class="value ${className}">${value || 'Недоступен'}</div></div>`;
+        return `<div class="item"><div class="label">${label}</div><div class="value ${className}">${value}</div></div>`;
       }
 
       function statusClass(value) {
         if (['verified', true, 'low'].includes(value)) return 'status-ok';
-        if (['pending_review', 'medium', 'pending_confirmation', 'manual_review', 'processing'].includes(value)) return 'status-warn';
-        if (['rejected', false, 'high', 'blocked', 'failed', 'cancelled'].includes(value)) return 'status-bad';
+        if (['pending_review', 'medium'].includes(value)) return 'status-warn';
+        if (['rejected', false, 'high'].includes(value)) return 'status-bad';
         return '';
       }
 
@@ -71,12 +323,90 @@
         const network = operation.network ? ` · ${operation.network}` : '';
         const asset = operation.token || operation.currency || 'RUB';
         const p2pDetails = operation.method === 'p2p'
-          ? `<div class="muted">Сделка: ${operation.deal_number}</div><div class="muted">Контрагент: ${operation.counterparty}</div><div class="muted">Комиссия: ${operation.fee} ${operation.currency}</div>`
+          ? `
+            <div class="muted">Сделка: ${operation.deal_number}</div>
+            <div class="muted">Контрагент: ${operation.counterparty}</div>
+            <div class="muted">Комиссия: ${operation.fee} ${operation.currency}</div>
+          `
           : '';
         const cryptoDetails = operation.method === 'crypto'
-          ? `<div class="muted">Начало: ${new Date(operation.started_at || operation.created_at).toLocaleString('ru-RU')}</div><div class="muted">Hash: ${operation.hash || operation.txid || 'ожидается'}</div><div class="muted">Адрес: ${operation.address}</div>`
+          ? `
+            <div class="muted">Начало: ${new Date(operation.started_at || operation.created_at).toLocaleString('ru-RU')}</div>
+            <div class="muted">Hash: ${operation.hash || operation.txid || 'ожидается'}</div>
+            <div class="muted">Адрес: ${operation.address}</div>
+          `
           : '';
-        return `<div class="operation"><strong>${operation.method_label}</strong><div>${operation.amount} ${asset}${network}</div><div class="muted">Статус: ${operation.status}</div><div class="muted">В обработке: ${operation.processing_time_label}</div><div class="muted">ID: ${operation.id}</div>${p2pDetails}${cryptoDetails}</div>`;
+        return `
+          <div class="operation">
+            <strong>${operation.method_label}</strong>
+            <div>${operation.amount} ${asset}${network}</div>
+            <div class="muted">Статус: ${operation.status}</div>
+            <div class="muted">В обработке: ${operation.processing_time_label}</div>
+            <div class="muted">ID: ${operation.id}</div>
+            ${p2pDetails}
+            ${cryptoDetails}
+          </div>
+        `;
+      }
+
+      function buildCaptainRequest() {
+        return {
+          contact: {
+            email: testNodes.email.value,
+            phone: '',
+            id: testNodes.accountId.value,
+            telegram_id: testNodes.telegramId.value,
+            rapira_user_id: ''
+          },
+          operation_type: testNodes.operationType.value,
+          operation_id: testNodes.operationId.value,
+          txid: testNodes.txid.value
+        };
+      }
+
+      function formatToolResponse(response) {
+        return `Данные клиента Rapira:
+
+Клиент: ${response.customer}
+Статус верификации: ${response.kyc_status}
+Вывод доступен: ${response.withdrawal_enabled}
+Торговля доступна: ${response.trading_enabled}
+
+Балансы:
+${(response.balances || []).join('\n') || 'Нет данных'}
+
+Активные пополнения:
+${(response.active_deposits || []).join('\n') || 'Нет данных'}
+
+Активные выводы:
+${(response.active_withdrawals || []).join('\n') || 'Нет данных'}
+
+Операция:
+${response.operation ? JSON.stringify(response.operation, null, 2) : 'Нет точной операции'}
+
+Рекомендация для ответа:
+${response.public_recommendation || 'Нет рекомендации'}`;
+      }
+
+      async function runCaptainTest() {
+        const requestBody = buildCaptainRequest();
+        testNodes.request.value = JSON.stringify(requestBody, null, 2);
+        testNodes.rawResponse.value = 'Загрузка...';
+        testNodes.toolResponse.value = 'Загрузка...';
+
+        try {
+          const response = await fetch('/api/captain/user-context', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+          });
+          const data = await response.json();
+          testNodes.rawResponse.value = JSON.stringify(data, null, 2);
+          testNodes.toolResponse.value = response.ok ? formatToolResponse(data) : `Ошибка ${response.status}\n${JSON.stringify(data, null, 2)}`;
+        } catch (error) {
+          testNodes.rawResponse.value = error.message;
+          testNodes.toolResponse.value = 'Endpoint недоступен или запрос был прерван.';
+        }
       }
 
       async function loadProfile(contact = {}) {
@@ -87,24 +417,53 @@
           telegram_id: contact.telegram_id || contact.custom_attributes?.telegram_id || ''
         });
         const response = await fetch(`/api/user?${params.toString()}`);
-        render(await response.json());
+        const profile = await response.json();
+        render(profile);
       }
 
       function render(profile) {
         sourceNode.textContent = profile.user.email;
-        userNode.innerHTML = [item('ID', profile.user.id), item('Telegram ID', profile.user.telegram_id), item('Имя', profile.user.name), item('Email', profile.user.email), item('Телефон', profile.user.phone)].join('');
-        accountNode.innerHTML = [item('KYC', profile.account.kyc_status, statusClass(profile.account.kyc_status)), item('Риск', profile.account.risk_level, statusClass(profile.account.risk_level)), item('2FA', profile.account.two_factor_enabled ? 'Включена' : 'Выключена', statusClass(profile.account.two_factor_enabled)), item('Вывод', profile.account.withdrawal_enabled ? 'Доступен' : 'Ограничен', statusClass(profile.account.withdrawal_enabled))].join('');
-        balancesNode.innerHTML = profile.balances.map(balance => `<tr><td>${balance.currency}</td><td>${balance.available}</td><td>${balance.locked}</td></tr>`).join('');
-        depositsNode.innerHTML = profile.active_deposits.length ? profile.active_deposits.map(operationCard).join('') : '<div class="muted">Активных пополнений нет</div>';
-        withdrawalsNode.innerHTML = profile.active_withdrawals.length ? profile.active_withdrawals.map(operationCard).join('') : '<div class="muted">Активных выводов нет</div>';
+        userNode.innerHTML = [
+          item('ID', profile.user.id),
+          item('Имя', profile.user.name),
+          item('Email', profile.user.email),
+          item('Телефон', profile.user.phone)
+        ].join('');
+
+        accountNode.innerHTML = [
+          item('KYC', profile.account.kyc_status, statusClass(profile.account.kyc_status)),
+          item('Риск', profile.account.risk_level, statusClass(profile.account.risk_level)),
+          item('2FA', profile.account.two_factor_enabled ? 'Включена' : 'Выключена', statusClass(profile.account.two_factor_enabled)),
+          item('Вывод', profile.account.withdrawal_enabled ? 'Доступен' : 'Ограничен', statusClass(profile.account.withdrawal_enabled))
+        ].join('');
+
+        balancesNode.innerHTML = profile.balances
+          .map(balance => `<tr><td>${balance.currency}</td><td>${balance.available}</td><td>${balance.locked}</td></tr>`)
+          .join('');
+
+        depositsNode.innerHTML = profile.active_deposits.length
+          ? profile.active_deposits.map(operationCard).join('')
+          : '<div class="muted">Активных пополнений нет</div>';
+
+        withdrawalsNode.innerHTML = profile.active_withdrawals.length
+          ? profile.active_withdrawals.map(operationCard).join('')
+          : '<div class="muted">Активных выводов нет</div>';
+
       }
 
       window.addEventListener('message', event => {
         const contact = event.data?.contact || event.data?.conversation?.meta?.sender || event.data?.data?.contact;
-        if (contact) loadProfile(contact);
+        if (contact) {
+          testNodes.accountId.value = contact.id || '';
+          testNodes.telegramId.value = contact.telegram_id || contact.identifier || contact.custom_attributes?.telegram_id || '';
+          testNodes.email.value = contact.email || '';
+          loadProfile(contact);
+        }
       });
 
+      testNodes.run.addEventListener('click', runCaptainTest);
       loadProfile({ email: new URLSearchParams(location.search).get('email') || 'demo@rapira.local' });
+      runCaptainTest();
     </script>
   </body>
 </html>
