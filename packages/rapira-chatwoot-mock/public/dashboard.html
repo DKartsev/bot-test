@@ -365,6 +365,13 @@
       }
 
       function formatToolResponse(response) {
+        const operationBlock = response.operation
+          ? `
+Точная операция:
+${JSON.stringify(response.operation, null, 2)}
+`
+          : '';
+
         return `Данные клиента Rapira:
 
 Клиент: ${response.customer}
@@ -380,12 +387,7 @@ ${(response.active_deposits || []).join('\n') || 'Нет данных'}
 
 Активные выводы:
 ${(response.active_withdrawals || []).join('\n') || 'Нет данных'}
-
-Операция:
-${response.operation ? JSON.stringify(response.operation, null, 2) : 'Нет точной операции'}
-
-Рекомендация для ответа:
-${response.public_recommendation || 'Нет рекомендации'}`;
+${operationBlock}`;
       }
 
       async function runCaptainTest() {
