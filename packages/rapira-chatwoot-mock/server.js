@@ -138,7 +138,7 @@ function buildActiveWithdrawals(seed, canWithdraw, flag) {
 }
 
 function buildUser(query = {}) {
-  const identity = query.rapira_user_id || query.email || query.user_id || query.contact_id || query.phone || 'guest';
+  const identity = query.rapira_user_id || query.identifier || query.email || query.user_id || query.contact_id || query.phone || 'guest';
   const seed = hash(identity);
   const kycStatus = pick(kycStatuses, seed, 2);
   const flag = pick(supportFlags, seed, 5);
@@ -201,6 +201,7 @@ function contextFromRequest(req) {
 
   return {
     rapira_user_id: bodyContact.rapira_user_id || customAttributes.rapira_user_id || req.body?.rapira_user_id || '',
+    identifier: bodyContact.identifier || req.body?.identifier || '',
     email: bodyContact.email || req.body?.email || req.query.email || req.get('X-Chatwoot-Contact-Email') || '',
     phone: bodyContact.phone || req.body?.phone || req.query.phone || req.get('X-Chatwoot-Contact-Phone') || '',
     contact_id: bodyContact.id || req.body?.contact_id || req.query.contact_id || req.get('X-Chatwoot-Contact-Id') || '',
@@ -364,10 +365,12 @@ function validateCaptainRequest(req, res) {
   const hasContact = Boolean(
     contact.rapira_user_id ||
       customAttributes.rapira_user_id ||
+      contact.identifier ||
       contact.email ||
       contact.phone ||
       contact.id ||
       req.body.rapira_user_id ||
+      req.body.identifier ||
       req.body.email ||
       req.body.phone ||
       req.body.contact_id
