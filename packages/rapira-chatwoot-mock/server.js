@@ -138,7 +138,7 @@ function buildActiveWithdrawals(seed, canWithdraw, flag) {
 }
 
 function buildUser(query = {}) {
-  const identity = query.rapira_user_id || query.identifier || query.email || query.user_id || query.contact_id || query.phone || 'guest';
+  const identity = query.rapira_user_id || query.account_id || query.telegram_id || query.identifier || query.email || query.user_id || query.contact_id || query.phone || 'guest';
   const seed = hash(identity);
   const kycStatus = pick(kycStatuses, seed, 2);
   const flag = pick(supportFlags, seed, 5);
@@ -149,7 +149,8 @@ function buildUser(query = {}) {
 
   return {
     user: {
-      id: `rp_${seed.toString(16).slice(0, 8)}`,
+      id: query.account_id || query.rapira_user_id || `rp_${seed.toString(16).slice(0, 8)}`,
+      telegram_id: query.telegram_id || null,
       name: `${pick(names, seed)} ${pick(surnames, seed, 1)}`,
       email: query.email || `client-${seed % 10000}@example.com`,
       phone: query.phone || `+7 9${String(seed % 1000000000).padStart(9, '0')}`,
@@ -201,12 +202,14 @@ function contextFromRequest(req) {
 
   return {
     rapira_user_id: bodyContact.rapira_user_id || customAttributes.rapira_user_id || req.body?.rapira_user_id || '',
+    account_id: bodyContact.id || bodyContact.account_id || customAttributes.account_id || req.body?.account_id || '',
+    telegram_id: bodyContact.telegram_id || customAttributes.telegram_id || req.body?.telegram_id || '',
     identifier: bodyContact.identifier || req.body?.identifier || '',
     email: bodyContact.email || req.body?.email || req.query.email || req.get('X-Chatwoot-Contact-Email') || '',
     phone: bodyContact.phone || req.body?.phone || req.query.phone || req.get('X-Chatwoot-Contact-Phone') || '',
     contact_id: bodyContact.id || req.body?.contact_id || req.query.contact_id || req.get('X-Chatwoot-Contact-Id') || '',
     conversation_id: req.get('X-Chatwoot-Conversation-Id') || '',
-    account_id: req.get('X-Chatwoot-Account-Id') || '',
+    chatwoot_account_id: req.get('X-Chatwoot-Account-Id') || '',
     inbox_verified: req.get('X-Chatwoot-Contact-Inbox-Verified') || ''
   };
 }
@@ -343,6 +346,29 @@ function summarizeForCaptain(profile, request = {}) {
   };
 }
 
+function legacySummarizeForCaptain(profile) {
+  const deposits = profile.active_deposits.map(operation => {
+    const network = operation.network ? `, сеть ${operation.network}` : '';
+    return `${operation.method_label}: ${operation.amount} ${operation.token}${network}, статус ${operation.status}, в обработке ${operation.processing_time_label}, ID ${operation.id}`;
+  });
+
+  const withdrawals = profile.active_withdrawals.map(operation => {
+    const network = operation.network ? `, сеть ${operation.network}` : '';
+    return `${operation.method_label}: ${operation.amount} ${operation.token}${network}, статус ${operation.status}, в обработке ${operation.processing_time_label}, ID ${operation.id}`;
+  });
+
+  return {
+    customer: `${profile.user.name}, ${profile.user.email}`,
+    kyc_status: profile.account.kyc_status,
+    withdrawal_enabled: profile.account.withdrawal_enabled,
+    trading_enabled: profile.account.trading_enabled,
+    balances: profile.balances.map(balance => `${balance.currency}: доступно ${balance.available}, в холде ${balance.locked}`),
+    active_deposits: deposits,
+    active_withdrawals: withdrawals,
+    instruction: 'Используй эти данные для ответа клиенту. Не раскрывай risk_level, last_login_ip и внутренние технические причины ограничений.'
+  };
+}
+
 function validateCaptainRequest(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({
@@ -364,12 +390,18 @@ function validateCaptainRequest(req, res) {
   const customAttributes = contact.custom_attributes || {};
   const hasContact = Boolean(
     contact.rapira_user_id ||
+      contact.id ||
+      contact.account_id ||
+      contact.telegram_id ||
       customAttributes.rapira_user_id ||
+      customAttributes.account_id ||
+      customAttributes.telegram_id ||
       contact.identifier ||
       contact.email ||
       contact.phone ||
-      contact.id ||
       req.body.rapira_user_id ||
+      req.body.account_id ||
+      req.body.telegram_id ||
       req.body.identifier ||
       req.body.email ||
       req.body.phone ||
