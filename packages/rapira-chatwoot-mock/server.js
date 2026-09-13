@@ -10,7 +10,11 @@ const app = express();
 const port = process.env.PORT || 8787;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({
+  verify: (req, _res, buf) => {
+    req.rawBody = buf.toString('utf8');
+  }
+}));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (_req, res) => {
@@ -82,13 +86,19 @@ function buildActiveDeposits(seed, flag) {
     const isCrypto = method === 'crypto';
     const minutes = processingMinutes(seed >> index, 8, method === 'crypto' ? 180 : 90);
 
+    const token = isCrypto ? pick(['USDT', 'BTC', 'ETH', 'TON'], seed, index) : 'RUB';
+    const network = isCrypto ? pick(cryptoNetworks, seed, index) : null;
+
     return {
       id: `dep_${(seed + index * 97).toString(16)}`,
+      txid: isCrypto ? `tx_${(seed + index * 197).toString(16)}` : null,
       direction: 'deposit',
+      type: 'deposit',
       method,
       method_label: methodLabel(method),
-      token: isCrypto ? pick(['USDT', 'BTC', 'ETH', 'TON'], seed, index) : 'RUB',
-      network: isCrypto ? pick(cryptoNetworks, seed, index) : null,
+      token: isCrypto ? token : null,
+      currency: isCrypto ? token : 'RUB',
+      network,
       amount: isCrypto ? money(seed >> index, 10, 2500) : money(seed >> index, 1000, 300000),
       status: index === 0 ? 'processing' : 'pending_confirmation',
       created_at: isoMinutesAgo(minutes),
@@ -105,13 +115,19 @@ function buildActiveWithdrawals(seed, canWithdraw, flag) {
     const isCrypto = method === 'crypto';
     const minutes = processingMinutes(seed >> (index + 2), 12, isCrypto ? 240 : 120);
 
+    const token = isCrypto ? pick(['USDT', 'BTC', 'ETH', 'TON'], seed, index + 2) : 'RUB';
+    const network = isCrypto ? pick(cryptoNetworks, seed, index + 2) : null;
+
     return {
       id: `wd_${(seed + index * 131).toString(16)}`,
+      txid: isCrypto ? `tx_${(seed + index * 211).toString(16)}` : null,
       direction: 'withdrawal',
+      type: 'withdrawal',
       method,
       method_label: methodLabel(method),
-      token: isCrypto ? pick(['USDT', 'BTC', 'ETH', 'TON'], seed, index + 2) : 'RUB',
-      network: isCrypto ? pick(cryptoNetworks, seed, index + 2) : null,
+      token: isCrypto ? token : null,
+      currency: isCrypto ? token : 'RUB',
+      network,
       amount: isCrypto ? money(seed >> index, 15, 1800) : money(seed >> index, 1000, 250000),
       status: canWithdraw ? 'processing' : 'blocked',
       created_at: isoMinutesAgo(minutes),
@@ -192,27 +208,167 @@ function contextFromRequest(req) {
   };
 }
 
-function summarizeForCaptain(profile) {
-  const deposits = profile.active_deposits.map(operation => {
-    const network = operation.network ? `, сеть ${operation.network}` : '';
-    return `${operation.method_label}: ${operation.amount} ${operation.token}${network}, статус ${operation.status}, в обработке ${operation.processing_time_label}, ID ${operation.id}`;
-  });
+function normalizeOperation(operation) {
+  if (!operation) return null;
 
-  const withdrawals = profile.active_withdrawals.map(operation => {
-    const network = operation.network ? `, сеть ${operation.network}` : '';
-    return `${operation.method_label}: ${operation.amount} ${operation.token}${network}, статус ${operation.status}, в обработке ${operation.processing_time_label}, ID ${operation.id}`;
-  });
+  return {
+    id: operation.id,
+    type: operation.type || operation.direction,
+    method: operation.method_label,
+    amount: Math.max(0, Number(operation.amount) || 0),
+    currency: operation.currency || operation.token || 'RUB',
+    token: operation.token,
+    network: operation.network,
+    status: operation.status,
+    processing_time: operation.processing_time_label,
+    txid: operation.txid || null
+  };
+}
+
+function operationLine(operation) {
+  const network = operation.network ? `, сеть ${operation.network}` : '';
+  const txid = operation.txid ? `, TXID ${operation.txid}` : '';
+  return `${operation.method_label}: ${operation.amount} ${operation.currency}${network}, статус ${operation.status}, в обработке ${operation.processing_time_label}, ID ${operation.id}${txid}`;
+}
+
+function findOperation(operations, { operation_id: operationId, txid }) {
+  if (operationId) {
+    return operations.find(operation => operation.id.toLowerCase() === String(operationId).toLowerCase()) || null;
+  }
+
+  if (txid) {
+    return operations.find(operation => operation.txid?.toLowerCase() === String(txid).toLowerCase()) || null;
+  }
+
+  return null;
+}
+
+function filterOperations(profile, { operation_type: operationType, operation_id: operationId, txid }) {
+  const allOperations = [...profile.active_deposits, ...profile.active_withdrawals];
+  const type = String(operationType || '').toLowerCase();
+  const operation = findOperation(allOperations, { operation_id: operationId, txid });
+
+  if (operationId || txid || type === 'operation_status') {
+    return { deposits: [], withdrawals: [], operation };
+  }
+
+  if (type === 'deposit') return { deposits: profile.active_deposits, withdrawals: [], operation: null };
+  if (type === 'withdrawal') return { deposits: [], withdrawals: profile.active_withdrawals, operation: null };
+  if (type === 'p2p') {
+    return {
+      deposits: profile.active_deposits.filter(operation => operation.method === 'p2p'),
+      withdrawals: profile.active_withdrawals.filter(operation => operation.method === 'p2p'),
+      operation: null
+    };
+  }
+  if (type === 'sbp') {
+    return {
+      deposits: profile.active_deposits.filter(operation => operation.method === 'sbp'),
+      withdrawals: [],
+      operation: null
+    };
+  }
+  if (type === 'crypto') {
+    return {
+      deposits: profile.active_deposits.filter(operation => operation.method === 'crypto'),
+      withdrawals: profile.active_withdrawals.filter(operation => operation.method === 'crypto'),
+      operation: null
+    };
+  }
+  if (type === 'cash') {
+    return {
+      deposits: profile.active_deposits.filter(operation => operation.method === 'office_cash'),
+      withdrawals: profile.active_withdrawals.filter(operation => operation.method === 'office_cash'),
+      operation: null
+    };
+  }
+
+  return { deposits: profile.active_deposits, withdrawals: profile.active_withdrawals, operation: null };
+}
+
+function recommendationFor({ operationType, operation }) {
+  if (operation) return 'Сообщите клиенту статус операции и попросите чек, ID операции или TXID/hash, если требуется ручная проверка.';
+  if (operationType === 'balance') return 'Сообщите клиенту доступные балансы и ограничения по торговле/выводу.';
+  if (operationType === 'kyc') return 'Сообщите клиенту статус верификации и доступные операции без раскрытия внутренних причин ограничений.';
+  return 'Используйте найденные данные для ответа клиенту. Если данных недостаточно, попросите уточнить ID операции, TXID/hash или способ операции.';
+}
+
+function operationNotFoundResponse(profile) {
+  return {
+    customer: `${profile.user.name}, ${profile.user.email}`,
+    kyc_status: profile.account.kyc_status,
+    withdrawal_enabled: profile.account.withdrawal_enabled,
+    trading_enabled: profile.account.trading_enabled,
+    balances: [],
+    active_deposits: [],
+    active_withdrawals: [],
+    operation: null,
+    public_recommendation: 'Операция по указанным данным не найдена. Попросите клиента проверить ID операции или TXID/hash и при необходимости передайте обращение специалисту.',
+    instruction: 'Не придумывай данные операции. Попроси корректный ID операции или TXID/hash.'
+  };
+}
+
+function summarizeForCaptain(profile, request = {}) {
+  const operationType = String(request.operation_type || '').toLowerCase();
+  const { deposits, withdrawals, operation } = filterOperations(profile, request);
+
+  if ((request.operation_id || request.txid || operationType === 'operation_status') && !operation) {
+    return operationNotFoundResponse(profile);
+  }
+
+  const includeBalances = !operationType || operationType === 'balance' || operationType === 'kyc';
+  const includeDeposits = !operationType || !['balance', 'kyc'].includes(operationType);
+  const includeWithdrawals = !operationType || !['balance', 'kyc'].includes(operationType);
+
+  const depositLines = includeDeposits ? deposits.map(operationLine) : [];
+  const withdrawalLines = includeWithdrawals ? withdrawals.map(operationLine) : [];
+  const balances = includeBalances
+    ? profile.balances.map(balance => `${balance.currency}: доступно ${Math.max(0, balance.available)}, в холде ${Math.max(0, balance.locked)}`)
+    : [];
 
   return {
     customer: `${profile.user.name}, ${profile.user.email}`,
     kyc_status: profile.account.kyc_status,
     withdrawal_enabled: profile.account.withdrawal_enabled,
     trading_enabled: profile.account.trading_enabled,
-    balances: profile.balances.map(balance => `${balance.currency}: доступно ${balance.available}, в холде ${balance.locked}`),
-    active_deposits: deposits,
-    active_withdrawals: withdrawals,
+    balances,
+    active_deposits: depositLines,
+    active_withdrawals: withdrawalLines,
+    operation: normalizeOperation(operation),
+    public_recommendation: recommendationFor({ operationType, operation }),
     instruction: 'Используй эти данные для ответа клиенту. Не раскрывай risk_level, last_login_ip и внутренние технические причины ограничений.'
   };
+}
+
+function validateCaptainRequest(req, res) {
+  if (req.method !== 'POST') {
+    res.status(405).json({
+      error: 'method_not_allowed',
+      message: 'Use POST method'
+    });
+    return null;
+  }
+
+  if (!req.is('application/json') || !req.rawBody || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({
+      error: 'invalid_request',
+      message: 'Request body must be valid JSON'
+    });
+    return null;
+  }
+
+  const contact = req.body.contact || {};
+  const hasContact = Boolean(contact.email || contact.phone || contact.id || req.body.email || req.body.phone || req.body.contact_id);
+
+  if (!hasContact) {
+    res.status(400).json({
+      error: 'missing_contact',
+      message: 'Contact data is required'
+    });
+    return null;
+  }
+
+  return req.body;
 }
 
 function recommendedAction({ flag, kycStatus, canWithdraw }) {
@@ -275,14 +431,12 @@ app.get('/api/user', (req, res) => {
   res.json(buildUser(contextFromRequest(req)));
 });
 
-app.get('/api/captain/user-context', (req, res) => {
-  const profile = buildUser(contextFromRequest(req));
-  res.json(summarizeForCaptain(profile));
-});
+app.all('/api/captain/user-context', (req, res) => {
+  const body = validateCaptainRequest(req, res);
+  if (!body) return;
 
-app.post('/api/captain/user-context', (req, res) => {
   const profile = buildUser(contextFromRequest(req));
-  res.json(summarizeForCaptain(profile));
+  res.json(summarizeForCaptain(profile, body));
 });
 
 app.post('/api/support-answer', (req, res) => {
@@ -295,6 +449,18 @@ app.post('/api/support-answer', (req, res) => {
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
+});
+
+app.use((error, _req, res, next) => {
+  if (error instanceof SyntaxError && 'body' in error) {
+    res.status(400).json({
+      error: 'invalid_request',
+      message: 'Request body must be valid JSON'
+    });
+    return;
+  }
+
+  next(error);
 });
 
 app.listen(port, () => {
