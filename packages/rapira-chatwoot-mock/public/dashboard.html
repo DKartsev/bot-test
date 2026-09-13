@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rapira Support Context</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fa;
+        --panel: #ffffff;
+        --line: #dde3ea;
+        --text: #15202b;
+        --muted: #617083;
+        --brand: #155eef;
+        --ok: #14804a;
+        --warn: #b45309;
+        --bad: #b42318;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 14px;
+      }
+
+      main {
+        display: grid;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      header,
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.25;
+      }
+
+      h2 {
+        margin-bottom: 10px;
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .pill {
+        border-radius: 999px;
+        padding: 3px 8px;
+        background: #edf3ff;
+        color: var(--brand);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .item {
+        min-width: 0;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 8px;
+      }
+
+      .label {
+        color: var(--muted);
+        font-size: 11px;
+        margin-bottom: 4px;
+      }
+
+      .value {
+        overflow-wrap: anywhere;
+        font-weight: 650;
+      }
+
+      .status-ok {
+        color: var(--ok);
+      }
+
+      .status-warn {
+        color: var(--warn);
+      }
+
+      .status-bad {
+        color: var(--bad);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      td,
+      th {
+        border-bottom: 1px solid var(--line);
+        padding: 7px 0;
+        text-align: left;
+        font-size: 12px;
+      }
+
+      th {
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .note {
+        border-left: 3px solid var(--brand);
+        padding-left: 10px;
+        color: #24364b;
+        line-height: 1.45;
+      }
+
+      .ops {
+        display: grid;
+        gap: 8px;
+      }
+
+      .operation {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 9px;
+      }
+
+      .operation strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Rapira Support Context</h1>
+          <div class="muted" id="source">Ожидаю контекст Chatwoot</div>
+        </div>
+        <span class="pill">demo</span>
+      </header>
+
+      <section>
+        <h2>Клиент</h2>
+        <div class="grid" id="user"></div>
+      </section>
+
+      <section>
+        <h2>Аккаунт</h2>
+        <div class="grid" id="account"></div>
+      </section>
+
+      <section>
+        <h2>Балансы</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Актив</th>
+              <th>Доступно</th>
+              <th>В холде</th>
+            </tr>
+          </thead>
+          <tbody id="balances"></tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Активные пополнения</h2>
+        <div class="ops" id="deposits"></div>
+      </section>
+
+      <section>
+        <h2>Активные выводы</h2>
+        <div class="ops" id="withdrawals"></div>
+      </section>
+
+    </main>
+
+    <script>
+      const userNode = document.querySelector('#user');
+      const accountNode = document.querySelector('#account');
+      const balancesNode = document.querySelector('#balances');
+      const depositsNode = document.querySelector('#deposits');
+      const withdrawalsNode = document.querySelector('#withdrawals');
+      const sourceNode = document.querySelector('#source');
+
+      function item(label, value, className = '') {
+        return `<div class="item"><div class="label">${label}</div><div class="value ${className}">${value}</div></div>`;
+      }
+
+      function statusClass(value) {
+        if (['verified', true, 'low'].includes(value)) return 'status-ok';
+        if (['pending_review', 'medium'].includes(value)) return 'status-warn';
+        if (['rejected', false, 'high'].includes(value)) return 'status-bad';
+        return '';
+      }
+
+      function operationCard(operation) {
+        const network = operation.network ? ` · ${operation.network}` : '';
+        return `
+          <div class="operation">
+            <strong>${operation.method_label}</strong>
+            <div>${operation.amount} ${operation.token}${network}</div>
+            <div class="muted">Статус: ${operation.status}</div>
+            <div class="muted">В обработке: ${operation.processing_time_label}</div>
+            <div class="muted">ID: ${operation.id}</div>
+          </div>
+        `;
+      }
+
+      async function loadProfile(contact = {}) {
+        const params = new URLSearchParams({
+          email: contact.email || '',
+          phone: contact.phone_number || contact.phone || '',
+          contact_id: contact.id || ''
+        });
+        const response = await fetch(`/api/user?${params.toString()}`);
+        const profile = await response.json();
+        render(profile);
+      }
+
+      function render(profile) {
+        sourceNode.textContent = profile.user.email;
+        userNode.innerHTML = [
+          item('ID', profile.user.id),
+          item('Имя', profile.user.name),
+          item('Email', profile.user.email),
+          item('Телефон', profile.user.phone)
+        ].join('');
+
+        accountNode.innerHTML = [
+          item('KYC', profile.account.kyc_status, statusClass(profile.account.kyc_status)),
+          item('Риск', profile.account.risk_level, statusClass(profile.account.risk_level)),
+          item('2FA', profile.account.two_factor_enabled ? 'Включена' : 'Выключена', statusClass(profile.account.two_factor_enabled)),
+          item('Вывод', profile.account.withdrawal_enabled ? 'Доступен' : 'Ограничен', statusClass(profile.account.withdrawal_enabled))
+        ].join('');
+
+        balancesNode.innerHTML = profile.balances
+          .map(balance => `<tr><td>${balance.currency}</td><td>${balance.available}</td><td>${balance.locked}</td></tr>`)
+          .join('');
+
+        depositsNode.innerHTML = profile.active_deposits.length
+          ? profile.active_deposits.map(operationCard).join('')
+          : '<div class="muted">Активных пополнений нет</div>';
+
+        withdrawalsNode.innerHTML = profile.active_withdrawals.length
+          ? profile.active_withdrawals.map(operationCard).join('')
+          : '<div class="muted">Активных выводов нет</div>';
+
+      }
+
+      window.addEventListener('message', event => {
+        const contact = event.data?.contact || event.data?.conversation?.meta?.sender || event.data?.data?.contact;
+        if (contact) loadProfile(contact);
+      });
+
+      loadProfile({ email: new URLSearchParams(location.search).get('email') || 'demo@rapira.local' });
+    </script>
+  </body>
+</html>
