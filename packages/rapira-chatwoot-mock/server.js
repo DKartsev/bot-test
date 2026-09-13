@@ -13,6 +13,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.get('/', (_req, res) => {
+  res.redirect('/dashboard.html');
+});
+
 const names = ['Алексей', 'Мария', 'Даниил', 'Екатерина', 'Илья', 'София'];
 const surnames = ['Иванов', 'Петрова', 'Смирнов', 'Кузнецова', 'Орлов', 'Волкова'];
 const kycStatuses = ['verified', 'pending_review', 'rejected', 'not_started'];
