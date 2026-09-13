@@ -175,6 +175,40 @@ function buildUser(query = {}) {
   };
 }
 
+function contextFromRequest(req) {
+  return {
+    email: req.query.email || req.get('X-Chatwoot-Contact-Email') || '',
+    phone: req.query.phone || req.get('X-Chatwoot-Contact-Phone') || '',
+    contact_id: req.query.contact_id || req.get('X-Chatwoot-Contact-Id') || '',
+    conversation_id: req.get('X-Chatwoot-Conversation-Id') || '',
+    account_id: req.get('X-Chatwoot-Account-Id') || '',
+    inbox_verified: req.get('X-Chatwoot-Contact-Inbox-Verified') || ''
+  };
+}
+
+function summarizeForCaptain(profile) {
+  const deposits = profile.active_deposits.map(operation => {
+    const network = operation.network ? `, сеть ${operation.network}` : '';
+    return `${operation.method_label}: ${operation.amount} ${operation.token}${network}, статус ${operation.status}, в обработке ${operation.processing_time_label}, ID ${operation.id}`;
+  });
+
+  const withdrawals = profile.active_withdrawals.map(operation => {
+    const network = operation.network ? `, сеть ${operation.network}` : '';
+    return `${operation.method_label}: ${operation.amount} ${operation.token}${network}, статус ${operation.status}, в обработке ${operation.processing_time_label}, ID ${operation.id}`;
+  });
+
+  return {
+    customer: `${profile.user.name}, ${profile.user.email}`,
+    kyc_status: profile.account.kyc_status,
+    withdrawal_enabled: profile.account.withdrawal_enabled,
+    trading_enabled: profile.account.trading_enabled,
+    balances: profile.balances.map(balance => `${balance.currency}: доступно ${balance.available}, в холде ${balance.locked}`),
+    active_deposits: deposits,
+    active_withdrawals: withdrawals,
+    instruction: 'Используй эти данные для ответа клиенту. Не раскрывай risk_level, last_login_ip и внутренние технические причины ограничений.'
+  };
+}
+
 function recommendedAction({ flag, kycStatus, canWithdraw }) {
   if (kycStatus === 'pending_review') return 'Сообщить, что проверка документов еще идет. Не обещать точный срок без данных SLA.';
   if (kycStatus === 'rejected') return 'Попросить клиента повторно пройти верификацию и проверить качество документов.';
@@ -232,7 +266,12 @@ function makeSupportAnswer(question, profile) {
 }
 
 app.get('/api/user', (req, res) => {
-  res.json(buildUser(req.query));
+  res.json(buildUser(contextFromRequest(req)));
+});
+
+app.get('/api/captain/user-context', (req, res) => {
+  const profile = buildUser(contextFromRequest(req));
+  res.json(summarizeForCaptain(profile));
 });
 
 app.post('/api/support-answer', (req, res) => {
