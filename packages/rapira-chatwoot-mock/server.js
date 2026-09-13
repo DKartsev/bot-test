@@ -176,10 +176,12 @@ function buildUser(query = {}) {
 }
 
 function contextFromRequest(req) {
+  const bodyContact = req.body?.contact || {};
+
   return {
-    email: req.query.email || req.get('X-Chatwoot-Contact-Email') || '',
-    phone: req.query.phone || req.get('X-Chatwoot-Contact-Phone') || '',
-    contact_id: req.query.contact_id || req.get('X-Chatwoot-Contact-Id') || '',
+    email: bodyContact.email || req.body?.email || req.query.email || req.get('X-Chatwoot-Contact-Email') || '',
+    phone: bodyContact.phone || req.body?.phone || req.query.phone || req.get('X-Chatwoot-Contact-Phone') || '',
+    contact_id: bodyContact.id || req.body?.contact_id || req.query.contact_id || req.get('X-Chatwoot-Contact-Id') || '',
     conversation_id: req.get('X-Chatwoot-Conversation-Id') || '',
     account_id: req.get('X-Chatwoot-Account-Id') || '',
     inbox_verified: req.get('X-Chatwoot-Contact-Inbox-Verified') || ''
@@ -270,6 +272,11 @@ app.get('/api/user', (req, res) => {
 });
 
 app.get('/api/captain/user-context', (req, res) => {
+  const profile = buildUser(contextFromRequest(req));
+  res.json(summarizeForCaptain(profile));
+});
+
+app.post('/api/captain/user-context', (req, res) => {
   const profile = buildUser(contextFromRequest(req));
   res.json(summarizeForCaptain(profile));
 });
