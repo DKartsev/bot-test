@@ -460,15 +460,9 @@ function validateCaptainRequest(req, res) {
       customAttributes.rapira_user_id ||
       customAttributes.account_id ||
       customAttributes.telegram_id ||
-      contact.identifier ||
-      contact.email ||
-      contact.phone ||
       req.body.rapira_user_id ||
       req.body.account_id ||
       req.body.telegram_id ||
-      req.body.identifier ||
-      req.body.email ||
-      req.body.phone ||
       req.body.contact_id
   );
 
